@@ -112,7 +112,10 @@ export default function HomePage() {
               <a href="#features" className="text-white/80 hover:text-white transition">Features</a>
               <a href="#how-it-works" className="text-white/80 hover:text-white transition">How it Works</a>
               <a href="#specializations" className="text-white/80 hover:text-white transition">Specializations</a>
-              <Link to="/register/doctor" className="text-white/80 hover:text-white transition">For Doctors</Link>
+              <Link to="/doctor/register" className="text-white/80 hover:text-white transition font-medium flex items-center gap-1">
+                <Stethoscope className="w-4 h-4" />
+                For Doctors
+              </Link>
             </div>
 
             <div className="flex items-center gap-3">
@@ -292,6 +295,30 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* Become a Doctor CTA Banner */}
+      <section className="py-6 bg-gradient-to-r from-emerald-600 to-teal-600">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-4 text-white">
+              <div className="w-12 h-12 bg-white/20 backdrop-blur rounded-xl flex items-center justify-center">
+                <Stethoscope className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-lg">Are you a healthcare professional?</h3>
+                <p className="text-emerald-100 text-sm">Join our network of 500+ verified doctors and reach thousands of patients</p>
+              </div>
+            </div>
+            <Link 
+              to="/doctor/register"
+              className="inline-flex items-center gap-2 px-6 py-3 bg-white text-emerald-600 font-semibold rounded-xl hover:bg-emerald-50 transition-all shadow-lg hover:shadow-xl"
+            >
+              Become a Doctor
+              <ArrowRight className="w-5 h-5" />
+            </Link>
+          </div>
+        </div>
+      </section>
+
       {/* Features Section */}
       <section id="features" className="py-24 bg-slate-50">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -447,13 +474,13 @@ export default function HomePage() {
             Join thousands of patients and doctors already using NovareHealth
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/login">
+<Link to="/login">
               <Button size="lg" className="!bg-white !text-cyan-600 hover:!bg-cyan-50">
                 Get Started Free
                 <ArrowRight className="w-5 h-5" />
               </Button>
             </Link>
-            <Link to="/register/doctor">
+            <Link to="/doctor/register">
               <Button size="lg" variant="outline" className="!border-white !text-white hover:!bg-white/10">
                 Join as Doctor
               </Button>
