@@ -1,5 +1,5 @@
 import api from './api';
-import { TokenResponse, OTPRequest, OTPVerifyRequest } from '../types';
+import type { TokenResponse, OTPVerifyRequest } from '../types';
 
 export const authService = {
   // Send OTP to phone
