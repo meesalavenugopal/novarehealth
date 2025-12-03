@@ -19,6 +19,7 @@ import {
   Clock
 } from 'lucide-react';
 import { Footer } from '../../components/layout';
+import { AIChatWidget } from '../../components/chat';
 import Button from '../../components/ui/Button';
 
 export default function HomePage() {
@@ -533,6 +534,9 @@ export default function HomePage() {
       </section>
 
       <Footer />
+
+      {/* AI Chat Widget */}
+      <AIChatWidget context="home" />
 
       {/* Add custom animation for floating elements */}
       <style>{`
