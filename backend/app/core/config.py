@@ -1,0 +1,53 @@
+from pydantic_settings import BaseSettings
+from typing import Optional
+import os
+
+
+class Settings(BaseSettings):
+    # Application
+    APP_NAME: str = "NovareHealth API"
+    APP_VERSION: str = "1.0.0"
+    DEBUG: bool = False
+    API_V1_PREFIX: str = "/api/v1"
+    
+    # Database
+    DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/novarehealth"
+    DATABASE_ECHO: bool = False
+    
+    # JWT
+    SECRET_KEY: str = "your-super-secret-key-change-in-production"
+    ALGORITHM: str = "HS256"
+    ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
+    REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    
+    # Twilio
+    TWILIO_ACCOUNT_SID: Optional[str] = None
+    TWILIO_AUTH_TOKEN: Optional[str] = None
+    TWILIO_VERIFY_SERVICE_SID: Optional[str] = None
+    TWILIO_PHONE_NUMBER: Optional[str] = None
+    
+    # AWS S3
+    AWS_ACCESS_KEY_ID: Optional[str] = None
+    AWS_SECRET_ACCESS_KEY: Optional[str] = None
+    AWS_REGION: str = "af-south-1"
+    S3_BUCKET_NAME: str = "novarehealth-uploads"
+    
+    # M-Pesa
+    MPESA_CONSUMER_KEY: Optional[str] = None
+    MPESA_CONSUMER_SECRET: Optional[str] = None
+    MPESA_SHORTCODE: Optional[str] = None
+    MPESA_PASSKEY: Optional[str] = None
+    MPESA_ENVIRONMENT: str = "sandbox"
+    
+    # Redis
+    REDIS_URL: str = "redis://localhost:6379/0"
+    
+    # CORS
+    CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:5173"]
+    
+    class Config:
+        env_file = ".env"
+        case_sensitive = True
+
+
+settings = Settings()

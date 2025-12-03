@@ -1,0 +1,22 @@
+@import "tailwindcss";
+
+/* Custom NovareHealth Theme */
+:root {
+  --primary: #0066cc;
+  --primary-dark: #0052a3;
+  --secondary: #00b894;
+  --accent: #6c5ce7;
+  --background: #f8fafc;
+  --foreground: #1e293b;
+}
+
+body {
+  margin: 0;
+  font-family: "Inter", system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+#root {
+  min-height: 100vh;
+}
