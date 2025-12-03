@@ -280,15 +280,18 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-12 bg-white -mt-1">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
+      <section className="py-14 bg-white">
+        <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
             {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <p className="text-4xl font-bold bg-gradient-to-r from-cyan-600 to-teal-600 bg-clip-text text-transparent">
+              <div key={index} className="text-center relative">
+                <p className="text-4xl md:text-5xl font-bold text-slate-800">
                   {stat.value}
                 </p>
-                <p className="text-slate-500 mt-1">{stat.label}</p>
+                <p className="text-slate-500 mt-2 font-medium">{stat.label}</p>
+                {index < stats.length - 1 && (
+                  <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-12 bg-slate-200" />
+                )}
               </div>
             ))}
           </div>
