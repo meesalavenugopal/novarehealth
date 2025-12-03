@@ -10,6 +10,7 @@ import {
   AvailabilityPage 
 } from './pages/doctor';
 import { AdminDashboard } from './pages/admin';
+import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage } from './pages/legal';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 const queryClient = new QueryClient({
@@ -29,6 +30,9 @@ function App() {
           {/* Public Routes */}
           <Route path="/" element={<HomePage />} />
           <Route path="/login" element={<LoginPage />} />
+          <Route path="/privacy" element={<PrivacyPolicyPage />} />
+          <Route path="/terms" element={<TermsOfServicePage />} />
+          <Route path="/refund-policy" element={<RefundPolicyPage />} />
           
           {/* Patient Routes */}
           <Route

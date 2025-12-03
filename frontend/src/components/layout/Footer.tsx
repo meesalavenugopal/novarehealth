@@ -54,7 +54,7 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4">For Doctors</h3>
             <ul className="space-y-3">
-              <FooterLink to="/register/doctor">Join as Doctor</FooterLink>
+              <FooterLink to="/doctor/register">Join as Doctor</FooterLink>
               <FooterLink to="/doctor/dashboard">Doctor Dashboard</FooterLink>
               <FooterLink to="/doctor/earnings">Earnings</FooterLink>
               <FooterLink to="/doctor-guidelines">Guidelines</FooterLink>
@@ -94,10 +94,8 @@ export default function Footer() {
       <div className="border-t border-slate-800">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-slate-400 flex items-center gap-1">
-              © {currentYear} NovareHealth. Made with 
-              <Heart className="w-4 h-4 text-red-500 fill-current" /> 
-              in Mozambique
+            <p className="text-sm text-slate-400">
+              © {currentYear} NovareHealth. All rights reserved.
             </p>
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <Link to="/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors">
