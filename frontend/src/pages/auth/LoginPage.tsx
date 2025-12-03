@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
@@ -12,7 +12,8 @@ import {
   Clock,
   CheckCircle2,
   Stethoscope,
-  ArrowLeft
+  ArrowLeft,
+  AlertCircle
 } from 'lucide-react';
 import { authService } from '../../services/auth';
 import { useAuthStore } from '../../store/authStore';
@@ -31,6 +32,7 @@ type OTPFormData = z.infer<typeof otpSchema>;
 
 export default function LoginPage() {
   const navigate = useNavigate();
+  const location = useLocation();
   const { setAuth } = useAuthStore();
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
@@ -38,6 +40,10 @@ export default function LoginPage() {
   const [error, setError] = useState('');
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
+  
+  // Get redirect info from state
+  const redirectFrom = location.state?.from;
+  const redirectMessage = location.state?.message;
 
   const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
@@ -103,7 +109,13 @@ export default function LoginPage() {
       });
       setAuth(response.user, response.access_token, response.refresh_token);
       
-      // Redirect based on role
+      // Redirect to original destination if coming from protected route
+      if (redirectFrom) {
+        navigate(redirectFrom);
+        return;
+      }
+      
+      // Otherwise redirect based on role
       if (response.user.role === 'doctor') {
         navigate('/doctor/dashboard');
       } else if (response.user.role === 'admin') {
@@ -211,6 +223,14 @@ export default function LoginPage() {
                   <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
                   <p className="text-slate-500 mt-2">Enter your phone number to continue</p>
                 </div>
+
+                {/* Redirect Message */}
+                {redirectMessage && (
+                  <div className="bg-amber-50 text-amber-700 px-4 py-3 rounded-xl mb-6 text-sm flex items-center gap-2 border border-amber-200">
+                    <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                    {redirectMessage}
+                  </div>
+                )}
 
                 {/* Error Message */}
                 {error && (

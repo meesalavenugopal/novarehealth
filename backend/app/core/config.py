@@ -44,6 +44,12 @@ class Settings(BaseSettings):
     MPESA_PASSKEY: Optional[str] = None
     MPESA_ENVIRONMENT: str = "sandbox"
     
+    # OpenAI
+    OPENAI_API_KEY: Optional[str] = None
+    OPENAI_MODEL: str = "gpt-4o"
+    OPENAI_MAX_TOKENS: int = 4000
+    OPENAI_TEMPERATURE: float = 0.7
+    
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     
