@@ -3,7 +3,6 @@ import { useAuthStore } from '../../store/authStore';
 import { 
   Calendar, 
   Clock, 
-  User, 
   FileText, 
   Star,
   Video,
@@ -15,10 +14,6 @@ import {
   Baby,
   Bone,
   Activity,
-  Search,
-  Bell,
-  Settings,
-  LogOut,
   Plus,
   ArrowUpRight,
   TrendingUp
@@ -27,7 +22,7 @@ import { Navbar, Footer } from '../../components/layout';
 import { Card, CardHeader, Button } from '../../components/ui';
 
 export default function PatientDashboard() {
-  const { user, logout } = useAuthStore();
+  const { user } = useAuthStore();
 
   const quickActions = [
     { 

@@ -9,6 +9,7 @@ class Settings(BaseSettings):
     APP_VERSION: str = "1.0.0"
     DEBUG: bool = False
     API_V1_PREFIX: str = "/api/v1"
+    API_BASE_URL: str = "http://localhost:8000"
     
     # Database
     DATABASE_URL: str = "postgresql+asyncpg://postgres:postgres@localhost:5432/novarehealth"
@@ -19,6 +20,10 @@ class Settings(BaseSettings):
     ALGORITHM: str = "HS256"
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 30
     REFRESH_TOKEN_EXPIRE_DAYS: int = 7
+    
+    # File Uploads
+    UPLOAD_DIR: str = "uploads"
+    MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10 MB
     
     # Twilio
     TWILIO_ACCOUNT_SID: Optional[str] = None
@@ -43,7 +48,7 @@ class Settings(BaseSettings):
     REDIS_URL: str = "redis://localhost:6379/0"
     
     # CORS
-    CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:5173"]
+    CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173"]
     
     class Config:
         env_file = ".env"

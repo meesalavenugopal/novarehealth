@@ -33,17 +33,28 @@ export default function Card({
   );
 }
 
-interface CardHeaderProps {
-  title: string;
+export interface CardHeaderProps {
+  title?: string;
   subtitle?: string;
   action?: React.ReactNode;
+  children?: React.ReactNode;
 }
 
-export function CardHeader({ title, subtitle, action }: CardHeaderProps) {
+export function CardHeader({ title, subtitle, action, children }: CardHeaderProps) {
+  // If children are provided, render them directly
+  if (children) {
+    return (
+      <div className="mb-4">
+        {children}
+      </div>
+    );
+  }
+
+  // Otherwise use title/subtitle pattern
   return (
     <div className="flex items-start justify-between mb-4">
       <div>
-        <h3 className="text-lg font-semibold text-slate-900">{title}</h3>
+        {title && <h3 className="text-lg font-semibold text-slate-900">{title}</h3>}
         {subtitle && <p className="text-sm text-slate-500 mt-0.5">{subtitle}</p>}
       </div>
       {action}

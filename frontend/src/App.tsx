@@ -3,6 +3,12 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LoginPage from './pages/auth/LoginPage';
 import HomePage from './pages/common/HomePage';
 import PatientDashboard from './pages/patient/Dashboard';
+import { 
+  DoctorDashboard, 
+  DoctorRegisterPage, 
+  VerificationPendingPage, 
+  AvailabilityPage 
+} from './pages/doctor';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 const queryClient = new QueryClient({
@@ -33,12 +39,36 @@ function App() {
             }
           />
           
-          {/* Doctor Routes (placeholder) */}
+          {/* Doctor Routes */}
+          <Route
+            path="/doctor/register"
+            element={
+              <ProtectedRoute allowedRoles={['patient', 'doctor']}>
+                <DoctorRegisterPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/doctor/verification-pending"
+            element={
+              <ProtectedRoute allowedRoles={['doctor']}>
+                <VerificationPendingPage />
+              </ProtectedRoute>
+            }
+          />
           <Route
             path="/doctor/dashboard"
             element={
               <ProtectedRoute allowedRoles={['doctor']}>
-                <div className="p-8">Doctor Dashboard - Coming Soon</div>
+                <DoctorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/doctor/availability"
+            element={
+              <ProtectedRoute allowedRoles={['doctor']}>
+                <AvailabilityPage />
               </ProtectedRoute>
             }
           />

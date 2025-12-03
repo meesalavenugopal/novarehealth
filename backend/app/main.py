@@ -1,10 +1,16 @@
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from contextlib import asynccontextmanager
+from pathlib import Path
 
 from app.core.config import settings
 from app.api.v1.router import api_router
 from app.db.database import init_db
+
+# Create uploads directory at module load time (before app initialization)
+uploads_dir = Path(settings.UPLOAD_DIR)
+uploads_dir.mkdir(parents=True, exist_ok=True)
 
 
 @asynccontextmanager
@@ -38,6 +44,9 @@ app.add_middleware(
 
 # Include API routes
 app.include_router(api_router, prefix=settings.API_V1_PREFIX)
+
+# Static files for uploads
+app.mount("/uploads", StaticFiles(directory=settings.UPLOAD_DIR), name="uploads")
 
 
 @app.get("/", tags=["Health"])

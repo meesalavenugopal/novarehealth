@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { 
   Phone, 
   ArrowRight, 
-  Loader2, 
   Shield, 
   Video, 
   FileText,

@@ -27,6 +27,7 @@ httpx==0.26.0
 # Utils
 python-dotenv==1.0.0
 redis==5.0.1
+aiofiles==23.2.1
 
 # PDF Generation
 reportlab==4.0.9

@@ -2,7 +2,6 @@ import { Link } from 'react-router-dom';
 import { 
   Video, 
   Shield, 
-  Clock, 
   FileText, 
   Star, 
   ChevronRight,
