@@ -13,7 +13,9 @@ import {
   CheckCircle2,
   Stethoscope,
   ArrowLeft,
-  AlertCircle
+  AlertCircle,
+  Users,
+  Star
 } from 'lucide-react';
 import { authService } from '../../services/auth';
 import { useAuthStore } from '../../store/authStore';
@@ -204,18 +206,35 @@ export default function LoginPage() {
         </div>
 
         {/* Bottom Stats */}
-        <div className="relative z-10 flex gap-12">
-          <div>
-            <p className="text-4xl font-bold text-white">500+</p>
-            <p className="text-cyan-100">Verified Doctors</p>
+        <div className="relative z-10 flex gap-8">
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center">
+              <Users className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-white">500+</p>
+              <p className="text-cyan-200 text-sm">Verified Doctors</p>
+            </div>
           </div>
-          <div>
-            <p className="text-4xl font-bold text-white">50K+</p>
-            <p className="text-cyan-100">Consultations</p>
+          <div className="w-px bg-white/20" />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center">
+              <Video className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-white">50K+</p>
+              <p className="text-cyan-200 text-sm">Consultations</p>
+            </div>
           </div>
-          <div>
-            <p className="text-4xl font-bold text-white">4.9</p>
-            <p className="text-cyan-100">User Rating</p>
+          <div className="w-px bg-white/20" />
+          <div className="flex items-center gap-3">
+            <div className="w-12 h-12 bg-white/10 backdrop-blur rounded-xl flex items-center justify-center">
+              <Star className="w-6 h-6 text-white" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-white">4.9</p>
+              <p className="text-cyan-200 text-sm">User Rating</p>
+            </div>
           </div>
         </div>
       </div>
