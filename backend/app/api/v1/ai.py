@@ -59,7 +59,8 @@ class RegistrationTipsRequest(BaseModel):
 
 class ChatRequest(BaseModel):
     message: str
-    context: Optional[Dict[str, Any]] = None
+    context: Optional[Any] = None  # Can be string or dict
+    conversation_history: Optional[List[Dict[str, str]]] = None
 
 
 @router.post("/generate-bio", response_model=BioGenerationResponse)
@@ -210,7 +211,8 @@ async def chat_assistant(request: ChatRequest):
     try:
         response = await ai_service.chat_assistant(
             message=request.message,
-            context=request.context
+            context=request.context,
+            conversation_history=request.conversation_history
         )
         return {"success": True, "response": response}
     except Exception as e:

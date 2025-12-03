@@ -339,12 +339,13 @@ Respond in JSON format:
     async def chat_assistant(
         self,
         message: str,
-        context: Optional[Dict[str, Any]] = None
+        context: Optional[any] = None,
+        conversation_history: Optional[list] = None
     ) -> str:
         """
         General chat assistant for doctor registration help.
         """
-        system_prompt = """You are a helpful assistant for NovareHealth, a telemedicine platform in Africa. 
+        default_prompt = """You are a helpful assistant for NovareHealth, a telemedicine platform in Africa. 
 You're helping doctors complete their registration and profile setup.
 
 Be helpful, concise, and encouraging. Answer questions about:
@@ -355,15 +356,34 @@ Be helpful, concise, and encouraging. Answer questions about:
 
 Keep responses brief (2-3 sentences max) unless more detail is requested."""
 
-        if context:
-            system_prompt += f"\n\nCurrent context: {context}"
+        # Handle context - can be string (system prompt) or dict (registration context)
+        if context is None:
+            system_prompt = default_prompt
+        elif isinstance(context, str):
+            system_prompt = context
+        elif isinstance(context, dict):
+            # Context from doctor registration page
+            system_prompt = default_prompt + f"\n\nCurrent context: Step {context.get('step', 1)}, Specialization: {context.get('specialization', 'Not selected')}, Experience: {context.get('experience_years', 0)} years"
+        else:
+            system_prompt = default_prompt
+
+        messages = [{"role": "system", "content": system_prompt}]
+        
+        # Add conversation history for context
+        if conversation_history:
+            for msg in conversation_history[-10:]:  # Limit to last 10 messages
+                if isinstance(msg, dict) and 'role' in msg and 'content' in msg:
+                    messages.append({
+                        "role": msg['role'],
+                        "content": msg['content']
+                    })
+        
+        # Add the current message
+        messages.append({"role": "user", "content": message})
         
         response = await self.client.chat.completions.create(
             model=self.model,
-            messages=[
-                {"role": "system", "content": system_prompt},
-                {"role": "user", "content": message}
-            ],
+            messages=messages,
             max_tokens=300,
             temperature=0.7
         )
