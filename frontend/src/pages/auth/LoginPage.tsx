@@ -117,8 +117,31 @@ export default function LoginPage() {
       
       // Otherwise redirect based on role
       if (response.user.role === 'doctor') {
-        navigate('/doctor/dashboard');
-      } else if (response.user.role === 'admin') {
+        // For doctors, check verification status
+        try {
+          const doctorResponse = await fetch('http://localhost:8000/api/v1/doctors/me', {
+            headers: {
+              'Authorization': `Bearer ${response.access_token}`,
+            },
+          });
+          
+          if (doctorResponse.ok) {
+            const doctorData = await doctorResponse.json();
+            if (doctorData.verification_status === 'verified') {
+              navigate('/doctor/dashboard');
+            } else {
+              // pending or rejected - go to verification page
+              navigate('/doctor/verification-pending');
+            }
+          } else {
+            // No doctor profile yet, go to dashboard
+            navigate('/doctor/dashboard');
+          }
+        } catch {
+          // If check fails, default to dashboard
+          navigate('/doctor/dashboard');
+        }
+      } else if (response.user.role === 'admin' || response.user.role === 'super_admin') {
         navigate('/admin/dashboard');
       } else {
         navigate('/patient/dashboard');

@@ -106,7 +106,7 @@ const steps = [
 
 export const DoctorRegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const { accessToken, isAuthenticated } = useAuthStore();
+  const { accessToken, isAuthenticated, updateUser } = useAuthStore();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   
@@ -454,6 +454,9 @@ export const DoctorRegisterPage: React.FC = () => {
           body: certFormData,
         });
       }
+
+      // Update user role in auth store to 'doctor' so ProtectedRoute allows access
+      updateUser({ role: 'doctor' });
 
       navigate('/doctor/verification-pending');
     } catch (err: any) {

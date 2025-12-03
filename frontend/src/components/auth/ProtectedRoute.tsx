@@ -3,7 +3,7 @@ import { useAuthStore } from '../../store/authStore';
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
-  allowedRoles?: ('patient' | 'doctor' | 'admin')[];
+  allowedRoles?: ('patient' | 'doctor' | 'admin' | 'super_admin')[];
 }
 
 export default function ProtectedRoute({ children, allowedRoles }: ProtectedRouteProps) {
@@ -18,7 +18,7 @@ export default function ProtectedRoute({ children, allowedRoles }: ProtectedRout
     // Redirect to appropriate dashboard based on role
     if (user.role === 'doctor') {
       return <Navigate to="/doctor/dashboard" replace />;
-    } else if (user.role === 'admin') {
+    } else if (user.role === 'admin' || user.role === 'super_admin') {
       return <Navigate to="/admin/dashboard" replace />;
     } else {
       return <Navigate to="/patient/dashboard" replace />;

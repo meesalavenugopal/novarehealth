@@ -1,8 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { Button, Card, CardHeader } from '../../components/ui';
 import { Navbar } from '../../components/layout';
+import { Loader2 } from 'lucide-react';
 
 interface Appointment {
   id: number;
@@ -23,7 +24,9 @@ interface DoctorStats {
 }
 
 export const DoctorDashboard: React.FC = () => {
-  const { user } = useAuthStore();
+  const navigate = useNavigate();
+  const { user, accessToken } = useAuthStore();
+  const [checkingVerification, setCheckingVerification] = useState(true);
   const [stats, setStats] = useState<DoctorStats>({
     total_consultations: 0,
     today_appointments: 0,
@@ -35,44 +38,86 @@ export const DoctorDashboard: React.FC = () => {
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
 
+  // Check verification status on mount
+  useEffect(() => {
+    const checkVerificationStatus = async () => {
+      try {
+        const response = await fetch('http://localhost:8000/api/v1/doctors/me', {
+          headers: {
+            'Authorization': `Bearer ${accessToken}`,
+          },
+        });
+
+        if (response.ok) {
+          const doctorData = await response.json();
+          if (doctorData.verification_status !== 'verified') {
+            // Not verified, redirect to pending page
+            navigate('/doctor/verification-pending');
+            return;
+          }
+        }
+      } catch (err) {
+        console.error('Failed to check verification status:', err);
+      } finally {
+        setCheckingVerification(false);
+      }
+    };
+
+    checkVerificationStatus();
+  }, [accessToken, navigate]);
+
   // Mock data for now
   useEffect(() => {
-    setStats({
-      total_consultations: 156,
-      today_appointments: 5,
-      pending_appointments: 3,
-      total_earnings: 78500,
-      rating: 4.8,
-      total_reviews: 124,
-    });
+    if (!checkingVerification) {
+      setStats({
+        total_consultations: 156,
+        today_appointments: 5,
+        pending_appointments: 3,
+        total_earnings: 78500,
+        rating: 4.8,
+        total_reviews: 124,
+      });
 
-    setUpcomingAppointments([
-      {
-        id: 1,
-        patient_name: 'Maria Silva',
-        scheduled_date: '2024-01-15',
-        scheduled_time: '10:00',
-        appointment_type: 'video',
-        status: 'confirmed',
-      },
-      {
-        id: 2,
-        patient_name: 'João Santos',
-        scheduled_date: '2024-01-15',
-        scheduled_time: '11:00',
-        appointment_type: 'video',
-        status: 'confirmed',
-      },
-      {
-        id: 3,
-        patient_name: 'Ana Pereira',
-        scheduled_date: '2024-01-15',
-        scheduled_time: '14:00',
-        appointment_type: 'chat',
-        status: 'pending',
-      },
-    ]);
-  }, []);
+      setUpcomingAppointments([
+        {
+          id: 1,
+          patient_name: 'Maria Silva',
+          scheduled_date: '2024-01-15',
+          scheduled_time: '10:00',
+          appointment_type: 'video',
+          status: 'confirmed',
+        },
+        {
+          id: 2,
+          patient_name: 'João Santos',
+          scheduled_date: '2024-01-15',
+          scheduled_time: '11:00',
+          appointment_type: 'video',
+          status: 'confirmed',
+        },
+        {
+          id: 3,
+          patient_name: 'Ana Pereira',
+          scheduled_date: '2024-01-15',
+          scheduled_time: '14:00',
+          appointment_type: 'chat',
+          status: 'pending',
+        },
+      ]);
+    }
+  }, [checkingVerification]);
+
+  // Show loading while checking verification
+  if (checkingVerification) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="text-center">
+          <Loader2 className="w-8 h-8 animate-spin text-cyan-600 mx-auto mb-4" />
+          <p className="text-gray-600">Loading dashboard...</p>
+        </div>
+      </div>
+    );
+  }
 
   const toggleAvailability = () => {
     setIsAvailable(!isAvailable);

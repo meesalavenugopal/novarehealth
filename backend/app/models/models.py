@@ -12,6 +12,7 @@ class UserRole(str, enum.Enum):
     PATIENT = "patient"
     DOCTOR = "doctor"
     ADMIN = "admin"
+    SUPER_ADMIN = "super_admin"
 
 
 class VerificationStatus(str, enum.Enum):
@@ -48,7 +49,7 @@ class User(Base):
     email = Column(String(255), unique=True, index=True, nullable=True)
     phone = Column(String(20), unique=True, index=True, nullable=True)
     password_hash = Column(String(255), nullable=True)
-    role = Column(Enum(UserRole), default=UserRole.PATIENT, nullable=False)
+    role = Column(Enum(UserRole, values_callable=lambda x: [e.value for e in x]), default=UserRole.PATIENT, nullable=False)
     
     # Profile
     first_name = Column(String(100), nullable=True)
@@ -110,7 +111,7 @@ class Doctor(Base):
     medical_certificate_url = Column(String(500), nullable=True)
     
     # Verification
-    verification_status = Column(Enum(VerificationStatus), default=VerificationStatus.PENDING)
+    verification_status = Column(Enum(VerificationStatus, values_callable=lambda x: [e.value for e in x]), default=VerificationStatus.PENDING)
     verified_at = Column(DateTime, nullable=True)
     rejection_reason = Column(Text, nullable=True)
     
@@ -165,8 +166,8 @@ class Appointment(Base):
     duration = Column(Integer, default=30)  # in minutes
     
     # Type and Status
-    appointment_type = Column(Enum(AppointmentType), default=AppointmentType.VIDEO)
-    status = Column(Enum(AppointmentStatus), default=AppointmentStatus.PENDING)
+    appointment_type = Column(Enum(AppointmentType, values_callable=lambda x: [e.value for e in x]), default=AppointmentType.VIDEO)
+    status = Column(Enum(AppointmentStatus, values_callable=lambda x: [e.value for e in x]), default=AppointmentStatus.PENDING)
     
     # Video Call
     meeting_room_id = Column(String(100), nullable=True)
@@ -208,7 +209,7 @@ class Payment(Base):
     mpesa_receipt = Column(String(100), nullable=True)
     
     # Status
-    status = Column(Enum(PaymentStatus), default=PaymentStatus.PENDING)
+    status = Column(Enum(PaymentStatus, values_callable=lambda x: [e.value for e in x]), default=PaymentStatus.PENDING)
     
     # Refund
     refund_amount = Column(Numeric(10, 2), nullable=True)

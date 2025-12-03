@@ -23,6 +23,15 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 
 **Overall Progress:** 25% Complete (2/8 phases)
 
+### Additional Enhancements (Beyond MVP Scope) ✨
+- [x] AI Writing Assistant - Bio generation with OpenAI GPT-4o
+- [x] AI Rephrase Options - Professional, Friendly, Concise styles
+- [x] AI Custom Input - "Add Your Touch" personalized bio generation
+- [x] AI Fee Suggestions - Market-based consultation fee recommendations
+- [x] AI Chat Assistant - Registration help chatbot
+- [x] Language Chips - Quick selection for common languages
+- [x] Degree Chips - Quick selection for medical degrees
+
 ### Phase 1 Completed Tasks ✅
 - [x] Project Setup - React + TypeScript + TailwindCSS frontend
 - [x] Project Setup - FastAPI backend with modular structure

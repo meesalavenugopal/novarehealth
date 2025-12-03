@@ -88,5 +88,6 @@ def require_role(allowed_roles: list[UserRole]):
 # Convenience dependencies for specific roles
 get_current_patient = require_role([UserRole.PATIENT])
 get_current_doctor = require_role([UserRole.DOCTOR])
-get_current_admin = require_role([UserRole.ADMIN])
-get_current_doctor_or_admin = require_role([UserRole.DOCTOR, UserRole.ADMIN])
+get_current_admin = require_role([UserRole.ADMIN, UserRole.SUPER_ADMIN])
+get_current_super_admin = require_role([UserRole.SUPER_ADMIN])
+get_current_doctor_or_admin = require_role([UserRole.DOCTOR, UserRole.ADMIN, UserRole.SUPER_ADMIN])

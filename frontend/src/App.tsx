@@ -9,6 +9,7 @@ import {
   VerificationPendingPage, 
   AvailabilityPage 
 } from './pages/doctor';
+import { AdminDashboard } from './pages/admin';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 const queryClient = new QueryClient({
@@ -73,12 +74,12 @@ function App() {
             }
           />
           
-          {/* Admin Routes (placeholder) */}
+          {/* Admin Routes */}
           <Route
             path="/admin/dashboard"
             element={
-              <ProtectedRoute allowedRoles={['admin']}>
-                <div className="p-8">Admin Dashboard - Coming Soon</div>
+              <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                <AdminDashboard />
               </ProtectedRoute>
             }
           />
