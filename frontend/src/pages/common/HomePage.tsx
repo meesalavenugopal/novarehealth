@@ -15,7 +15,8 @@ import {
   Heart,
   Brain,
   Eye,
-  Baby
+  Baby,
+  Clock
 } from 'lucide-react';
 import { Footer } from '../../components/layout';
 import Button from '../../components/ui/Button';
@@ -89,10 +90,10 @@ export default function HomePage() {
   ];
 
   const stats = [
-    { value: '500+', label: 'Verified Doctors' },
-    { value: '50,000+', label: 'Consultations' },
-    { value: '4.9', label: 'User Rating' },
-    { value: '24/7', label: 'Available' },
+    { value: '500+', label: 'Verified Doctors', icon: Users },
+    { value: '50K+', label: 'Consultations', icon: Video },
+    { value: '4.9', label: 'User Rating', icon: Star },
+    { value: '24/7', label: 'Available', icon: Clock },
   ];
 
   return (
@@ -280,20 +281,26 @@ export default function HomePage() {
       </section>
 
       {/* Stats Section */}
-      <section className="py-14 bg-white">
+      <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 md:gap-4">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center relative">
-                <p className="text-4xl md:text-5xl font-bold text-slate-800">
-                  {stat.value}
-                </p>
-                <p className="text-slate-500 mt-2 font-medium">{stat.label}</p>
-                {index < stats.length - 1 && (
-                  <div className="hidden md:block absolute right-0 top-1/2 -translate-y-1/2 w-px h-12 bg-slate-200" />
-                )}
-              </div>
-            ))}
+          <div className="flex flex-wrap justify-center gap-8 md:gap-6">
+            {stats.map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <div key={index} className="flex items-center gap-4">
+                  <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                    <Icon className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-3xl font-bold text-slate-800">{stat.value}</p>
+                    <p className="text-slate-500 text-sm font-medium">{stat.label}</p>
+                  </div>
+                  {index < stats.length - 1 && (
+                    <div className="hidden md:block w-px h-12 bg-slate-200 ml-6" />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
