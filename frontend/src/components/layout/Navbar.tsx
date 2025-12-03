@@ -35,7 +35,8 @@ export default function Navbar() {
     return () => document.removeEventListener('mousedown', handleClickOutside);
   }, []);
 
-  const isAuthPage = location.pathname === '/login' || location.pathname.includes('/register');
+  // Hide navbar only on patient auth pages, not doctor registration
+  const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   if (isAuthPage) return null;
 
   const notifications = [
