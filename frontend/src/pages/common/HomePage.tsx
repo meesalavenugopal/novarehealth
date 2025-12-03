@@ -165,10 +165,10 @@ export default function HomePage() {
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
                 <Link to="/login">
-                  <Button size="lg" className="!bg-white !text-cyan-600 hover:!bg-cyan-50 !shadow-xl">
+                  <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-cyan-600 font-semibold rounded-xl shadow-xl hover:bg-cyan-50 transition-colors">
                     Book Consultation
                     <ArrowRight className="w-5 h-5" />
-                  </Button>
+                  </button>
                 </Link>
                 <button className="inline-flex items-center justify-center gap-2 px-6 py-3 text-white font-medium hover:bg-white/10 rounded-xl transition">
                   <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
@@ -199,7 +199,7 @@ export default function HomePage() {
             <div className="relative hidden lg:block">
               <div className="relative z-10">
                 {/* Phone Mockup */}
-                <div className="w-[320px] h-[640px] bg-slate-900 rounded-[3rem] p-3 shadow-2xl mx-auto transform rotate-3 hover:rotate-0 transition-transform duration-500">
+                <div className="w-[320px] h-[640px] bg-slate-900 rounded-[3rem] p-3 shadow-2xl mx-auto">
                   <div className="w-full h-full bg-white rounded-[2.5rem] overflow-hidden">
                     {/* App Screen */}
                     <div className="p-6">
@@ -272,15 +272,15 @@ export default function HomePage() {
         </div>
 
         {/* Wave Divider */}
-        <div className="absolute bottom-0 left-0 right-0">
-          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg">
+        <div className="absolute -bottom-1 left-0 right-0">
+          <svg viewBox="0 0 1440 120" fill="none" xmlns="http://www.w3.org/2000/svg" className="w-full h-auto block">
             <path d="M0 120L60 105C120 90 240 60 360 45C480 30 600 30 720 37.5C840 45 960 60 1080 67.5C1200 75 1320 75 1380 75L1440 75V120H1380C1320 120 1200 120 1080 120C960 120 840 120 720 120C600 120 480 120 360 120C240 120 120 120 60 120H0Z" fill="white"/>
           </svg>
         </div>
       </section>
 
       {/* Stats Section */}
-      <section className="py-12 bg-white">
+      <section className="py-12 bg-white -mt-1">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
@@ -335,9 +335,9 @@ export default function HomePage() {
             {features.map((feature, index) => (
               <div 
                 key={index}
-                className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-300 group"
+                className="bg-white rounded-2xl p-6 border border-slate-200 hover:border-slate-300 hover:shadow-lg transition-all duration-300 group text-center"
               >
-                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center text-white mb-5 shadow-lg group-hover:scale-110 transition-transform`}>
+                <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${feature.color} flex items-center justify-center text-white mb-5 shadow-lg group-hover:scale-110 transition-transform mx-auto`}>
                   {feature.icon}
                 </div>
                 <h3 className="text-xl font-semibold text-slate-900 mb-2">{feature.title}</h3>
@@ -362,12 +362,12 @@ export default function HomePage() {
 
           <div className="grid md:grid-cols-4 gap-8">
             {steps.map((item, index) => (
-              <div key={index} className="relative">
+              <div key={index} className="relative text-center">
                 {index < steps.length - 1 && (
                   <div className="hidden md:block absolute top-8 left-1/2 w-full h-0.5 bg-gradient-to-r from-cyan-200 to-transparent" />
                 )}
                 <div className="relative bg-white">
-                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-white font-bold text-xl mb-4 shadow-lg shadow-cyan-500/20">
+                  <div className="w-16 h-16 rounded-2xl bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-white font-bold text-xl mb-4 shadow-lg shadow-cyan-500/20 mx-auto">
                     {item.step}
                   </div>
                   <h3 className="text-xl font-semibold text-slate-900 mb-2">{item.title}</h3>
@@ -474,16 +474,16 @@ export default function HomePage() {
             Join thousands of patients and doctors already using NovareHealth
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-<Link to="/login">
-              <Button size="lg" className="!bg-white !text-cyan-600 hover:!bg-cyan-50">
+            <Link to="/login">
+              <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-cyan-600 font-semibold rounded-xl shadow-xl hover:bg-cyan-50 transition-colors">
                 Get Started Free
                 <ArrowRight className="w-5 h-5" />
-              </Button>
+              </button>
             </Link>
             <Link to="/doctor/register">
-              <Button size="lg" variant="outline" className="!border-white !text-white hover:!bg-white/10">
+              <button className="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-white text-white font-semibold rounded-xl hover:bg-white/10 transition-colors">
                 Join as Doctor
-              </Button>
+              </button>
             </Link>
           </div>
         </div>
