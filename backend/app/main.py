@@ -6,7 +6,8 @@ from pathlib import Path
 
 from app.core.config import settings
 from app.api.v1.router import api_router
-from app.db.database import init_db
+from app.db.database import init_db, get_db
+from app.services.doctor_service import SpecializationService
 
 # Create uploads directory at module load time (before app initialization)
 uploads_dir = Path(settings.UPLOAD_DIR)
@@ -18,6 +19,18 @@ async def lifespan(app: FastAPI):
     """Application lifespan handler."""
     # Startup
     await init_db()
+    
+    # Seed specializations if empty
+    async for db in get_db():
+        try:
+            existing = await SpecializationService.get_all_specializations(db)
+            if not existing:
+                await SpecializationService.seed_specializations(db)
+                print("[OK] Specializations seeded successfully")
+        except Exception as e:
+            print(f"Note: Could not seed specializations: {e}")
+        break
+    
     yield
     # Shutdown
     pass
