@@ -43,11 +43,7 @@ function App() {
           {/* Doctor Routes */}
           <Route
             path="/doctor/register"
-            element={
-              <ProtectedRoute allowedRoles={['patient', 'doctor']}>
-                <DoctorRegisterPage />
-              </ProtectedRoute>
-            }
+            element={<DoctorRegisterPage />}
           />
           <Route
             path="/doctor/verification-pending"
