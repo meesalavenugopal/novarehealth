@@ -496,17 +496,17 @@ export const DoctorRegisterPage: React.FC = () => {
 
   // AI Tips Panel Component - Premium Design
   const AITipsPanel = () => (
-    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-indigo-600 via-violet-600 to-purple-700 p-[1px] mb-6 shadow-lg shadow-violet-500/20">
+    <div className="relative overflow-hidden rounded-2xl bg-gradient-to-br from-cyan-500 via-teal-500 to-emerald-600 p-[1px] mb-6 shadow-lg shadow-cyan-500/20">
       <div className="relative bg-gradient-to-br from-slate-900/95 via-slate-900/90 to-slate-800/95 backdrop-blur-xl rounded-2xl p-5">
         {/* Decorative Elements */}
-        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-violet-500/20 to-transparent rounded-full blur-2xl" />
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-indigo-500/20 to-transparent rounded-full blur-2xl" />
+        <div className="absolute top-0 right-0 w-32 h-32 bg-gradient-to-br from-cyan-500/20 to-transparent rounded-full blur-2xl" />
+        <div className="absolute bottom-0 left-0 w-24 h-24 bg-gradient-to-tr from-teal-500/20 to-transparent rounded-full blur-2xl" />
         
         <div className="relative">
           {/* Header */}
           <div className="flex items-center gap-3 mb-4">
             <div className="relative">
-              <div className="w-10 h-10 bg-gradient-to-br from-violet-500 to-purple-600 rounded-xl flex items-center justify-center shadow-lg shadow-violet-500/30">
+              <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-xl flex items-center justify-center shadow-lg shadow-cyan-500/30">
                 <Sparkles className="w-5 h-5 text-white" />
               </div>
               <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-400 rounded-full border-2 border-slate-900 animate-pulse" />
@@ -521,8 +521,8 @@ export const DoctorRegisterPage: React.FC = () => {
             <div className="space-y-3">
               {aiTips.map((tip, index) => (
                 <div key={index} className="flex items-start gap-3 group">
-                  <div className="w-6 h-6 bg-gradient-to-br from-violet-500/20 to-purple-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ring-1 ring-violet-500/30 group-hover:ring-violet-400/50 transition-all">
-                    <Lightbulb className="w-3.5 h-3.5 text-violet-400" />
+                  <div className="w-6 h-6 bg-gradient-to-br from-cyan-500/20 to-teal-500/20 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5 ring-1 ring-cyan-500/30 group-hover:ring-cyan-400/50 transition-all">
+                    <Lightbulb className="w-3.5 h-3.5 text-cyan-400" />
                   </div>
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-medium text-white/90">{tip.title}</p>
@@ -543,8 +543,8 @@ export const DoctorRegisterPage: React.FC = () => {
           {aiEncouragement && (
             <div className="mt-4 pt-4 border-t border-slate-700/50">
               <div className="flex items-start gap-2">
-                <MessageCircle className="w-4 h-4 text-violet-400 flex-shrink-0 mt-0.5" />
-                <p className="text-sm text-violet-300/90 italic">{aiEncouragement}</p>
+                <MessageCircle className="w-4 h-4 text-cyan-400 flex-shrink-0 mt-0.5" />
+                <p className="text-sm text-cyan-300/90 italic">{aiEncouragement}</p>
               </div>
             </div>
           )}
@@ -828,7 +828,7 @@ export const DoctorRegisterPage: React.FC = () => {
               onClick={suggestFee}
               disabled={suggestingFee || !formData.experience_years}
               title="AI Suggest Fee"
-              className="relative group px-4 py-2 bg-gradient-to-r from-violet-600 to-purple-600 text-white rounded-xl hover:from-violet-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-violet-500/25 hover:shadow-violet-500/40 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
+              className="relative group px-4 py-2 bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-xl hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 transition-all hover:scale-105 active:scale-95 flex items-center gap-2"
             >
               {suggestingFee ? (
                 <Loader2 className="w-4 h-4 animate-spin" />
@@ -877,9 +877,9 @@ export const DoctorRegisterPage: React.FC = () => {
           
           {/* AI Writing Assistant - Single Line */}
           <div className="flex items-center gap-1.5">
-            <div className="flex items-center gap-1 px-2 py-1 bg-violet-50 rounded-lg border border-violet-100">
-              <Sparkles className="w-3 h-3 text-violet-500" />
-              <span className="text-[10px] font-semibold text-violet-600 uppercase tracking-wide">AI</span>
+            <div className="flex items-center gap-1 px-2 py-1 bg-cyan-50 rounded-lg border border-cyan-100">
+              <Sparkles className="w-3 h-3 text-cyan-500" />
+              <span className="text-[10px] font-semibold text-cyan-600 uppercase tracking-wide">AI</span>
             </div>
             
             {/* Generate Button */}
@@ -887,7 +887,7 @@ export const DoctorRegisterPage: React.FC = () => {
               type="button"
               onClick={generateBio}
               disabled={generatingBio || rephrasing || generatingCustomBio || !formData.experience_years}
-              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-xs font-medium rounded-lg hover:from-violet-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
+              className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-white text-xs font-medium rounded-lg hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed shadow-sm transition-all"
             >
               {generatingBio ? <Loader2 className="w-3 h-3 animate-spin" /> : <Wand2 className="w-3 h-3" />}
               <span>Generate</span>
@@ -898,7 +898,7 @@ export const DoctorRegisterPage: React.FC = () => {
               <button
                 type="button"
                 disabled={!formData.bio.trim() || rephrasing || generatingBio || generatingCustomBio}
-                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white text-slate-600 text-xs font-medium rounded-lg border border-slate-200 hover:border-violet-300 hover:bg-violet-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="inline-flex items-center gap-1 px-2.5 py-1.5 bg-white text-slate-600 text-xs font-medium rounded-lg border border-slate-200 hover:border-cyan-300 hover:bg-cyan-50 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {rephrasing ? <Loader2 className="w-3 h-3 animate-spin" /> : <RefreshCw className="w-3 h-3" />}
                 <span>Rephrase</span>
@@ -959,7 +959,7 @@ export const DoctorRegisterPage: React.FC = () => {
                 type="button"
                 onClick={generateCustomBio}
                 disabled={generatingCustomBio || !customDetails.trim()}
-                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-violet-600 to-purple-600 text-white text-xs font-medium rounded-lg hover:from-violet-700 hover:to-purple-700 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
+                className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-gradient-to-r from-cyan-500 to-teal-500 text-white text-xs font-medium rounded-lg hover:from-cyan-600 hover:to-teal-600 disabled:opacity-50 disabled:cursor-not-allowed transition-all"
               >
                 {generatingCustomBio ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                 <span>Generate</span>
@@ -978,12 +978,12 @@ export const DoctorRegisterPage: React.FC = () => {
             placeholder="Tell patients about yourself, your experience, and your approach to healthcare..."
           />
           {(generatingBio || rephrasing || generatingCustomBio) && (
-            <div className="absolute inset-0 bg-gradient-to-br from-violet-500/5 to-purple-500/5 rounded-xl flex items-center justify-center backdrop-blur-[1px]">
-              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg border border-violet-200">
-                <div className="w-5 h-5 bg-gradient-to-br from-violet-500 to-purple-600 rounded-full flex items-center justify-center">
+            <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-teal-500/5 rounded-xl flex items-center justify-center backdrop-blur-[1px]">
+              <div className="flex items-center gap-2 px-4 py-2 bg-white rounded-full shadow-lg border border-cyan-200">
+                <div className="w-5 h-5 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-full flex items-center justify-center">
                   <Sparkles className="w-3 h-3 text-white animate-pulse" />
                 </div>
-                <span className="text-sm font-medium text-violet-700">
+                <span className="text-sm font-medium text-cyan-700">
                   {generatingBio ? 'Generating bio...' : rephrasing ? 'Rephrasing...' : 'Creating custom bio...'}
                 </span>
               </div>
@@ -1385,8 +1385,8 @@ export const DoctorRegisterPage: React.FC = () => {
                 </p>
               </div>
               <div className="relative group">
-                <div className="absolute inset-0 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 rounded-full blur-sm opacity-60 group-hover:opacity-80 transition-opacity" />
-                <div className="relative flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-indigo-600 via-violet-600 to-purple-600 text-white rounded-full text-xs font-semibold shadow-lg">
+                <div className="absolute inset-0 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 rounded-full blur-sm opacity-60 group-hover:opacity-80 transition-opacity" />
+                <div className="relative flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-500 via-teal-500 to-emerald-500 text-white rounded-full text-xs font-semibold shadow-lg">
                   <Sparkles className="w-3.5 h-3.5" />
                   <span>AI-Powered</span>
                 </div>
@@ -1411,9 +1411,9 @@ export const DoctorRegisterPage: React.FC = () => {
               <BadgeCheck className="w-4 h-4 text-cyan-500" />
               <span>Verified Platform</span>
             </div>
-            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-violet-50 to-purple-50 rounded-full shadow-sm border border-violet-200">
-              <Sparkles className="w-4 h-4 text-violet-500" />
-              <span className="text-violet-700 font-medium">AI-Assisted</span>
+            <div className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-cyan-50 to-teal-50 rounded-full shadow-sm border border-cyan-200">
+              <Sparkles className="w-4 h-4 text-cyan-500" />
+              <span className="text-cyan-700 font-medium">AI-Assisted</span>
             </div>
           </div>
         </div>
