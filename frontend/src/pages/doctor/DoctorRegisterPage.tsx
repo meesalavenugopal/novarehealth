@@ -56,6 +56,12 @@ interface Education {
   year: string;
 }
 
+interface FileMetadata {
+  name: string;
+  size: number;
+  type: string;
+}
+
 interface AITip {
   title: string;
   description: string;
@@ -102,15 +108,26 @@ const steps = [
   { id: 2, name: 'Details', icon: Briefcase },
   { id: 3, name: 'Education', icon: GraduationCap },
   { id: 4, name: 'Documents', icon: FileText },
+  { id: 5, name: 'Review', icon: Eye },
 ];
 
 export const DoctorRegisterPage: React.FC = () => {
   const navigate = useNavigate();
-  const { accessToken, isAuthenticated, updateUser } = useAuthStore();
+  const { user, accessToken, updateUser, logout } = useAuthStore();
   const chatEndRef = useRef<HTMLDivElement>(null);
   const chatInputRef = useRef<HTMLInputElement>(null);
   
-  const [step, setStep] = useState(1);
+  // Check hydration state - wait for store to sync with localStorage
+  const [isHydrated, setIsHydrated] = useState(false);
+  useEffect(() => {
+    setIsHydrated(true);
+  }, []);
+  
+  // Restore saved step from localStorage
+  const [step, setStep] = useState(() => {
+    const saved = localStorage.getItem('doctorRegister_step');
+    return saved ? parseInt(saved) : 1;
+  });
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [loading, setLoading] = useState(false);
   const [fetchingSpecs, setFetchingSpecs] = useState(true);
@@ -128,29 +145,70 @@ export const DoctorRegisterPage: React.FC = () => {
   const [showAIChat, setShowAIChat] = useState(false);
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
-
-  // Redirect to login if not authenticated
-  useEffect(() => {
-    if (!isAuthenticated || !accessToken) {
-      navigate('/login', { state: { from: '/doctor/register', message: 'Please login or create an account first to register as a doctor.' } });
-    }
-  }, [isAuthenticated, accessToken, navigate]);
+  const [showLoginPrompt, setShowLoginPrompt] = useState(false);
   
-  // Form data
-  const [formData, setFormData] = useState({
-    specialization_id: '',
-    license_number: '',
-    experience_years: '',
-    bio: '',
-    consultation_fee: '',
-    consultation_duration: '30',
-    languages: [] as string[],
-    education: [] as Education[],
+  // Form data - restore from localStorage
+  const [formData, setFormData] = useState(() => {
+    const saved = localStorage.getItem('doctorRegister_formData');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch {
+        // Ignore parse errors
+      }
+    }
+    return {
+      specialization_id: '',
+      license_number: '',
+      experience_years: '',
+      bio: '',
+      consultation_fee: '',
+      consultation_duration: '30',
+      languages: [] as string[],
+      education: [] as Education[],
+    };
   });
+  
+  // Save form data to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('doctorRegister_formData', JSON.stringify(formData));
+  }, [formData]);
+  
+  // Save step to localStorage whenever it changes
+  useEffect(() => {
+    localStorage.setItem('doctorRegister_step', step.toString());
+  }, [step]);
   
   // KYC files
   const [governmentId, setGovernmentId] = useState<File | null>(null);
   const [medicalCertificate, setMedicalCertificate] = useState<File | null>(null);
+  
+  // Saved file metadata (for showing previously uploaded file info after page reload)
+  const [savedGovIdMeta, setSavedGovIdMeta] = useState<FileMetadata | null>(() => {
+    const saved = localStorage.getItem('doctorRegister_govIdMeta');
+    return saved ? JSON.parse(saved) : null;
+  });
+  const [savedMedCertMeta, setSavedMedCertMeta] = useState<FileMetadata | null>(() => {
+    const saved = localStorage.getItem('doctorRegister_medCertMeta');
+    return saved ? JSON.parse(saved) : null;
+  });
+  
+  // Save file metadata when files are selected
+  useEffect(() => {
+    if (governmentId) {
+      const meta = { name: governmentId.name, size: governmentId.size, type: governmentId.type };
+      localStorage.setItem('doctorRegister_govIdMeta', JSON.stringify(meta));
+      setSavedGovIdMeta(meta);
+    }
+  }, [governmentId]);
+  
+  useEffect(() => {
+    if (medicalCertificate) {
+      const meta = { name: medicalCertificate.name, size: medicalCertificate.size, type: medicalCertificate.type };
+      localStorage.setItem('doctorRegister_medCertMeta', JSON.stringify(meta));
+      setSavedMedCertMeta(meta);
+    }
+  }, [medicalCertificate]);
   
   const [newLanguage, setNewLanguage] = useState('');
   const [newEducation, setNewEducation] = useState<Education>({
@@ -408,6 +466,12 @@ export const DoctorRegisterPage: React.FC = () => {
   };
 
   const handleSubmit = async () => {
+    // Check if user is logged in before submitting
+    if (!user || !accessToken) {
+      setShowLoginPrompt(true);
+      return;
+    }
+    
     setLoading(true);
     setError('');
     
@@ -432,7 +496,19 @@ export const DoctorRegisterPage: React.FC = () => {
 
       if (!registerResponse.ok) {
         const errorData = await registerResponse.json();
-        throw new Error(errorData.detail || 'Failed to register as doctor');
+        const errorMessage = errorData.detail || 'Failed to register as doctor';
+        
+        // Check for authentication errors - show login prompt modal instead of redirecting
+        if (registerResponse.status === 401 || 
+            errorMessage.toLowerCase().includes('token') ||
+            errorMessage.toLowerCase().includes('unauthorized') ||
+            errorMessage.toLowerCase().includes('expired')) {
+          logout();
+          setShowLoginPrompt(true);
+          return;
+        }
+        
+        throw new Error(errorMessage);
       }
 
       if (governmentId) {
@@ -458,6 +534,12 @@ export const DoctorRegisterPage: React.FC = () => {
       // Update user role in auth store to 'doctor' so ProtectedRoute allows access
       updateUser({ role: 'doctor' });
 
+      // Clear saved form data after successful registration
+      localStorage.removeItem('doctorRegister_formData');
+      localStorage.removeItem('doctorRegister_step');
+      localStorage.removeItem('doctorRegister_govIdMeta');
+      localStorage.removeItem('doctorRegister_medCertMeta');
+
       navigate('/doctor/verification-pending');
     } catch (err: any) {
       setError(err.message || 'An error occurred');
@@ -467,32 +549,76 @@ export const DoctorRegisterPage: React.FC = () => {
   };
 
   // If not authenticated, show login prompt
-  if (!isAuthenticated) {
+  // Wait for hydration before making auth decision
+  if (!isHydrated) {
     return (
-      <div className="min-h-screen bg-slate-50">
-        <Navbar />
-        <main className="pt-24 pb-16">
-          <div className="container mx-auto px-4 max-w-lg">
-            <Card className="p-8 text-center">
-              <div className="w-16 h-16 bg-cyan-100 rounded-2xl flex items-center justify-center mx-auto mb-6">
-                <Stethoscope className="w-8 h-8 text-cyan-600" />
-              </div>
-              <h2 className="text-2xl font-bold text-slate-900 mb-2">Sign In Required</h2>
-              <p className="text-slate-600 mb-6">
-                Please sign in or create an account to register as a doctor on NovareHealth.
-              </p>
-              <Link to="/login">
-                <Button size="lg" className="w-full">
-                  Sign In to Continue
-                  <ArrowRight className="w-5 h-5" />
-                </Button>
-              </Link>
-            </Card>
-          </div>
-        </main>
+      <div className="min-h-screen bg-slate-50 flex items-center justify-center">
+        <Loader2 className="w-8 h-8 text-cyan-500 animate-spin" />
       </div>
     );
   }
+  
+  // Login Prompt Modal Component
+  const LoginPromptModal = () => {
+    if (!showLoginPrompt) return null;
+    
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div 
+          className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+          onClick={() => setShowLoginPrompt(false)}
+        />
+        
+        {/* Modal */}
+        <div className="relative bg-white rounded-2xl shadow-2xl max-w-md w-full p-8 animate-in zoom-in-95 duration-200">
+          {/* Close button */}
+          <button
+            onClick={() => setShowLoginPrompt(false)}
+            className="absolute top-4 right-4 p-2 text-slate-400 hover:text-slate-600 rounded-full hover:bg-slate-100 transition-colors"
+          >
+            <X className="w-5 h-5" />
+          </button>
+          
+          {/* Icon */}
+          <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-6 shadow-lg shadow-cyan-500/30">
+            <User className="w-8 h-8 text-white" />
+          </div>
+          
+          {/* Content */}
+          <h2 className="text-2xl font-bold text-slate-900 text-center mb-2">
+            Almost There!
+          </h2>
+          <p className="text-slate-600 text-center mb-6">
+            Your registration details have been saved. Please sign in or create an account to complete your registration as a doctor.
+          </p>
+          
+          {/* Progress saved indicator */}
+          <div className="flex items-center gap-2 px-4 py-3 bg-green-50 border border-green-200 rounded-xl mb-6">
+            <Check className="w-5 h-5 text-green-600" />
+            <span className="text-sm text-green-700 font-medium">Your progress has been saved</span>
+          </div>
+          
+          {/* Actions */}
+          <div className="space-y-3">
+            <Link to="/login" state={{ from: '/doctor/register' }} className="block">
+              <Button size="lg" className="w-full">
+                Sign In to Continue
+                <ArrowRight className="w-5 h-5" />
+              </Button>
+            </Link>
+            <p className="text-sm text-slate-500 text-center">
+              New to NovareHealth? You'll be able to create an account with your phone number.
+            </p>
+          </div>
+          
+          <p className="text-xs text-slate-400 text-center mt-4">
+            Your form data will be restored after you sign in
+          </p>
+        </div>
+      </div>
+    );
+  };
 
   // AI Tips Panel Component - Premium Design
   const AITipsPanel = () => (
@@ -1062,6 +1188,22 @@ export const DoctorRegisterPage: React.FC = () => {
         )}
       </div>
 
+      {/* Validation message */}
+      {(!formData.license_number || !formData.experience_years || !formData.consultation_fee || formData.languages.length === 0) && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-800">Complete Required Fields</p>
+            <ul className="text-sm text-amber-700 mt-1 list-disc list-inside">
+              {!formData.license_number && <li>License number is required</li>}
+              {!formData.experience_years && <li>Years of experience is required</li>}
+              {!formData.consultation_fee && <li>Consultation fee is required</li>}
+              {formData.languages.length === 0 && <li>At least one language is required</li>}
+            </ul>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-2">
         <Button variant="outline" onClick={() => setStep(1)} className="flex-1">
           <ArrowLeft className="w-4 h-4" />
@@ -1069,7 +1211,7 @@ export const DoctorRegisterPage: React.FC = () => {
         </Button>
         <Button
           onClick={() => setStep(3)}
-          disabled={!formData.license_number || !formData.experience_years || !formData.consultation_fee}
+          disabled={!formData.license_number || !formData.experience_years || !formData.consultation_fee || formData.languages.length === 0}
           className="flex-1"
         >
           Continue
@@ -1181,12 +1323,27 @@ export const DoctorRegisterPage: React.FC = () => {
         </div>
       )}
 
+      {/* Validation message */}
+      {formData.education.length === 0 && (
+        <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="text-sm font-medium text-amber-800">Education Required</p>
+            <p className="text-sm text-amber-700">Please add at least one educational qualification to continue.</p>
+          </div>
+        </div>
+      )}
+
       <div className="flex gap-3 pt-2">
         <Button variant="outline" onClick={() => setStep(2)} className="flex-1">
           <ArrowLeft className="w-4 h-4" />
           Back
         </Button>
-        <Button onClick={() => setStep(4)} className="flex-1">
+        <Button 
+          onClick={() => setStep(4)} 
+          disabled={formData.education.length === 0}
+          className="flex-1"
+        >
           Continue
           <ArrowRight className="w-4 h-4" />
         </Button>
@@ -1220,7 +1377,9 @@ export const DoctorRegisterPage: React.FC = () => {
               border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all
               ${governmentId 
                 ? 'border-green-400 bg-green-50' 
-                : 'border-slate-300 hover:border-cyan-400 hover:bg-slate-50'
+                : savedGovIdMeta
+                  ? 'border-amber-400 bg-amber-50'
+                  : 'border-slate-300 hover:border-cyan-400 hover:bg-slate-50'
               }
             `}
             onClick={() => document.getElementById('gov-id-input')?.click()}
@@ -1239,6 +1398,14 @@ export const DoctorRegisterPage: React.FC = () => {
                 </div>
                 <p className="font-medium">{governmentId.name}</p>
                 <p className="text-sm text-green-500 mt-1">Click to change file</p>
+              </div>
+            ) : savedGovIdMeta ? (
+              <div className="text-amber-600">
+                <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <p className="font-medium">Previously: {savedGovIdMeta.name}</p>
+                <p className="text-sm text-amber-500 mt-1">Please re-upload this file</p>
               </div>
             ) : (
               <div className="text-slate-500">
@@ -1263,7 +1430,9 @@ export const DoctorRegisterPage: React.FC = () => {
               border-2 border-dashed rounded-xl p-6 text-center cursor-pointer transition-all
               ${medicalCertificate 
                 ? 'border-green-400 bg-green-50' 
-                : 'border-slate-300 hover:border-cyan-400 hover:bg-slate-50'
+                : savedMedCertMeta
+                  ? 'border-amber-400 bg-amber-50'
+                  : 'border-slate-300 hover:border-cyan-400 hover:bg-slate-50'
               }
             `}
             onClick={() => document.getElementById('med-cert-input')?.click()}
@@ -1282,6 +1451,14 @@ export const DoctorRegisterPage: React.FC = () => {
                 </div>
                 <p className="font-medium">{medicalCertificate.name}</p>
                 <p className="text-sm text-green-500 mt-1">Click to change file</p>
+              </div>
+            ) : savedMedCertMeta ? (
+              <div className="text-amber-600">
+                <div className="w-12 h-12 bg-amber-100 rounded-xl flex items-center justify-center mx-auto mb-3">
+                  <Upload className="w-6 h-6" />
+                </div>
+                <p className="font-medium">Previously: {savedMedCertMeta.name}</p>
+                <p className="text-sm text-amber-500 mt-1">Please re-upload this file</p>
               </div>
             ) : (
               <div className="text-slate-500">
@@ -1309,9 +1486,199 @@ export const DoctorRegisterPage: React.FC = () => {
           Back
         </Button>
         <Button
-          onClick={handleSubmit}
-          disabled={loading || !governmentId || !medicalCertificate}
+          onClick={() => setStep(5)}
+          disabled={!governmentId || !medicalCertificate}
           className="flex-1"
+        >
+          Review Application
+          <ArrowRight className="w-4 h-4" />
+        </Button>
+      </div>
+    </div>
+  );
+
+  // Step 5: Review & Submit
+  const renderStep5 = () => (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="text-center pb-4 border-b border-slate-200">
+        <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-cyan-500/30">
+          <Eye className="w-8 h-8 text-white" />
+        </div>
+        <h3 className="text-xl font-bold text-slate-900">Review Your Application</h3>
+        <p className="text-slate-500 text-sm mt-1">Please verify all information before submitting</p>
+      </div>
+
+      {/* Specialty Section */}
+      <div className="bg-slate-50 rounded-xl p-5 space-y-3">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+            <Stethoscope className="w-4 h-4 text-cyan-500" />
+            Specialty
+          </h4>
+          <button 
+            onClick={() => setStep(1)} 
+            className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+          >
+            Edit
+          </button>
+        </div>
+        <p className="text-slate-700">{getSelectedSpecName()}</p>
+      </div>
+
+      {/* Professional Details Section */}
+      <div className="bg-slate-50 rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+            <Briefcase className="w-4 h-4 text-cyan-500" />
+            Professional Details
+          </h4>
+          <button 
+            onClick={() => setStep(2)} 
+            className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+          >
+            Edit
+          </button>
+        </div>
+        <div className="grid grid-cols-2 gap-4 text-sm">
+          <div>
+            <p className="text-slate-500">License Number</p>
+            <p className="text-slate-900 font-medium">{formData.license_number || '—'}</p>
+          </div>
+          <div>
+            <p className="text-slate-500">Experience</p>
+            <p className="text-slate-900 font-medium">{formData.experience_years} years</p>
+          </div>
+          <div>
+            <p className="text-slate-500">Consultation Fee</p>
+            <p className="text-slate-900 font-medium">{formData.consultation_fee} MZN</p>
+          </div>
+          <div>
+            <p className="text-slate-500">Session Duration</p>
+            <p className="text-slate-900 font-medium">{formData.consultation_duration} minutes</p>
+          </div>
+        </div>
+        {formData.languages.length > 0 && (
+          <div>
+            <p className="text-slate-500 text-sm mb-2">Languages</p>
+            <div className="flex flex-wrap gap-2">
+              {formData.languages.map((lang: string) => (
+                <span key={lang} className="px-3 py-1 bg-cyan-100 text-cyan-700 rounded-full text-xs font-medium">
+                  {lang}
+                </span>
+              ))}
+            </div>
+          </div>
+        )}
+        {formData.bio && (
+          <div>
+            <p className="text-slate-500 text-sm mb-1">Bio</p>
+            <p className="text-slate-700 text-sm leading-relaxed">{formData.bio}</p>
+          </div>
+        )}
+      </div>
+
+      {/* Education Section */}
+      <div className="bg-slate-50 rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+            <GraduationCap className="w-4 h-4 text-cyan-500" />
+            Education
+          </h4>
+          <button 
+            onClick={() => setStep(3)} 
+            className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+          >
+            Edit
+          </button>
+        </div>
+        {formData.education.length > 0 ? (
+          <div className="space-y-3">
+            {formData.education.map((edu: Education, index: number) => (
+              <div key={index} className="flex items-start gap-3 p-3 bg-white rounded-lg border border-slate-200">
+                <div className="w-8 h-8 bg-cyan-100 rounded-lg flex items-center justify-center flex-shrink-0">
+                  <GraduationCap className="w-4 h-4 text-cyan-600" />
+                </div>
+                <div>
+                  <p className="font-medium text-slate-900">{edu.degree}</p>
+                  <p className="text-sm text-slate-500">{edu.institution} • {edu.year}</p>
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
+          <p className="text-slate-500 text-sm italic">No education details added</p>
+        )}
+      </div>
+
+      {/* Documents Section */}
+      <div className="bg-slate-50 rounded-xl p-5 space-y-4">
+        <div className="flex items-center justify-between">
+          <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+            <FileText className="w-4 h-4 text-cyan-500" />
+            Documents
+          </h4>
+          <button 
+            onClick={() => setStep(4)} 
+            className="text-xs text-cyan-600 hover:text-cyan-700 font-medium"
+          >
+            Edit
+          </button>
+        </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-green-200">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <Check className="w-5 h-5 text-green-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-900 truncate">Government ID</p>
+              <p className="text-xs text-slate-500 truncate">{governmentId?.name}</p>
+            </div>
+          </div>
+          <div className="flex items-center gap-3 p-3 bg-white rounded-lg border border-green-200">
+            <div className="w-10 h-10 bg-green-100 rounded-lg flex items-center justify-center">
+              <Check className="w-5 h-5 text-green-600" />
+            </div>
+            <div className="min-w-0 flex-1">
+              <p className="text-sm font-medium text-slate-900 truncate">Medical License</p>
+              <p className="text-xs text-slate-500 truncate">{medicalCertificate?.name}</p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Agreement */}
+      <div className="bg-amber-50 border border-amber-200 rounded-xl p-4">
+        <div className="flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
+          <div className="text-sm">
+            <p className="text-amber-800 font-medium">Before you submit</p>
+            <p className="text-amber-700 mt-1">
+              By submitting this application, you confirm that all information provided is accurate 
+              and you agree to our <Link to="/terms" className="underline">Terms of Service</Link> and{' '}
+              <Link to="/privacy" className="underline">Privacy Policy</Link>.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {error && (
+        <div className="flex items-start gap-3 p-4 bg-red-50 border border-red-200 rounded-xl text-red-700">
+          <AlertCircle className="w-5 h-5 flex-shrink-0 mt-0.5" />
+          <p className="text-sm">{error}</p>
+        </div>
+      )}
+
+      {/* Action Buttons */}
+      <div className="flex gap-3 pt-2">
+        <Button variant="outline" onClick={() => setStep(4)} className="flex-1">
+          <ArrowLeft className="w-4 h-4" />
+          Back
+        </Button>
+        <Button
+          onClick={handleSubmit}
+          disabled={loading}
+          className="flex-1 bg-gradient-to-r from-cyan-500 to-teal-500 hover:from-cyan-600 hover:to-teal-600"
         >
           {loading ? (
             <>
@@ -1320,8 +1687,8 @@ export const DoctorRegisterPage: React.FC = () => {
             </>
           ) : (
             <>
+              <Check className="w-4 h-4" />
               Submit Application
-              <ArrowRight className="w-4 h-4" />
             </>
           )}
         </Button>
@@ -1398,6 +1765,7 @@ export const DoctorRegisterPage: React.FC = () => {
               {step === 2 && renderStep2()}
               {step === 3 && renderStep3()}
               {step === 4 && renderStep4()}
+              {step === 5 && renderStep5()}
             </div>
           </Card>
 
@@ -1421,6 +1789,9 @@ export const DoctorRegisterPage: React.FC = () => {
 
       {/* AI Chat Widget */}
       <AIChatWidget />
+      
+      {/* Login Prompt Modal */}
+      <LoginPromptModal />
     </div>
   );
 };

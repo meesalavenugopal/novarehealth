@@ -71,93 +71,113 @@ export default function Navbar() {
 
           {/* Right Section */}
           <div className="flex items-center gap-2">
-            {/* Notifications */}
-            <div ref={notificationRef} className="relative">
-              <button
-                onClick={() => setIsNotificationOpen(!isNotificationOpen)}
-                className="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
-              >
-                <Bell className="w-5 h-5" />
-                {unreadCount > 0 && (
-                  <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
-                    {unreadCount}
-                  </span>
-                )}
-              </button>
+            {user ? (
+              <>
+                {/* Notifications - only for logged in users */}
+                <div ref={notificationRef} className="relative">
+                  <button
+                    onClick={() => setIsNotificationOpen(!isNotificationOpen)}
+                    className="relative p-2 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors"
+                  >
+                    <Bell className="w-5 h-5" />
+                    {unreadCount > 0 && (
+                      <span className="absolute -top-0.5 -right-0.5 w-5 h-5 bg-red-500 text-white text-xs rounded-full flex items-center justify-center font-medium">
+                        {unreadCount}
+                      </span>
+                    )}
+                  </button>
 
-              {isNotificationOpen && (
-                <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 animate-fadeIn">
-                  <div className="px-4 py-2 border-b border-slate-100">
-                    <h3 className="font-semibold text-slate-900">Notifications</h3>
-                  </div>
-                  <div className="max-h-80 overflow-y-auto">
-                    {notifications.map((notification) => (
-                      <button
-                        key={notification.id}
-                        className="w-full px-4 py-3 hover:bg-slate-50 text-left transition-colors"
-                      >
-                        <div className="flex gap-3">
-                          {notification.unread && (
-                            <span className="w-2 h-2 bg-cyan-500 rounded-full mt-2 flex-shrink-0" />
-                          )}
-                          <div className={notification.unread ? '' : 'ml-5'}>
-                            <p className="font-medium text-slate-900 text-sm">{notification.title}</p>
-                            <p className="text-slate-500 text-sm mt-0.5">{notification.message}</p>
-                            <p className="text-slate-400 text-xs mt-1">{notification.time}</p>
-                          </div>
-                        </div>
-                      </button>
-                    ))}
-                  </div>
-                  <div className="px-4 py-2 border-t border-slate-100">
-                    <Link to="/notifications" className="text-cyan-600 text-sm font-medium hover:underline">
-                      View all notifications
-                    </Link>
-                  </div>
+                  {isNotificationOpen && (
+                    <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 animate-fadeIn">
+                      <div className="px-4 py-2 border-b border-slate-100">
+                        <h3 className="font-semibold text-slate-900">Notifications</h3>
+                      </div>
+                      <div className="max-h-80 overflow-y-auto">
+                        {notifications.map((notification) => (
+                          <button
+                            key={notification.id}
+                            className="w-full px-4 py-3 hover:bg-slate-50 text-left transition-colors"
+                          >
+                            <div className="flex gap-3">
+                              {notification.unread && (
+                                <span className="w-2 h-2 bg-cyan-500 rounded-full mt-2 flex-shrink-0" />
+                              )}
+                              <div className={notification.unread ? '' : 'ml-5'}>
+                                <p className="font-medium text-slate-900 text-sm">{notification.title}</p>
+                                <p className="text-slate-500 text-sm mt-0.5">{notification.message}</p>
+                                <p className="text-slate-400 text-xs mt-1">{notification.time}</p>
+                              </div>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                      <div className="px-4 py-2 border-t border-slate-100">
+                        <Link to="/notifications" className="text-cyan-600 text-sm font-medium hover:underline">
+                          View all notifications
+                        </Link>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
 
-            {/* Profile Dropdown */}
-            <div ref={profileRef} className="relative">
-              <button
-                onClick={() => setIsProfileOpen(!isProfileOpen)}
-                className="flex items-center gap-2 p-1.5 pr-3 rounded-xl hover:bg-slate-100 transition-colors"
-              >
-                <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg flex items-center justify-center">
-                  <User className="w-4 h-4 text-white" />
-                </div>
-                <span className="hidden sm:block text-sm font-medium text-slate-700">
-                  {user?.first_name || 'User'}
-                </span>
-                <ChevronDown className="w-4 h-4 text-slate-400" />
-              </button>
+                {/* Profile Dropdown - only for logged in users */}
+                <div ref={profileRef} className="relative">
+                  <button
+                    onClick={() => setIsProfileOpen(!isProfileOpen)}
+                    className="flex items-center gap-2 p-1.5 pr-3 rounded-xl hover:bg-slate-100 transition-colors"
+                  >
+                    <div className="w-8 h-8 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg flex items-center justify-center">
+                      <User className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="hidden sm:block text-sm font-medium text-slate-700">
+                      {user.first_name || 'User'}
+                    </span>
+                    <ChevronDown className="w-4 h-4 text-slate-400" />
+                  </button>
 
-              {isProfileOpen && (
-                <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 animate-fadeIn">
-                  <div className="px-4 py-3 border-b border-slate-100">
-                    <p className="font-semibold text-slate-900">
-                      {user?.first_name} {user?.last_name}
-                    </p>
-                    <p className="text-sm text-slate-500">{user?.email || user?.phone}</p>
-                  </div>
-                  <div className="py-1">
-                    <DropdownLink to="/profile" icon={<User className="w-4 h-4" />} label="My Profile" />
-                    <DropdownLink to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" />
-                    <DropdownLink to="/help" icon={<HelpCircle className="w-4 h-4" />} label="Help & Support" />
-                  </div>
-                  <div className="border-t border-slate-100 py-1">
-                    <button
-                      onClick={logout}
-                      className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-3 text-sm font-medium transition-colors"
-                    >
-                      <LogOut className="w-4 h-4" />
-                      Logout
-                    </button>
-                  </div>
+                  {isProfileOpen && (
+                    <div className="absolute right-0 mt-2 w-56 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 animate-fadeIn">
+                      <div className="px-4 py-3 border-b border-slate-100">
+                        <p className="font-semibold text-slate-900">
+                          {user.first_name} {user.last_name}
+                        </p>
+                        <p className="text-sm text-slate-500">{user.email || user.phone}</p>
+                      </div>
+                      <div className="py-1">
+                        <DropdownLink to="/profile" icon={<User className="w-4 h-4" />} label="My Profile" />
+                        <DropdownLink to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" />
+                        <DropdownLink to="/help" icon={<HelpCircle className="w-4 h-4" />} label="Help & Support" />
+                      </div>
+                      <div className="border-t border-slate-100 py-1">
+                        <button
+                          onClick={logout}
+                          className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-3 text-sm font-medium transition-colors"
+                        >
+                          <LogOut className="w-4 h-4" />
+                          Logout
+                        </button>
+                      </div>
+                    </div>
+                  )}
                 </div>
-              )}
-            </div>
+              </>
+            ) : (
+              /* Login/Register buttons for non-logged in users */
+              <div className="flex items-center gap-2">
+                <Link
+                  to="/login"
+                  className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
+                >
+                  Login
+                </Link>
+                <Link
+                  to="/login"
+                  className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl hover:from-cyan-600 hover:to-teal-600 transition-all shadow-lg shadow-cyan-500/25"
+                >
+                  Get Started
+                </Link>
+              </div>
+            )}
 
             {/* Mobile Menu Button */}
             <button

@@ -17,7 +17,7 @@ from app.db.database import engine
 
 
 # Super Admin Configuration
-SUPER_ADMIN_PHONE = "+258840000001"  # Mozambique phone format
+SUPER_ADMIN_PHONE = "258840000001"  # Mozambique phone format (normalized, no +)
 SUPER_ADMIN_EMAIL = "admin@novarehealth.co.mz"
 SUPER_ADMIN_FIRST_NAME = "Super"
 SUPER_ADMIN_LAST_NAME = "Admin"

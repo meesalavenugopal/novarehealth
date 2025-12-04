@@ -1,4 +1,5 @@
 import random
+import re
 import string
 from datetime import datetime, timedelta
 from typing import Optional
@@ -14,6 +15,14 @@ from app.core.security import (
     get_password_hash,
     decode_token,
 )
+
+
+def normalize_phone(phone: Optional[str]) -> Optional[str]:
+    """Normalize phone number by removing + prefix and non-digit characters."""
+    if not phone:
+        return phone
+    # Remove + and any non-digit characters except the digits
+    return re.sub(r'[^\d]', '', phone)
 
 
 class AuthService:
@@ -40,6 +49,9 @@ class AuthService:
         """Send OTP to phone or email."""
         if not phone and not email:
             raise ValueError("Either phone or email is required")
+
+        # Normalize phone number
+        phone = normalize_phone(phone)
 
         # Use Twilio Verify service (Twilio generates OTP internally)
         if phone and self.twilio_client and settings.TWILIO_VERIFY_SERVICE_SID:
@@ -121,6 +133,9 @@ class AuthService:
         """Verify OTP and return tokens."""
         if not phone and not email:
             raise ValueError("Either phone or email is required")
+
+        # Normalize phone number
+        phone = normalize_phone(phone)
 
         # Use Twilio Verify service for verification
         if phone and self.twilio_client and settings.TWILIO_VERIFY_SERVICE_SID:
