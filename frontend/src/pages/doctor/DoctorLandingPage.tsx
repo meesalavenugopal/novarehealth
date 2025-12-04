@@ -99,10 +99,10 @@ export default function DoctorLandingPage() {
   ];
 
   const stats = [
-    { value: '10,000+', label: 'Consultations Completed' },
-    { value: '500+', label: 'Verified Doctors' },
-    { value: '4.8/5', label: 'Average Rating' },
-    { value: '24/7', label: 'Platform Support' }
+    { value: '10,000+', label: 'Consultations Completed', icon: Video },
+    { value: '500+', label: 'Verified Doctors', icon: Users },
+    { value: '4.8/5', label: 'Average Rating', icon: Star },
+    { value: '24/7', label: 'Platform Support', icon: Clock }
   ];
 
   return (
@@ -228,15 +228,26 @@ export default function DoctorLandingPage() {
       </header>
 
       {/* Stats */}
-      <section className="bg-slate-50 py-12">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
-            {stats.map((stat, index) => (
-              <div key={index} className="text-center">
-                <div className="text-3xl md:text-4xl font-bold text-cyan-600 mb-1">{stat.value}</div>
-                <div className="text-slate-600">{stat.label}</div>
-              </div>
-            ))}
+      <section className="py-16 bg-white">
+        <div className="max-w-6xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-4">
+            {stats.map((stat, index) => {
+              const Icon = stat.icon;
+              return (
+                <div key={index} className="flex items-center gap-4 justify-center lg:justify-start">
+                  <div className="w-14 h-14 bg-linear-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20 shrink-0">
+                    <Icon className="w-7 h-7 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-2xl md:text-3xl font-bold text-slate-800">{stat.value}</p>
+                    <p className="text-slate-500 text-xs md:text-sm font-medium">{stat.label}</p>
+                  </div>
+                  {index < stats.length - 1 && (
+                    <div className="hidden lg:block w-px h-12 bg-slate-200 ml-auto" />
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
       </section>
