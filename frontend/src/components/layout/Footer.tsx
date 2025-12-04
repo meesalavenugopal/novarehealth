@@ -53,7 +53,7 @@ export default function Footer() {
           <div>
             <h3 className="text-white font-semibold mb-4">For Doctors</h3>
             <ul className="space-y-3">
-              <FooterLink to="/doctor/register">Join as Doctor</FooterLink>
+              <FooterLink to="/for-doctors">Join as Doctor</FooterLink>
               <FooterLink to="/doctor/dashboard">Doctor Dashboard</FooterLink>
               <FooterLink to="/doctor/earnings">Earnings</FooterLink>
               <FooterLink to="/doctor-guidelines">Guidelines</FooterLink>

@@ -14,7 +14,8 @@ import {
   DoctorDashboard, 
   DoctorRegisterPage, 
   VerificationPendingPage, 
-  AvailabilityPage 
+  AvailabilityPage,
+  DoctorLandingPage
 } from './pages/doctor';
 import { AdminDashboard } from './pages/admin';
 import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage } from './pages/legal';
@@ -112,6 +113,10 @@ function App() {
           />
           
           {/* Doctor Routes */}
+          <Route
+            path="/for-doctors"
+            element={<DoctorLandingPage />}
+          />
           <Route
             path="/doctor/register"
             element={<DoctorRegisterPage />}

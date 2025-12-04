@@ -48,6 +48,7 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Prescriptions Page - View and download prescriptions
 - [x] Health Records Page - Medical records management with folders
 - [x] Admin Dashboard Stats API - /api/v1/admin/stats endpoint for counts
+- [x] Doctor Landing Page - /for-doctors with benefits, testimonials, FAQ, earnings potential
 - [x] Admin Doctor List API - /api/v1/admin/doctors with status filtering
 - [x] Admin Manage Doctors UI - Tabs for All/Pending/Verified/Rejected with search
 

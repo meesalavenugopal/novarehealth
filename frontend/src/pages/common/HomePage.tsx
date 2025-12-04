@@ -114,7 +114,7 @@ export default function HomePage() {
               <a href="#features" className="text-white/80 hover:text-white transition">Features</a>
               <a href="#how-it-works" className="text-white/80 hover:text-white transition">How it Works</a>
               <a href="#specializations" className="text-white/80 hover:text-white transition">Specializations</a>
-              <Link to="/doctor/register" className="text-white/80 hover:text-white transition font-medium flex items-center gap-1">
+              <Link to="/for-doctors" className="text-white/80 hover:text-white transition font-medium flex items-center gap-1">
                 <Stethoscope className="w-4 h-4" />
                 For Doctors
               </Link>
@@ -320,7 +320,7 @@ export default function HomePage() {
               </div>
             </div>
             <Link 
-              to="/doctor/register"
+              to="/for-doctors"
               className="inline-flex items-center gap-2 px-6 py-3 bg-white text-emerald-600 font-semibold rounded-xl hover:bg-emerald-50 transition-all shadow-lg hover:shadow-xl"
             >
               Become a Doctor
@@ -491,7 +491,7 @@ export default function HomePage() {
                 <ArrowRight className="w-5 h-5" />
               </button>
             </Link>
-            <Link to="/doctor/register">
+            <Link to="/for-doctors">
               <button className="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-white text-white font-semibold rounded-xl hover:bg-white/10 transition-colors">
                 Join as Doctor
               </button>
