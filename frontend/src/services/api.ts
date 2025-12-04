@@ -9,6 +9,14 @@ const api = axios.create({
   },
 });
 
+// Helper function to clear auth and redirect to login
+const forceLogout = () => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('auth-storage');
+  window.location.href = '/login';
+};
+
 // Request interceptor to add auth token
 api.interceptors.request.use(
   (config) => {
@@ -45,17 +53,79 @@ api.interceptors.response.use(
 
           originalRequest.headers.Authorization = `Bearer ${access_token}`;
           return api(originalRequest);
+        } else {
+          // No refresh token, force logout
+          forceLogout();
         }
       } catch (refreshError) {
-        // Refresh failed, logout user
-        localStorage.removeItem('access_token');
-        localStorage.removeItem('refresh_token');
-        window.location.href = '/login';
+        // Refresh failed, force logout
+        forceLogout();
       }
     }
 
     return Promise.reject(error);
   }
 );
+
+/**
+ * Helper function to handle 401 responses from fetch calls
+ * Use this in components that use fetch() directly
+ */
+export const handleUnauthorized = (response: Response) => {
+  if (response.status === 401) {
+    forceLogout();
+    return true;
+  }
+  return false;
+};
+
+/**
+ * Wrapper for fetch that automatically handles 401 errors
+ */
+export const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = localStorage.getItem('access_token');
+  
+  const headers = {
+    'Content-Type': 'application/json',
+    ...options.headers,
+    ...(token ? { Authorization: `Bearer ${token}` } : {}),
+  };
+
+  const response = await fetch(url, { ...options, headers });
+  
+  if (response.status === 401) {
+    // Try to refresh token
+    const refreshToken = localStorage.getItem('refresh_token');
+    if (refreshToken) {
+      try {
+        const refreshResponse = await fetch(`${API_BASE_URL}/auth/refresh`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ refresh_token: refreshToken }),
+        });
+        
+        if (refreshResponse.ok) {
+          const { access_token, refresh_token } = await refreshResponse.json();
+          localStorage.setItem('access_token', access_token);
+          localStorage.setItem('refresh_token', refresh_token);
+          
+          // Retry original request with new token
+          const retryHeaders = {
+            ...headers,
+            Authorization: `Bearer ${access_token}`,
+          };
+          return fetch(url, { ...options, headers: retryHeaders });
+        }
+      } catch {
+        // Refresh failed
+      }
+    }
+    
+    // Force logout if refresh failed or no refresh token
+    forceLogout();
+  }
+  
+  return response;
+};
 
 export default api;

@@ -104,6 +104,17 @@ class DoctorUpdate(DoctorBase):
     medical_certificate_url: Optional[str] = None
 
 
+class AvailabilityStatusUpdate(BaseModel):
+    """Schema for toggling doctor's online/offline availability status"""
+    is_available: bool
+
+
+class AvailabilityStatusResponse(BaseModel):
+    """Response schema for availability status update"""
+    is_available: bool
+    message: str
+
+
 class DoctorResponse(BaseModel):
     id: int
     user_id: int
@@ -189,6 +200,23 @@ class AvailabilitySlotResponse(BaseModel):
     start_time: str
     end_time: str
     is_active: bool
+
+    class Config:
+        from_attributes = True
+
+
+# ============== Bookable Slots Schemas ==============
+
+class BookableSlot(BaseModel):
+    time: str  # HH:MM format
+    is_available: bool
+    
+
+class BookableSlotsResponse(BaseModel):
+    doctor_id: int
+    date: date
+    consultation_duration: int  # in minutes
+    slots: List[BookableSlot]
 
     class Config:
         from_attributes = True
@@ -329,6 +357,30 @@ class ReviewResponse(BaseModel):
     comment: Optional[str] = None
     created_at: datetime
     patient: Optional[UserResponse] = None
+
+    class Config:
+        from_attributes = True
+
+
+# ============== Doctor Application History Schemas ==============
+
+class DoctorApplicationHistoryCreate(BaseModel):
+    event_type: str
+    event_title: str
+    event_description: Optional[str] = None
+    extra_data: Optional[dict] = None
+    performed_by: Optional[str] = "doctor"
+
+
+class DoctorApplicationHistoryResponse(BaseModel):
+    id: int
+    doctor_id: int
+    event_type: str
+    event_title: str
+    event_description: Optional[str] = None
+    extra_data: Optional[dict] = None
+    performed_by: Optional[str] = None
+    created_at: datetime
 
     class Config:
         from_attributes = True

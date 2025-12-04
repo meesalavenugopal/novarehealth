@@ -2,6 +2,7 @@ import React, { useState, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { Button, Card } from '../../components/ui';
 import { Navbar } from '../../components/layout';
+import { authFetch } from '../../services/api';
 import {
   Users,
   UserCheck,
@@ -63,7 +64,7 @@ interface Stats {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const { accessToken } = useAuthStore();
+  const { user } = useAuthStore();
   const [pendingDoctors, setPendingDoctors] = useState<PendingDoctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -82,11 +83,7 @@ export const AdminDashboard: React.FC = () => {
   const fetchPendingDoctors = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await fetch('http://localhost:8000/api/v1/admin/doctors/pending', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
+      const response = await authFetch('http://localhost:8000/api/v1/admin/doctors/pending');
 
       if (!response.ok) {
         throw new Error('Failed to fetch pending doctors');
@@ -101,7 +98,7 @@ export const AdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [accessToken]);
+  }, []);
 
   useEffect(() => {
     fetchPendingDoctors();
@@ -110,13 +107,10 @@ export const AdminDashboard: React.FC = () => {
   const handleApprove = async (doctorId: number) => {
     try {
       setActionLoading(doctorId);
-      const response = await fetch(
+      const response = await authFetch(
         `http://localhost:8000/api/v1/admin/doctors/${doctorId}/verify?approved=true`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
         }
       );
 
@@ -149,13 +143,10 @@ export const AdminDashboard: React.FC = () => {
         ...(rejectionReason && { rejection_reason: rejectionReason }),
       });
 
-      const response = await fetch(
+      const response = await authFetch(
         `http://localhost:8000/api/v1/admin/doctors/${selectedDoctor.id}/verify?${params}`,
         {
           method: 'POST',
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
         }
       );
 

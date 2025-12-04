@@ -14,14 +14,14 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 |-------|--------|------------|----------|----------|
 | Phase 1: Foundation | ✅ Completed | Dec 3, 2025 | Dec 3, 2025 | 100% |
 | Phase 2: Doctor Ecosystem | ✅ Completed | Dec 3, 2025 | Dec 3, 2025 | 100% |
-| Phase 3: Appointment Booking | ⚪ Not Started | - | - | 0% |
+| Phase 3: Appointment Booking | 🔵 In Progress | Dec 5, 2025 | - | 25% |
 | Phase 4: Payments | ⚪ Not Started | - | - | 0% |
 | Phase 5: Video Consultation | ⚪ Not Started | - | - | 0% |
 | Phase 6: Prescription & EHR | ⚪ Not Started | - | - | 0% |
 | Phase 7: Admin Panel | ⚪ Not Started | - | - | 0% |
 | Phase 8: Polish & Launch | ⚪ Not Started | - | - | 0% |
 
-**Overall Progress:** 25% Complete (2/8 phases)
+**Overall Progress:** 28% Complete (Phase 1-2 done, Phase 3 started)
 
 ### Additional Enhancements (Beyond MVP Scope) ✨
 - [x] AI Writing Assistant - Bio generation with OpenAI GPT-4o
@@ -34,6 +34,11 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Degree Chips - Quick selection for medical degrees
 - [x] Legal Pages - Privacy Policy, Terms of Service, Refund Policy
 - [x] Consistent Branding - Cyan/teal color theme across all AI features
+- [x] AI Schedule Analysis - Smart availability slot suggestions based on medical best practices
+- [x] Undo/Restore for AI - One-click undo and restore for AI-suggested changes
+- [x] Application History Timeline - Visual timeline of doctor application status changes
+- [x] Automatic Logout on 401 - Graceful logout when token expires instead of error messages
+- [x] Auth Fetch Wrapper - Centralized fetch with token refresh and 401 handling
 
 ### Phase 1 Completed Tasks ✅
 - [x] Project Setup - React + TypeScript + TailwindCSS frontend
@@ -149,14 +154,19 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 | P1 | Cancellation Flow | Cancel with refund eligibility check | Cancellation policy enforced |
 
 ### Technical Tasks
-- [ ] Build search API with Elasticsearch or PostgreSQL full-text
+- [x] Build search API with Elasticsearch or PostgreSQL full-text
 - [ ] Create doctor listing page with filters
-- [ ] Implement availability checking algorithm
+- [x] Implement availability checking algorithm (GET /api/v1/doctors/{doctor_id}/bookable-slots)
 - [ ] Design booking confirmation flow
 - [ ] Integrate Twilio SMS for notifications
 - [ ] Set up email templates (booking, reminder, cancellation)
 - [ ] Build appointment management for both patient and doctor
 - [ ] Create appointment reminders (1 hour before)
+
+### Phase 3 In Progress Tasks 🔵
+- [x] Bookable Slots API - GET /api/v1/doctors/{doctor_id}/bookable-slots endpoint
+- [ ] Patient Booking Page - UI for selecting doctor and booking slots
+- [ ] Appointment Confirmation - Booking confirmation and notifications
 
 ---
 

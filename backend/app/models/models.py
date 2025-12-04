@@ -134,6 +134,7 @@ class Doctor(Base):
     appointments = relationship("Appointment", back_populates="doctor")
     prescriptions = relationship("Prescription", back_populates="doctor")
     reviews = relationship("Review", back_populates="doctor")
+    application_history = relationship("DoctorApplicationHistory", back_populates="doctor", order_by="desc(DoctorApplicationHistory.created_at)")
 
 
 class AvailabilitySlot(Base):
@@ -297,6 +298,28 @@ class Review(Base):
     appointment = relationship("Appointment", back_populates="review")
     patient = relationship("User", back_populates="reviews_given")
     doctor = relationship("Doctor", back_populates="reviews")
+
+
+class DoctorApplicationHistory(Base):
+    """Tracks all events in a doctor's application lifecycle"""
+    __tablename__ = "doctor_application_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=False)
+    
+    # Event details
+    event_type = Column(String(50), nullable=False)  # application_submitted, profile_updated, documents_uploaded, status_changed, admin_review
+    event_title = Column(String(200), nullable=False)
+    event_description = Column(Text, nullable=True)
+    extra_data = Column(JSON, nullable=True)  # Additional data like changed fields, admin notes, etc.
+    
+    # Actor
+    performed_by = Column(String(50), nullable=True)  # 'doctor', 'admin', 'system'
+    
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    doctor = relationship("Doctor", back_populates="application_history")
 
 
 class OTPVerification(Base):

@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { Button, Card, Input } from '../../components/ui';
 import { Navbar, Footer } from '../../components/layout';
+import { authFetch } from '../../services/api';
 import {
   Clock,
   CheckCircle,
@@ -35,6 +36,11 @@ import {
   Smile,
   Zap,
   GraduationCap,
+  History,
+  Send,
+  UserCheck,
+  File,
+  Edit,
 } from 'lucide-react';
 
 interface Specialization {
@@ -73,6 +79,17 @@ interface DoctorProfile {
   medical_certificate_url?: string;
 }
 
+interface ApplicationHistoryEvent {
+  id: number;
+  doctor_id: number;
+  event_type: string;
+  event_title: string;
+  event_description?: string;
+  extra_data?: Record<string, unknown>;
+  performed_by?: string;
+  created_at: string;
+}
+
 // Icon mapping for specializations
 const getSpecializationIcon = (iconName: string) => {
   const iconMap: { [key: string]: React.ReactNode } = {
@@ -104,9 +121,45 @@ const getSpecializationIcon = (iconName: string) => {
   return iconMap[iconName] || <Stethoscope className="w-6 h-6" />;
 };
 
+// Get icon and color for history events
+const getHistoryEventStyle = (eventType: string, performedBy?: string) => {
+  const styles: Record<string, { icon: React.ReactNode; bgColor: string; iconColor: string }> = {
+    application_submitted: {
+      icon: <Send className="w-4 h-4" />,
+      bgColor: 'bg-blue-100',
+      iconColor: 'text-blue-600',
+    },
+    profile_updated: {
+      icon: <Edit className="w-4 h-4" />,
+      bgColor: 'bg-purple-100',
+      iconColor: 'text-purple-600',
+    },
+    documents_uploaded: {
+      icon: <File className="w-4 h-4" />,
+      bgColor: 'bg-amber-100',
+      iconColor: 'text-amber-600',
+    },
+    status_changed: {
+      icon: performedBy === 'admin' ? <UserCheck className="w-4 h-4" /> : <Clock className="w-4 h-4" />,
+      bgColor: performedBy === 'admin' ? 'bg-green-100' : 'bg-gray-100',
+      iconColor: performedBy === 'admin' ? 'text-green-600' : 'text-gray-600',
+    },
+    admin_review: {
+      icon: <UserCheck className="w-4 h-4" />,
+      bgColor: 'bg-cyan-100',
+      iconColor: 'text-cyan-600',
+    },
+  };
+  return styles[eventType] || {
+    icon: <History className="w-4 h-4" />,
+    bgColor: 'bg-gray-100',
+    iconColor: 'text-gray-600',
+  };
+};
+
 export const VerificationPendingPage: React.FC = () => {
   const navigate = useNavigate();
-  const { user, accessToken, logout } = useAuthStore();
+  const { user, accessToken } = useAuthStore();
   const [loading, setLoading] = useState(true);
   const [doctorProfile, setDoctorProfile] = useState<DoctorProfile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -116,6 +169,10 @@ export const VerificationPendingPage: React.FC = () => {
   // Specializations
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [fetchingSpecs, setFetchingSpecs] = useState(false);
+
+  // Application History
+  const [applicationHistory, setApplicationHistory] = useState<ApplicationHistoryEvent[]>([]);
+  const [historyLoading, setHistoryLoading] = useState(false);
 
   // Edit form state
   const [editForm, setEditForm] = useState({
@@ -162,6 +219,7 @@ export const VerificationPendingPage: React.FC = () => {
 
     fetchStatus();
     fetchSpecializations();
+    fetchApplicationHistory();
   }, [user, accessToken, navigate]);
 
   const fetchSpecializations = async () => {
@@ -179,19 +237,24 @@ export const VerificationPendingPage: React.FC = () => {
     }
   };
 
+  const fetchApplicationHistory = async () => {
+    setHistoryLoading(true);
+    try {
+      const response = await authFetch('http://localhost:8000/api/v1/doctors/me/history');
+      if (response.ok) {
+        const data = await response.json();
+        setApplicationHistory(data);
+      }
+    } catch (error) {
+      console.error('Failed to fetch application history:', error);
+    } finally {
+      setHistoryLoading(false);
+    }
+  };
+
   const fetchStatus = async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/doctors/me', {
-        headers: {
-          'Authorization': `Bearer ${accessToken}`,
-        },
-      });
-
-      if (response.status === 401) {
-        logout();
-        navigate('/login');
-        return;
-      }
+      const response = await authFetch('http://localhost:8000/api/v1/doctors/me');
 
       if (response.ok) {
         const data = await response.json();
@@ -387,12 +450,8 @@ export const VerificationPendingPage: React.FC = () => {
 
     try {
       // Update profile
-      const response = await fetch('http://localhost:8000/api/v1/doctors/me', {
+      const response = await authFetch('http://localhost:8000/api/v1/doctors/me', {
         method: 'PUT',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${accessToken}`,
-        },
         body: JSON.stringify({
           specialization_id: editForm.specialization_id ? parseInt(editForm.specialization_id) : undefined,
           license_number: editForm.license_number || undefined,
@@ -414,9 +473,10 @@ export const VerificationPendingPage: React.FC = () => {
       if (governmentId) {
         const govIdFormData = new FormData();
         govIdFormData.append('file', governmentId);
+        const token = localStorage.getItem('access_token');
         await fetch('http://localhost:8000/api/v1/uploads/kyc/government-id', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${accessToken}` },
+          headers: { 'Authorization': `Bearer ${token}` },
           body: govIdFormData,
         });
       }
@@ -424,9 +484,10 @@ export const VerificationPendingPage: React.FC = () => {
       if (medicalCertificate) {
         const certFormData = new FormData();
         certFormData.append('file', medicalCertificate);
+        const token = localStorage.getItem('access_token');
         await fetch('http://localhost:8000/api/v1/uploads/kyc/medical-certificate', {
           method: 'POST',
-          headers: { 'Authorization': `Bearer ${accessToken}` },
+          headers: { 'Authorization': `Bearer ${token}` },
           body: certFormData,
         });
       }
@@ -969,160 +1030,145 @@ export const VerificationPendingPage: React.FC = () => {
     <div className="min-h-screen bg-gray-50 flex flex-col">
       <Navbar />
 
-      <main className="flex-1 flex items-center justify-center py-16 px-4">
-        <Card className="max-w-lg w-full p-8 text-center">
-          <div className={`w-20 h-20 ${getStatusColor()} rounded-full flex items-center justify-center mx-auto mb-6`}>
-            {getStatusIcon()}
-          </div>
+      <main className="flex-1 py-16 px-4">
+        <div className="max-w-4xl mx-auto space-y-8">
+          {/* Status Card */}
+          <Card className="p-8 text-center">
+            <div className={`w-20 h-20 ${getStatusColor()} rounded-full flex items-center justify-center mx-auto mb-6`}>
+              {getStatusIcon()}
+            </div>
 
-          <h1 className="text-2xl font-bold text-gray-900 mb-2">
-            {getStatusTitle()}
-          </h1>
+            <h1 className="text-2xl font-bold text-gray-900 mb-2">
+              {getStatusTitle()}
+            </h1>
 
-          <p className="text-gray-600 mb-6">
-            {getStatusMessage()}
-          </p>
+            <p className="text-gray-600 mb-6">
+              {getStatusMessage()}
+            </p>
 
-          {doctorProfile?.verification_status === 'pending' && (
-            <>
-              <div className="bg-gray-50 rounded-xl p-4 mb-6">
-                <div className="flex items-center justify-between text-sm">
-                  <span className="text-gray-500">Expected Review Time:</span>
-                  <span className="font-medium text-gray-900">1-3 Business Days</span>
+            {doctorProfile?.verification_status === 'pending' && (
+              <>
+                <div className="bg-gray-50 rounded-xl p-4 mb-6">
+                  <div className="flex items-center justify-between text-sm">
+                    <span className="text-gray-500">Expected Review Time:</span>
+                    <span className="font-medium text-gray-900">1-3 Business Days</span>
+                  </div>
                 </div>
-              </div>
 
+                <div className="space-y-4">
+                  <div className="flex items-start gap-3 text-left">
+                    <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                      </svg>
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Application Submitted</p>
+                      <p className="text-sm text-gray-500">Your information has been received</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 text-left">
+                    <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-900">Document Verification</p>
+                      <p className="text-sm text-gray-500">Our team is verifying your credentials</p>
+                    </div>
+                  </div>
+
+                  <div className="flex items-start gap-3 text-left">
+                    <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5">
+                      <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                    </div>
+                    <div>
+                      <p className="font-medium text-gray-400">Account Activation</p>
+                      <p className="text-sm text-gray-400">You'll be notified once approved</p>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex gap-4 mt-6">
+                  <button
+                    onClick={() => { fetchStatus(); fetchApplicationHistory(); }}
+                    className="flex-1 inline-flex items-center justify-center gap-2 text-cyan-600 hover:text-cyan-700 text-sm font-medium py-2 px-4 rounded-lg hover:bg-cyan-50 transition-colors"
+                  >
+                    <RefreshCw className="w-4 h-4" />
+                    Refresh Status
+                  </button>
+                  <button
+                    onClick={startEditing}
+                    className="flex-1 inline-flex items-center justify-center gap-2 text-gray-600 hover:text-gray-700 text-sm font-medium py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors"
+                  >
+                    <Edit3 className="w-4 h-4" />
+                    Edit Application
+                  </button>
+                </div>
+              </>
+            )}
+
+            {doctorProfile?.verification_status === 'verified' && (
               <div className="space-y-4">
                 <div className="flex items-start gap-3 text-left">
                   <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <svg className="w-4 h-4 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                    </svg>
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">Application Submitted</p>
-                    <p className="text-sm text-gray-500">Your information has been received</p>
+                    <p className="text-sm text-gray-500">Your information was received</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 text-left">
-                  <div className="w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <div className="w-2 h-2 bg-amber-500 rounded-full animate-pulse" />
+                  <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                   </div>
                   <div>
                     <p className="font-medium text-gray-900">Document Verification</p>
-                    <p className="text-sm text-gray-500">Our team is verifying your credentials</p>
+                    <p className="text-sm text-gray-500">Your credentials have been verified</p>
                   </div>
                 </div>
 
                 <div className="flex items-start gap-3 text-left">
-                  <div className="w-6 h-6 rounded-full bg-gray-200 flex items-center justify-center flex-shrink-0 mt-0.5">
-                    <div className="w-2 h-2 bg-gray-400 rounded-full" />
+                  <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
+                    <CheckCircle className="w-4 h-4 text-green-600" />
                   </div>
                   <div>
-                    <p className="font-medium text-gray-400">Account Activation</p>
-                    <p className="text-sm text-gray-400">You'll be notified once approved</p>
+                    <p className="font-medium text-green-600">Account Activated</p>
+                    <p className="text-sm text-gray-500">You're ready to start!</p>
                   </div>
                 </div>
               </div>
+            )}
 
-              <div className="flex gap-4 mt-6">
-                <button
-                  onClick={fetchStatus}
-                  className="flex-1 inline-flex items-center justify-center gap-2 text-cyan-600 hover:text-cyan-700 text-sm font-medium py-2 px-4 rounded-lg hover:bg-cyan-50 transition-colors"
-                >
-                  <RefreshCw className="w-4 h-4" />
-                  Refresh Status
-                </button>
+            {doctorProfile?.verification_status === 'rejected' && (
+              <>
+                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-left">
+                  <p className="text-sm font-medium text-red-800 mb-1">Reason:</p>
+                  <p className="text-sm text-red-700">
+                    {doctorProfile.rejection_reason || 'Please contact support for more details about your application.'}
+                  </p>
+                </div>
+
                 <button
                   onClick={startEditing}
-                  className="flex-1 inline-flex items-center justify-center gap-2 text-gray-600 hover:text-gray-700 text-sm font-medium py-2 px-4 rounded-lg hover:bg-gray-100 transition-colors"
+                  className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-xl transition-colors mb-4"
                 >
-                  <Edit3 className="w-4 h-4" />
-                  Edit Application
+                  <Edit3 className="w-5 h-5" />
+                  Edit & Resubmit Application
                 </button>
-              </div>
-            </>
-          )}
+              </>
+            )}
 
-          {doctorProfile?.verification_status === 'verified' && (
-            <div className="space-y-4">
-              <div className="flex items-start gap-3 text-left">
-                <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Application Submitted</p>
-                  <p className="text-sm text-gray-500">Your information was received</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 text-left">
-                <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-gray-900">Document Verification</p>
-                  <p className="text-sm text-gray-500">Your credentials have been verified</p>
-                </div>
-              </div>
-
-              <div className="flex items-start gap-3 text-left">
-                <div className="w-6 h-6 rounded-full bg-green-100 flex items-center justify-center flex-shrink-0 mt-0.5">
-                  <CheckCircle className="w-4 h-4 text-green-600" />
-                </div>
-                <div>
-                  <p className="font-medium text-green-600">Account Activated</p>
-                  <p className="text-sm text-gray-500">You're ready to start!</p>
-                </div>
-              </div>
-            </div>
-          )}
-
-          {doctorProfile?.verification_status === 'rejected' && (
-            <>
-              <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6 text-left">
-                <p className="text-sm font-medium text-red-800 mb-1">Reason:</p>
-                <p className="text-sm text-red-700">
-                  {doctorProfile.rejection_reason || 'Please contact support for more details about your application.'}
-                </p>
-              </div>
-
-              <button
-                onClick={startEditing}
-                className="inline-flex items-center justify-center gap-2 w-full py-3 px-4 bg-cyan-600 hover:bg-cyan-700 text-white font-medium rounded-xl transition-colors mb-4"
-              >
-                <Edit3 className="w-5 h-5" />
-                Edit & Resubmit Application
-              </button>
-            </>
-          )}
-
-          <div className="mt-8 pt-6 border-t border-gray-100">
-            {doctorProfile?.verification_status === 'verified' ? (
-              <Link to="/doctor/dashboard">
-                <Button className="w-full">
-                  Go to Dashboard
-                </Button>
-              </Link>
-            ) : doctorProfile?.verification_status === 'rejected' ? (
-              <div className="flex gap-4">
-                <Link to="/" className="flex-1">
-                  <Button variant="outline" className="w-full">
-                    Go Home
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              {doctorProfile?.verification_status === 'verified' ? (
+                <Link to="/doctor/dashboard">
+                  <Button className="w-full">
+                    Go to Dashboard
                   </Button>
                 </Link>
-                <Link to="/help" className="flex-1">
-                  <Button variant="secondary" className="w-full">
-                    Contact Support
-                  </Button>
-                </Link>
-              </div>
-            ) : (
-              <>
-                <p className="text-sm text-gray-500 mb-4">
-                  We'll send you an email and SMS once your application is approved.
-                </p>
+              ) : doctorProfile?.verification_status === 'rejected' ? (
                 <div className="flex gap-4">
                   <Link to="/" className="flex-1">
                     <Button variant="outline" className="w-full">
@@ -1135,10 +1181,149 @@ export const VerificationPendingPage: React.FC = () => {
                     </Button>
                   </Link>
                 </div>
-              </>
+              ) : (
+                <>
+                  <p className="text-sm text-gray-500 mb-4">
+                    We'll send you an email and SMS once your application is approved.
+                  </p>
+                  <div className="flex gap-4">
+                    <Link to="/" className="flex-1">
+                      <Button variant="outline" className="w-full">
+                        Go Home
+                      </Button>
+                    </Link>
+                    <Link to="/help" className="flex-1">
+                      <Button variant="secondary" className="w-full">
+                        Contact Support
+                      </Button>
+                    </Link>
+                  </div>
+                </>
+              )}
+            </div>
+          </Card>
+
+          {/* Application History Timeline */}
+          <Card className="p-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
+                  <History className="w-5 h-5 text-cyan-600" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-gray-900">Application Timeline</h2>
+                  <p className="text-sm text-gray-500">Track all events in your application journey</p>
+                </div>
+              </div>
+              <button
+                onClick={fetchApplicationHistory}
+                className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
+                disabled={historyLoading}
+              >
+                <RefreshCw className={`w-5 h-5 ${historyLoading ? 'animate-spin' : ''}`} />
+              </button>
+            </div>
+
+            {historyLoading && applicationHistory.length === 0 ? (
+              <div className="flex items-center justify-center py-12">
+                <Loader2 className="w-8 h-8 text-cyan-600 animate-spin" />
+              </div>
+            ) : applicationHistory.length === 0 ? (
+              <div className="text-center py-12">
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <History className="w-8 h-8 text-gray-400" />
+                </div>
+                <p className="text-gray-500">No history events yet</p>
+                <p className="text-sm text-gray-400 mt-1">Events will appear here as your application progresses</p>
+              </div>
+            ) : (
+              <div className="relative">
+                {/* Timeline line */}
+                <div className="absolute left-5 top-0 bottom-0 w-0.5 bg-gray-200" />
+
+                <div className="space-y-6">
+                  {applicationHistory.map((event, index) => {
+                    const style = getHistoryEventStyle(event.event_type, event.performed_by);
+                    const eventDate = new Date(event.created_at);
+                    const isFirst = index === 0;
+
+                    return (
+                      <div key={event.id} className="relative flex gap-4">
+                        {/* Timeline dot */}
+                        <div className={`relative z-10 w-10 h-10 rounded-full ${style.bgColor} flex items-center justify-center flex-shrink-0 ${isFirst ? 'ring-4 ring-cyan-100' : ''}`}>
+                          <span className={style.iconColor}>{style.icon}</span>
+                        </div>
+
+                        {/* Event content */}
+                        <div className={`flex-1 ${isFirst ? 'bg-cyan-50 border border-cyan-200' : 'bg-gray-50 border border-gray-200'} rounded-xl p-4`}>
+                          <div className="flex items-start justify-between gap-3">
+                            <div>
+                              <h3 className={`font-medium ${isFirst ? 'text-cyan-900' : 'text-gray-900'}`}>
+                                {event.event_title}
+                              </h3>
+                              {event.event_description && (
+                                <p className={`text-sm mt-1 ${isFirst ? 'text-cyan-700' : 'text-gray-600'}`}>
+                                  {event.event_description}
+                                </p>
+                              )}
+                            </div>
+                            <div className="text-right flex-shrink-0">
+                              <p className="text-xs text-gray-500">
+                                {eventDate.toLocaleDateString('en-US', {
+                                  month: 'short',
+                                  day: 'numeric',
+                                  year: 'numeric',
+                                })}
+                              </p>
+                              <p className="text-xs text-gray-400">
+                                {eventDate.toLocaleTimeString('en-US', {
+                                  hour: 'numeric',
+                                  minute: '2-digit',
+                                  hour12: true,
+                                })}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* Show extra_data badges */}
+                          {event.extra_data && event.extra_data.changed_fields && (
+                            <div className="mt-3 flex flex-wrap gap-2">
+                              {(event.extra_data.changed_fields as string[]).map((field) => (
+                                <span
+                                  key={field}
+                                  className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700"
+                                >
+                                  {field.replace(/_/g, ' ')}
+                                </span>
+                              ))}
+                            </div>
+                          )}
+
+                          {/* Show performed by badge */}
+                          {event.performed_by && (
+                            <div className="mt-3">
+                              <span className={`inline-flex items-center gap-1 px-2 py-0.5 rounded-full text-xs font-medium ${
+                                event.performed_by === 'admin' 
+                                  ? 'bg-green-100 text-green-700' 
+                                  : event.performed_by === 'system'
+                                  ? 'bg-gray-100 text-gray-600'
+                                  : 'bg-blue-100 text-blue-700'
+                              }`}>
+                                {event.performed_by === 'admin' && <UserCheck className="w-3 h-3" />}
+                                {event.performed_by === 'doctor' && <Stethoscope className="w-3 h-3" />}
+                                By {event.performed_by}
+                              </span>
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
             )}
-          </div>
-        </Card>
+          </Card>
+        </div>
       </main>
 
       <Footer />

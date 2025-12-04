@@ -1,12 +1,12 @@
-from datetime import datetime, time
-from typing import List, Optional
+from datetime import datetime, time, date, timedelta
+from typing import List, Optional, Dict
 from sqlalchemy.ext.asyncio import AsyncSession
-from sqlalchemy import select, and_, or_
+from sqlalchemy import select, and_, or_, desc
 from sqlalchemy.orm import selectinload
 
 from app.models.models import (
-    Doctor, User, Specialization, AvailabilitySlot, 
-    UserRole, VerificationStatus
+    Doctor, User, Specialization, AvailabilitySlot, Appointment,
+    UserRole, VerificationStatus, DoctorApplicationHistory
 )
 from app.schemas.schemas import (
     DoctorCreate, DoctorUpdate, AvailabilitySlotCreate
@@ -58,6 +58,21 @@ class DoctorService:
         await db.commit()
         await db.refresh(doctor)
         
+        # Add application history entry
+        await DoctorService.add_application_history(
+            db,
+            doctor.id,
+            event_type="application_submitted",
+            event_title="Application Submitted",
+            event_description="Doctor registration application submitted for verification",
+            extra_data={
+                "specialization_id": doctor_data.specialization_id,
+                "has_government_id": bool(doctor_data.government_id_url),
+                "has_medical_certificate": bool(doctor_data.medical_certificate_url)
+            },
+            performed_by="doctor"
+        )
+        
         # Load relationships for the response
         return await DoctorService.get_doctor_by_id(db, doctor.id)
     
@@ -99,9 +114,62 @@ class DoctorService:
             raise ValueError("Doctor not found")
         
         update_data = doctor_data.model_dump(exclude_unset=True)
+        changed_fields = []
+        
         for field, value in update_data.items():
+            old_value = getattr(doctor, field)
+            if old_value != value:
+                changed_fields.append(field)
             setattr(doctor, field, value)
         
+        doctor.updated_at = datetime.utcnow()
+        await db.commit()
+        await db.refresh(doctor)
+        
+        # Log history if there were changes
+        if changed_fields:
+            # Determine event type based on what changed
+            if 'government_id_url' in changed_fields or 'medical_certificate_url' in changed_fields:
+                event_type = "documents_uploaded"
+                event_title = "Documents Updated"
+                event_description = "Verification documents have been updated"
+            elif 'bio' in changed_fields or 'education' in changed_fields or 'languages' in changed_fields:
+                event_type = "profile_updated"
+                event_title = "Profile Updated"
+                event_description = "Professional profile information has been updated"
+            elif 'specialization_id' in changed_fields:
+                event_type = "profile_updated"
+                event_title = "Specialization Changed"
+                event_description = "Medical specialization has been updated"
+            else:
+                event_type = "profile_updated"
+                event_title = "Profile Updated"
+                event_description = "Doctor profile has been updated"
+            
+            await DoctorService.add_application_history(
+                db,
+                doctor_id,
+                event_type=event_type,
+                event_title=event_title,
+                event_description=event_description,
+                metadata={"changed_fields": changed_fields},
+                performed_by="doctor"
+            )
+        
+        return doctor
+    
+    @staticmethod
+    async def update_availability_status(
+        db: AsyncSession,
+        doctor_id: int,
+        is_available: bool
+    ) -> Doctor:
+        """Update doctor's online/offline availability status"""
+        doctor = await DoctorService.get_doctor_by_id(db, doctor_id)
+        if not doctor:
+            raise ValueError("Doctor not found")
+        
+        doctor.is_available = is_available
         doctor.updated_at = datetime.utcnow()
         await db.commit()
         await db.refresh(doctor)
@@ -203,6 +271,28 @@ class DoctorService:
         await db.commit()
         await db.refresh(doctor)
         
+        # Log admin action in history
+        if approved:
+            await DoctorService.add_application_history(
+                db,
+                doctor_id,
+                event_type="status_changed",
+                event_title="Application Approved",
+                event_description="Your doctor application has been verified and approved. You can now start accepting patients.",
+                metadata={"new_status": "verified"},
+                performed_by="admin"
+            )
+        else:
+            await DoctorService.add_application_history(
+                db,
+                doctor_id,
+                event_type="status_changed",
+                event_title="Application Rejected",
+                event_description=rejection_reason or "Your application has been rejected.",
+                metadata={"new_status": "rejected", "reason": rejection_reason},
+                performed_by="admin"
+            )
+        
         return doctor
     
     # ============== Availability Management ==============
@@ -301,6 +391,96 @@ class DoctorService:
         await db.commit()
         
         return True
+    
+    @staticmethod
+    async def get_bookable_slots(
+        db: AsyncSession,
+        doctor_id: int,
+        target_date: date
+    ) -> Dict:
+        """
+        Generate bookable slots for a specific doctor on a specific date.
+        
+        This method:
+        1. Gets the doctor's availability windows for the day of week
+        2. Splits windows into slots based on consultation_duration
+        3. Filters out already-booked appointments
+        4. Returns available slots with booking status
+        """
+        # Get doctor to retrieve consultation_duration
+        result = await db.execute(
+            select(Doctor).where(Doctor.id == doctor_id)
+        )
+        doctor = result.scalar_one_or_none()
+        if not doctor:
+            raise ValueError("Doctor not found")
+        
+        consultation_duration = doctor.consultation_duration or 30
+        
+        # Get day of week (0=Monday, 6=Sunday)
+        day_of_week = target_date.weekday()
+        
+        # Get availability slots for this day
+        result = await db.execute(
+            select(AvailabilitySlot)
+            .where(
+                and_(
+                    AvailabilitySlot.doctor_id == doctor_id,
+                    AvailabilitySlot.day_of_week == day_of_week,
+                    AvailabilitySlot.is_active == True
+                )
+            )
+            .order_by(AvailabilitySlot.start_time)
+        )
+        availability_windows = result.scalars().all()
+        
+        # Get existing appointments for this date
+        result = await db.execute(
+            select(Appointment)
+            .where(
+                and_(
+                    Appointment.doctor_id == doctor_id,
+                    Appointment.scheduled_date == target_date,
+                    Appointment.status.notin_(["cancelled", "no_show"])
+                )
+            )
+        )
+        existing_appointments = result.scalars().all()
+        
+        # Create set of booked times for quick lookup
+        booked_times = set()
+        for appt in existing_appointments:
+            booked_times.add(appt.scheduled_time.strftime("%H:%M"))
+        
+        # Generate all possible slots from availability windows
+        all_slots = []
+        for window in availability_windows:
+            current_time = datetime.combine(target_date, window.start_time)
+            end_time = datetime.combine(target_date, window.end_time)
+            
+            while current_time + timedelta(minutes=consultation_duration) <= end_time:
+                slot_time_str = current_time.strftime("%H:%M")
+                is_available = slot_time_str not in booked_times
+                
+                # Also check if slot is in the past (for today's date)
+                if target_date == date.today():
+                    now = datetime.now()
+                    if current_time <= now:
+                        is_available = False
+                
+                all_slots.append({
+                    "time": slot_time_str,
+                    "is_available": is_available
+                })
+                
+                current_time += timedelta(minutes=consultation_duration)
+        
+        return {
+            "doctor_id": doctor_id,
+            "date": target_date,
+            "consultation_duration": consultation_duration,
+            "slots": all_slots
+        }
 
 
 # ============== Specialization Service ==============
@@ -441,3 +621,40 @@ class SpecializationService:
                 await db.refresh(spec)
         
         return created
+
+    @staticmethod
+    async def add_application_history(
+        db: AsyncSession,
+        doctor_id: int,
+        event_type: str,
+        event_title: str,
+        event_description: Optional[str] = None,
+        extra_data: Optional[dict] = None,
+        performed_by: str = "doctor"
+    ) -> DoctorApplicationHistory:
+        """Add an event to the doctor's application history"""
+        history_entry = DoctorApplicationHistory(
+            doctor_id=doctor_id,
+            event_type=event_type,
+            event_title=event_title,
+            event_description=event_description,
+            extra_data=extra_data,
+            performed_by=performed_by
+        )
+        db.add(history_entry)
+        await db.commit()
+        await db.refresh(history_entry)
+        return history_entry
+
+    @staticmethod
+    async def get_application_history(
+        db: AsyncSession,
+        doctor_id: int
+    ) -> List[DoctorApplicationHistory]:
+        """Get all application history entries for a doctor"""
+        result = await db.execute(
+            select(DoctorApplicationHistory)
+            .where(DoctorApplicationHistory.doctor_id == doctor_id)
+            .order_by(desc(DoctorApplicationHistory.created_at))
+        )
+        return list(result.scalars().all())

@@ -1,3 +1,4 @@
+from datetime import date
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -10,7 +11,10 @@ from app.services.notification_service import notification_service
 from app.schemas.schemas import (
     DoctorCreate, DoctorUpdate, DoctorResponse, DoctorListResponse,
     AvailabilitySlotCreate, AvailabilitySlotResponse,
-    SpecializationCreate, SpecializationResponse
+    SpecializationCreate, SpecializationResponse,
+    DoctorApplicationHistoryResponse,
+    BookableSlotsResponse,
+    AvailabilityStatusUpdate, AvailabilityStatusResponse
 )
 
 router = APIRouter()
@@ -106,6 +110,60 @@ async def update_my_doctor_profile(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=str(e)
         )
+
+
+@router.get("/me/history", response_model=List[DoctorApplicationHistoryResponse])
+async def get_my_application_history(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.DOCTOR]))
+):
+    """Get the application history/timeline for the current doctor"""
+    doctor = await DoctorService.get_doctor_by_user_id(db, current_user.id)
+    if not doctor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor profile not found"
+        )
+    
+    history = await DoctorService.get_application_history(db, doctor.id)
+    return history
+
+
+@router.patch("/me/availability-status", response_model=AvailabilityStatusResponse)
+async def toggle_availability_status(
+    status_update: AvailabilityStatusUpdate,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.DOCTOR]))
+):
+    """
+    Toggle the doctor's online/offline availability status.
+    
+    This is different from availability slots - it's a quick toggle
+    to mark yourself as available or unavailable for new appointments.
+    """
+    doctor = await DoctorService.get_doctor_by_user_id(db, current_user.id)
+    if not doctor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor profile not found"
+        )
+    
+    # Only verified doctors can toggle availability
+    if doctor.verification_status != "verified":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Only verified doctors can change availability status"
+        )
+    
+    updated_doctor = await DoctorService.update_availability_status(
+        db, doctor.id, status_update.is_available
+    )
+    
+    status_text = "online" if updated_doctor.is_available else "offline"
+    return AvailabilityStatusResponse(
+        is_available=updated_doctor.is_available,
+        message=f"You are now {status_text}"
+    )
 
 
 # ============== Public Doctor Listings ==============
@@ -242,6 +300,33 @@ async def get_doctor_availability(
         )
         for slot in slots
     ]
+
+
+@router.get("/{doctor_id}/bookable-slots", response_model=BookableSlotsResponse)
+async def get_bookable_slots(
+    doctor_id: int,
+    target_date: date = Query(..., description="Date to get bookable slots for (YYYY-MM-DD)"),
+    db: AsyncSession = Depends(get_db)
+):
+    """
+    Get bookable appointment slots for a specific doctor on a specific date.
+    
+    This endpoint:
+    - Generates time slots from doctor's availability windows
+    - Uses doctor's consultation_duration to determine slot length
+    - Marks slots as unavailable if already booked
+    - Excludes past times for today's date
+    
+    Public endpoint - no authentication required (for patient booking page).
+    """
+    try:
+        result = await DoctorService.get_bookable_slots(db, doctor_id, target_date)
+        return BookableSlotsResponse(**result)
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail=str(e)
+        )
 
 
 @router.delete("/me/availability/{slot_id}", status_code=status.HTTP_204_NO_CONTENT)

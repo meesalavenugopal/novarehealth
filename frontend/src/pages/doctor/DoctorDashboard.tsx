@@ -4,7 +4,8 @@ import { useAuthStore } from '../../store/authStore';
 import { Button, Card, CardHeader } from '../../components/ui';
 import { Navbar } from '../../components/layout';
 import { AIChatWidget } from '../../components/chat';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle } from 'lucide-react';
+import { authFetch } from '../../services/api';
 
 interface Appointment {
   id: number;
@@ -26,7 +27,7 @@ interface DoctorStats {
 
 export const DoctorDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user, accessToken } = useAuthStore();
+  const { user } = useAuthStore();
   const [checkingVerification, setCheckingVerification] = useState(true);
   const [stats, setStats] = useState<DoctorStats>({
     total_consultations: 0,
@@ -38,16 +39,14 @@ export const DoctorDashboard: React.FC = () => {
   });
   const [upcomingAppointments, setUpcomingAppointments] = useState<Appointment[]>([]);
   const [isAvailable, setIsAvailable] = useState(true);
+  const [togglingAvailability, setTogglingAvailability] = useState(false);
+  const [availabilityMessage, setAvailabilityMessage] = useState<string | null>(null);
 
   // Check verification status on mount
   useEffect(() => {
     const checkVerificationStatus = async () => {
       try {
-        const response = await fetch('http://localhost:8000/api/v1/doctors/me', {
-          headers: {
-            'Authorization': `Bearer ${accessToken}`,
-          },
-        });
+        const response = await authFetch('http://localhost:8000/api/v1/doctors/me');
 
         if (response.ok) {
           const doctorData = await response.json();
@@ -56,6 +55,16 @@ export const DoctorDashboard: React.FC = () => {
             navigate('/doctor/verification-pending');
             return;
           }
+          // Set initial availability from the doctor's profile
+          setIsAvailable(doctorData.is_available);
+          
+          // Update stats with real data
+          setStats(prev => ({
+            ...prev,
+            rating: doctorData.rating || 0,
+            total_reviews: doctorData.total_reviews || 0,
+            total_consultations: doctorData.total_consultations || 0,
+          }));
         }
       } catch (err) {
         console.error('Failed to check verification status:', err);
@@ -65,7 +74,7 @@ export const DoctorDashboard: React.FC = () => {
     };
 
     checkVerificationStatus();
-  }, [accessToken, navigate]);
+  }, [navigate]);
 
   // Mock data for now
   useEffect(() => {
@@ -120,9 +129,39 @@ export const DoctorDashboard: React.FC = () => {
     );
   }
 
-  const toggleAvailability = () => {
-    setIsAvailable(!isAvailable);
-    // TODO: API call to update availability
+  const toggleAvailability = async () => {
+    setTogglingAvailability(true);
+    setAvailabilityMessage(null);
+    
+    try {
+      const response = await authFetch('http://localhost:8000/api/v1/doctors/me/availability-status', {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ is_available: !isAvailable }),
+      });
+
+      if (response.ok) {
+        const data = await response.json();
+        setIsAvailable(data.is_available);
+        setAvailabilityMessage(data.message);
+        
+        // Clear message after 3 seconds
+        setTimeout(() => {
+          setAvailabilityMessage(null);
+        }, 3000);
+      } else {
+        const error = await response.json();
+        console.error('Failed to toggle availability:', error);
+        setAvailabilityMessage('Failed to update status');
+      }
+    } catch (err) {
+      console.error('Error toggling availability:', err);
+      setAvailabilityMessage('Error updating status');
+    } finally {
+      setTogglingAvailability(false);
+    }
   };
 
   const StatCard = ({ 
@@ -167,25 +206,38 @@ export const DoctorDashboard: React.FC = () => {
             </div>
             
             <div className="flex items-center gap-4">
-              <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-sm">
+              <div className="flex items-center gap-3 bg-white rounded-xl px-4 py-2 shadow-sm relative">
                 <span className="text-sm text-gray-600">Availability:</span>
                 <button
                   onClick={toggleAvailability}
+                  disabled={togglingAvailability}
                   className={`
-                    relative w-12 h-6 rounded-full transition-colors
+                    relative w-12 h-6 rounded-full transition-colors disabled:opacity-50
                     ${isAvailable ? 'bg-green-500' : 'bg-gray-300'}
                   `}
                 >
-                  <span
-                    className={`
-                      absolute top-1 w-4 h-4 rounded-full bg-white transition-transform
-                      ${isAvailable ? 'left-7' : 'left-1'}
-                    `}
-                  />
+                  {togglingAvailability ? (
+                    <Loader2 className="w-4 h-4 animate-spin text-white absolute top-1 left-4" />
+                  ) : (
+                    <span
+                      className={`
+                        absolute top-1 w-4 h-4 rounded-full bg-white transition-transform
+                        ${isAvailable ? 'left-7' : 'left-1'}
+                      `}
+                    />
+                  )}
                 </button>
                 <span className={`text-sm font-medium ${isAvailable ? 'text-green-600' : 'text-gray-500'}`}>
                   {isAvailable ? 'Online' : 'Offline'}
                 </span>
+                
+                {/* Success message tooltip */}
+                {availabilityMessage && (
+                  <div className="absolute -bottom-10 left-1/2 transform -translate-x-1/2 bg-gray-900 text-white text-xs px-3 py-1.5 rounded-lg whitespace-nowrap flex items-center gap-1.5 shadow-lg z-10">
+                    <CheckCircle className="w-3.5 h-3.5 text-green-400" />
+                    {availabilityMessage}
+                  </div>
+                )}
               </div>
 
               <Link to="/doctor/availability">
