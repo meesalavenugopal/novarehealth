@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '../../store/authStore';
+import { Link } from 'react-router-dom';
 import { Button, Card } from '../../components/ui';
 import { Navbar } from '../../components/layout';
 import { authFetch } from '../../services/api';
@@ -25,6 +25,7 @@ import {
   Sun,
   Moon,
   Coffee,
+  ArrowLeft,
 } from 'lucide-react';
 
 interface TimeSlot {
@@ -242,8 +243,8 @@ const generateAISuggestions = (slots: TimeSlot[]): AISuggestion[] => {
 };
 
 export const AvailabilityPage: React.FC = () => {
-  const { user } = useAuthStore();
   const [slots, setSlots] = useState<TimeSlot[]>([]);
+  const [originalSlots, setOriginalSlots] = useState<TimeSlot[]>([]); // Track original state
   const [loading, setLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
@@ -256,6 +257,9 @@ export const AvailabilityPage: React.FC = () => {
   const [showApprovalModal, setShowApprovalModal] = useState(false);
   const [scheduleAnalysis, setScheduleAnalysis] = useState<SchedulePattern | null>(null);
 
+  // Check if there are unsaved changes
+  const hasUnsavedChanges = JSON.stringify(slots) !== JSON.stringify(originalSlots);
+
   // Fetch existing availability
   useEffect(() => {
     const fetchAvailability = async () => {
@@ -265,6 +269,7 @@ export const AvailabilityPage: React.FC = () => {
         if (response.ok) {
           const data = await response.json();
           setSlots(data);
+          setOriginalSlots(data); // Store original for comparison
         }
       } catch (error) {
         console.error('Failed to fetch availability:', error);
@@ -439,6 +444,8 @@ export const AvailabilityPage: React.FC = () => {
 
       if (response.ok) {
         setMessage({ type: 'success', text: 'Availability saved successfully!' });
+        // Update original slots to match current (no more unsaved changes)
+        setOriginalSlots([...slots]);
         // Clear pending approvals after save
         setPendingApprovals([]);
       } else {
@@ -509,6 +516,15 @@ export const AvailabilityPage: React.FC = () => {
 
       <main className="pt-24 pb-16">
         <div className="container mx-auto px-4">
+          {/* Back to Dashboard */}
+          <Link 
+            to="/doctor/dashboard" 
+            className="inline-flex items-center gap-2 text-gray-600 hover:text-cyan-600 transition-colors mb-6"
+          >
+            <ArrowLeft className="w-4 h-4" />
+            Back to Dashboard
+          </Link>
+
           {/* Header */}
           <div className="flex flex-col md:flex-row md:items-center justify-between mb-8 gap-4">
             <div>
@@ -536,18 +552,20 @@ export const AvailabilityPage: React.FC = () => {
                 {generatingSuggestions ? 'Analyzing...' : 'Get AI Suggestions'}
               </Button>
               
-              <Button 
-                onClick={saveAvailability} 
-                disabled={saving}
-                className="flex items-center gap-2"
-              >
-                {saving ? (
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                ) : (
-                  <Check className="w-4 h-4" />
-                )}
-                {saving ? 'Saving...' : 'Save Changes'}
-              </Button>
+              {hasUnsavedChanges && (
+                <Button 
+                  onClick={saveAvailability} 
+                  disabled={saving}
+                  className="flex items-center gap-2"
+                >
+                  {saving ? (
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                  ) : (
+                    <Check className="w-4 h-4" />
+                  )}
+                  {saving ? 'Saving...' : 'Save Changes'}
+                </Button>
+              )}
             </div>
           </div>
 

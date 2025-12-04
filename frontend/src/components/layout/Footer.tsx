@@ -6,8 +6,7 @@ import {
   Facebook, 
   Twitter, 
   Instagram, 
-  Linkedin,
-  Heart
+  Linkedin
 } from 'lucide-react';
 
 export default function Footer() {

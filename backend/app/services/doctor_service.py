@@ -298,17 +298,152 @@ class DoctorService:
     # ============== Availability Management ==============
     
     @staticmethod
+    async def check_slot_has_bookings(
+        db: AsyncSession,
+        doctor_id: int,
+        day_of_week: int,
+        start_time: time,
+        end_time: time,
+        from_date: date = None
+    ) -> List[Appointment]:
+        """
+        Check if there are any future appointments that fall within a time slot.
+        Returns list of conflicting appointments.
+        """
+        if from_date is None:
+            from_date = date.today()
+        
+        # Get all future appointments for this doctor
+        result = await db.execute(
+            select(Appointment)
+            .where(
+                and_(
+                    Appointment.doctor_id == doctor_id,
+                    Appointment.scheduled_date >= from_date,
+                    Appointment.status.notin_(["cancelled", "no_show", "completed"])
+                )
+            )
+        )
+        appointments = result.scalars().all()
+        
+        # Filter appointments that fall on the same day of week and within the time window
+        conflicting = []
+        for appt in appointments:
+            appt_day_of_week = appt.scheduled_date.weekday()
+            if appt_day_of_week == day_of_week:
+                # Check if appointment time falls within the slot window
+                if start_time <= appt.scheduled_time < end_time:
+                    conflicting.append(appt)
+        
+        return conflicting
+    
+    @staticmethod
+    async def get_affected_appointments_for_slots(
+        db: AsyncSession,
+        doctor_id: int,
+        old_slots: List[AvailabilitySlot],
+        new_slots: List[AvailabilitySlotCreate]
+    ) -> Dict:
+        """
+        Check which appointments would be affected by changing availability.
+        Returns details about affected appointments.
+        """
+        from_date = date.today()
+        
+        # Get all future appointments
+        result = await db.execute(
+            select(Appointment)
+            .where(
+                and_(
+                    Appointment.doctor_id == doctor_id,
+                    Appointment.scheduled_date >= from_date,
+                    Appointment.status.notin_(["cancelled", "no_show", "completed"])
+                )
+            )
+        )
+        appointments = result.scalars().all()
+        
+        # Create a lookup for new slots by day of week
+        new_slots_by_day = {}
+        for slot in new_slots:
+            day = slot.day_of_week
+            if day not in new_slots_by_day:
+                new_slots_by_day[day] = []
+            new_slots_by_day[day].append({
+                'start': time.fromisoformat(slot.start_time),
+                'end': time.fromisoformat(slot.end_time)
+            })
+        
+        # Check each appointment against new slots
+        affected = []
+        for appt in appointments:
+            appt_day = appt.scheduled_date.weekday()
+            appt_time = appt.scheduled_time
+            
+            # Check if appointment is covered by any new slot
+            is_covered = False
+            if appt_day in new_slots_by_day:
+                for slot in new_slots_by_day[appt_day]:
+                    if slot['start'] <= appt_time < slot['end']:
+                        is_covered = True
+                        break
+            
+            if not is_covered:
+                affected.append({
+                    'appointment_id': appt.id,
+                    'date': appt.scheduled_date.isoformat(),
+                    'time': appt.scheduled_time.strftime("%H:%M"),
+                    'patient_id': appt.patient_id,
+                    'status': appt.status.value if hasattr(appt.status, 'value') else str(appt.status)
+                })
+        
+        return {
+            'has_conflicts': len(affected) > 0,
+            'affected_count': len(affected),
+            'affected_appointments': affected
+        }
+    
+    @staticmethod
     async def set_availability(
         db: AsyncSession,
         doctor_id: int,
-        slots: List[AvailabilitySlotCreate]
-    ) -> List[AvailabilitySlot]:
-        """Set doctor's availability slots (replaces existing)"""
-        # Deactivate existing slots
+        slots: List[AvailabilitySlotCreate],
+        force: bool = False
+    ) -> Dict:
+        """
+        Set doctor's availability slots (replaces existing).
+        
+        Args:
+            force: If True, update even if there are conflicting appointments.
+                   If False, return conflict info without making changes.
+        
+        Returns:
+            Dict with 'slots' (if successful) or 'conflicts' (if there are issues)
+        """
+        # Get existing active slots
         result = await db.execute(
-            select(AvailabilitySlot).where(AvailabilitySlot.doctor_id == doctor_id)
+            select(AvailabilitySlot).where(
+                and_(
+                    AvailabilitySlot.doctor_id == doctor_id,
+                    AvailabilitySlot.is_active == True
+                )
+            )
         )
         existing_slots = result.scalars().all()
+        
+        # Check for conflicts with existing appointments
+        conflicts = await DoctorService.get_affected_appointments_for_slots(
+            db, doctor_id, existing_slots, slots
+        )
+        
+        if conflicts['has_conflicts'] and not force:
+            return {
+                'success': False,
+                'conflicts': conflicts,
+                'message': f"Cannot update availability: {conflicts['affected_count']} appointment(s) would be affected. Use force=true to update anyway (appointments will need to be rescheduled)."
+            }
+        
+        # Deactivate existing slots
         for slot in existing_slots:
             slot.is_active = False
         
@@ -331,7 +466,11 @@ class DoctorService:
         for slot in new_slots:
             await db.refresh(slot)
         
-        return new_slots
+        return {
+            'success': True,
+            'slots': new_slots,
+            'conflicts': conflicts if conflicts['has_conflicts'] else None
+        }
     
     @staticmethod
     async def get_availability(
@@ -377,20 +516,68 @@ class DoctorService:
     @staticmethod
     async def delete_availability_slot(
         db: AsyncSession,
-        slot_id: int
-    ) -> bool:
-        """Delete (deactivate) an availability slot"""
+        slot_id: int,
+        force: bool = False
+    ) -> Dict:
+        """
+        Delete (deactivate) an availability slot.
+        
+        Args:
+            force: If True, delete even if there are conflicting appointments.
+                   If False, return conflict info without making changes.
+        
+        Returns:
+            Dict with success status and any conflict info
+        """
         result = await db.execute(
             select(AvailabilitySlot).where(AvailabilitySlot.id == slot_id)
         )
         slot = result.scalar_one_or_none()
         if not slot:
-            return False
+            return {'success': False, 'error': 'Slot not found'}
+        
+        # Check for conflicting appointments
+        conflicting = await DoctorService.check_slot_has_bookings(
+            db,
+            slot.doctor_id,
+            slot.day_of_week,
+            slot.start_time,
+            slot.end_time
+        )
+        
+        if conflicting and not force:
+            conflict_details = [
+                {
+                    'appointment_id': appt.id,
+                    'date': appt.scheduled_date.isoformat(),
+                    'time': appt.scheduled_time.strftime("%H:%M"),
+                    'patient_id': appt.patient_id,
+                    'status': appt.status.value if hasattr(appt.status, 'value') else str(appt.status)
+                }
+                for appt in conflicting
+            ]
+            return {
+                'success': False,
+                'has_conflicts': True,
+                'affected_count': len(conflicting),
+                'affected_appointments': conflict_details,
+                'message': f"Cannot delete slot: {len(conflicting)} appointment(s) are booked in this time window. Use force=true to delete anyway."
+            }
         
         slot.is_active = False
         await db.commit()
         
-        return True
+        return {
+            'success': True,
+            'affected_appointments': [
+                {
+                    'appointment_id': appt.id,
+                    'date': appt.scheduled_date.isoformat(),
+                    'time': appt.scheduled_time.strftime("%H:%M")
+                }
+                for appt in conflicting
+            ] if conflicting else []
+        }
     
     @staticmethod
     async def get_bookable_slots(

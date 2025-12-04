@@ -1286,14 +1286,14 @@ export const VerificationPendingPage: React.FC = () => {
                           </div>
 
                           {/* Show extra_data badges */}
-                          {event.extra_data && event.extra_data.changed_fields && (
+                          {event.extra_data && Array.isArray(event.extra_data.changed_fields) && (
                             <div className="mt-3 flex flex-wrap gap-2">
-                              {(event.extra_data.changed_fields as string[]).map((field) => (
+                              {(event.extra_data.changed_fields as string[]).map((field: string, fieldIndex: number) => (
                                 <span
-                                  key={field}
+                                  key={fieldIndex}
                                   className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium bg-gray-200 text-gray-700"
                                 >
-                                  {field.replace(/_/g, ' ')}
+                                  {String(field).replace(/_/g, ' ')}
                                 </span>
                               ))}
                             </div>

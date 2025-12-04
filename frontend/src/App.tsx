@@ -2,7 +2,14 @@ import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import LoginPage from './pages/auth/LoginPage';
 import HomePage from './pages/common/HomePage';
+import ProfilePage from './pages/common/ProfilePage';
+import SettingsPage from './pages/common/SettingsPage';
+import HelpPage from './pages/common/HelpPage';
+import AppointmentsPage from './pages/common/AppointmentsPage';
+import PrescriptionsPage from './pages/common/PrescriptionsPage';
+import HealthRecordsPage from './pages/common/HealthRecordsPage';
 import PatientDashboard from './pages/patient/Dashboard';
+import FindDoctorsPage from './pages/patient/FindDoctorsPage';
 import { 
   DoctorDashboard, 
   DoctorRegisterPage, 
@@ -33,6 +40,64 @@ function App() {
           <Route path="/privacy" element={<PrivacyPolicyPage />} />
           <Route path="/terms" element={<TermsOfServicePage />} />
           <Route path="/refund-policy" element={<RefundPolicyPage />} />
+          
+          {/* Common Routes (Protected - Any authenticated user) */}
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'super_admin']}>
+                <ProfilePage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/settings"
+            element={
+              <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'super_admin']}>
+                <SettingsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/help"
+            element={
+              <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'super_admin']}>
+                <HelpPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/appointments"
+            element={
+              <ProtectedRoute allowedRoles={['patient', 'doctor']}>
+                <AppointmentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/prescriptions"
+            element={
+              <ProtectedRoute allowedRoles={['patient', 'doctor']}>
+                <PrescriptionsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/health-records"
+            element={
+              <ProtectedRoute allowedRoles={['patient']}>
+                <HealthRecordsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/find-doctors"
+            element={
+              <ProtectedRoute allowedRoles={['patient']}>
+                <FindDoctorsPage />
+              </ProtectedRoute>
+            }
+          />
           
           {/* Patient Routes */}
           <Route

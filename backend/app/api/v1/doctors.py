@@ -14,7 +14,8 @@ from app.schemas.schemas import (
     SpecializationCreate, SpecializationResponse,
     DoctorApplicationHistoryResponse,
     BookableSlotsResponse,
-    AvailabilityStatusUpdate, AvailabilityStatusResponse
+    AvailabilityStatusUpdate, AvailabilityStatusResponse,
+    AvailabilityUpdateResponse, AvailabilityDeleteResponse
 )
 
 router = APIRouter()
@@ -244,15 +245,22 @@ async def get_my_availability(
     ]
 
 
-@router.post("/me/availability", response_model=List[AvailabilitySlotResponse])
+@router.post("/me/availability", response_model=AvailabilityUpdateResponse)
 async def set_my_availability(
     slots: List[AvailabilitySlotCreate],
+    force: bool = Query(False, description="Force update even if there are conflicting appointments"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role([UserRole.DOCTOR]))
 ):
     """
     Set availability slots for the current doctor.
     This replaces all existing active slots.
+    
+    If there are appointments that would be affected (no longer covered by availability),
+    the request will fail unless force=true is passed.
+    
+    With force=true, availability will be updated but affected appointments
+    will need to be rescheduled manually.
     """
     doctor = await DoctorService.get_doctor_by_user_id(db, current_user.id)
     if not doctor:
@@ -261,8 +269,20 @@ async def set_my_availability(
             detail="Doctor profile not found"
         )
     
-    new_slots = await DoctorService.set_availability(db, doctor.id, slots)
-    return [
+    result = await DoctorService.set_availability(db, doctor.id, slots, force=force)
+    
+    if not result['success']:
+        # Return conflict info with 409 status
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": result.get('message', 'Conflict detected'),
+                "conflicts": result.get('conflicts')
+            }
+        )
+    
+    # Format successful response
+    formatted_slots = [
         AvailabilitySlotResponse(
             id=slot.id,
             doctor_id=slot.doctor_id,
@@ -271,8 +291,58 @@ async def set_my_availability(
             end_time=slot.end_time.strftime("%H:%M"),
             is_active=slot.is_active
         )
-        for slot in new_slots
+        for slot in result['slots']
     ]
+    
+    return AvailabilityUpdateResponse(
+        success=True,
+        slots=formatted_slots,
+        conflicts=result.get('conflicts'),
+        message="Availability updated successfully" + (
+            f" (Warning: {result['conflicts']['affected_count']} appointments may need rescheduling)"
+            if result.get('conflicts') else ""
+        )
+    )
+
+
+@router.post("/me/availability/check-conflicts")
+async def check_availability_conflicts(
+    slots: List[AvailabilitySlotCreate],
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.DOCTOR]))
+):
+    """
+    Preview conflicts that would occur if availability is updated.
+    This is a dry-run - no changes are made.
+    
+    Use this before calling POST /me/availability to show users
+    what appointments would be affected by their changes.
+    """
+    doctor = await DoctorService.get_doctor_by_user_id(db, current_user.id)
+    if not doctor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor profile not found"
+        )
+    
+    # Get existing active slots
+    existing_slots = await DoctorService.get_availability(db, doctor.id)
+    
+    # Check for conflicts
+    conflicts = await DoctorService.get_affected_appointments_for_slots(
+        db, doctor.id, existing_slots, slots
+    )
+    
+    return {
+        "has_conflicts": conflicts['has_conflicts'],
+        "affected_count": conflicts['affected_count'],
+        "affected_appointments": conflicts['affected_appointments'],
+        "message": (
+            f"{conflicts['affected_count']} appointment(s) would be affected by this change."
+            if conflicts['has_conflicts']
+            else "No conflicts detected. Safe to save."
+        )
+    }
 
 
 @router.get("/{doctor_id}/availability", response_model=List[AvailabilitySlotResponse])
@@ -329,19 +399,47 @@ async def get_bookable_slots(
         )
 
 
-@router.delete("/me/availability/{slot_id}", status_code=status.HTTP_204_NO_CONTENT)
+@router.delete("/me/availability/{slot_id}", response_model=AvailabilityDeleteResponse)
 async def delete_availability_slot(
     slot_id: int,
+    force: bool = Query(False, description="Force delete even if there are conflicting appointments"),
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role([UserRole.DOCTOR]))
 ):
-    """Delete a specific availability slot"""
-    success = await DoctorService.delete_availability_slot(db, slot_id)
-    if not success:
+    """
+    Delete a specific availability slot.
+    
+    If there are appointments booked in this time window, the request will fail
+    unless force=true is passed.
+    
+    With force=true, the slot will be deleted but affected appointments
+    will need to be rescheduled manually.
+    """
+    result = await DoctorService.delete_availability_slot(db, slot_id, force=force)
+    
+    if not result['success']:
+        if result.get('error') == 'Slot not found':
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="Availability slot not found"
+            )
+        
+        # Return conflict info with 409 status
         raise HTTPException(
-            status_code=status.HTTP_404_NOT_FOUND,
-            detail="Availability slot not found"
+            status_code=status.HTTP_409_CONFLICT,
+            detail={
+                "message": result.get('message', 'Conflict detected'),
+                "has_conflicts": result.get('has_conflicts'),
+                "affected_count": result.get('affected_count'),
+                "affected_appointments": result.get('affected_appointments')
+            }
         )
+    
+    return AvailabilityDeleteResponse(
+        success=True,
+        message="Slot deleted successfully",
+        affected_appointments=result.get('affected_appointments')
+    )
 
 
 # ============== Specializations (Public) ==============

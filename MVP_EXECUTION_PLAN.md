@@ -14,14 +14,14 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 |-------|--------|------------|----------|----------|
 | Phase 1: Foundation | ✅ Completed | Dec 3, 2025 | Dec 3, 2025 | 100% |
 | Phase 2: Doctor Ecosystem | ✅ Completed | Dec 3, 2025 | Dec 3, 2025 | 100% |
-| Phase 3: Appointment Booking | 🔵 In Progress | Dec 5, 2025 | - | 25% |
+| Phase 3: Appointment Booking | 🔵 In Progress | Dec 5, 2025 | - | 35% |
 | Phase 4: Payments | ⚪ Not Started | - | - | 0% |
 | Phase 5: Video Consultation | ⚪ Not Started | - | - | 0% |
 | Phase 6: Prescription & EHR | ⚪ Not Started | - | - | 0% |
 | Phase 7: Admin Panel | ⚪ Not Started | - | - | 0% |
 | Phase 8: Polish & Launch | ⚪ Not Started | - | - | 0% |
 
-**Overall Progress:** 28% Complete (Phase 1-2 done, Phase 3 started)
+**Overall Progress:** 30% Complete (Phase 1-2 done, Phase 3 at 35%)
 
 ### Additional Enhancements (Beyond MVP Scope) ✨
 - [x] AI Writing Assistant - Bio generation with OpenAI GPT-4o
@@ -39,6 +39,9 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Application History Timeline - Visual timeline of doctor application status changes
 - [x] Automatic Logout on 401 - Graceful logout when token expires instead of error messages
 - [x] Auth Fetch Wrapper - Centralized fetch with token refresh and 401 handling
+- [x] Doctor Availability Toggle - Online/offline status toggle with API persistence
+- [x] Availability Conflict Management - Detects bookings when modifying/deleting availability slots
+- [x] Availability Page UX - Back to Dashboard button, conditional Save button display
 
 ### Phase 1 Completed Tasks ✅
 - [x] Project Setup - React + TypeScript + TailwindCSS frontend
@@ -165,6 +168,9 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 
 ### Phase 3 In Progress Tasks 🔵
 - [x] Bookable Slots API - GET /api/v1/doctors/{doctor_id}/bookable-slots endpoint
+- [x] Availability Conflict Detection API - POST /api/v1/doctors/me/availability/check-conflicts
+- [x] Slot Modification Conflict Handling - Returns 409 with affected appointments when bookings exist
+- [x] Slot Deletion Conflict Handling - Prevents deletion of slots with booked appointments
 - [ ] Patient Booking Page - UI for selecting doctor and booking slots
 - [ ] Appointment Confirmation - Booking confirmation and notifications
 

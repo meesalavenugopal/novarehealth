@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useCallback } from 'react';
-import { useAuthStore } from '../../store/authStore';
 import { Button, Card } from '../../components/ui';
 import { Navbar } from '../../components/layout';
 import { authFetch } from '../../services/api';
@@ -64,7 +63,6 @@ interface Stats {
 }
 
 export const AdminDashboard: React.FC = () => {
-  const { user } = useAuthStore();
   const [pendingDoctors, setPendingDoctors] = useState<PendingDoctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');

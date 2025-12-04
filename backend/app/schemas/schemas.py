@@ -205,6 +205,36 @@ class AvailabilitySlotResponse(BaseModel):
         from_attributes = True
 
 
+class AffectedAppointment(BaseModel):
+    appointment_id: int
+    date: str
+    time: str
+    patient_id: Optional[int] = None
+    status: Optional[str] = None
+
+
+class AvailabilityConflictInfo(BaseModel):
+    has_conflicts: bool
+    affected_count: int
+    affected_appointments: List[AffectedAppointment]
+
+
+class AvailabilityUpdateResponse(BaseModel):
+    success: bool
+    message: Optional[str] = None
+    slots: Optional[List[AvailabilitySlotResponse]] = None
+    conflicts: Optional[AvailabilityConflictInfo] = None
+
+
+class AvailabilityDeleteResponse(BaseModel):
+    success: bool
+    message: Optional[str] = None
+    has_conflicts: Optional[bool] = None
+    affected_count: Optional[int] = None
+    affected_appointments: Optional[List[AffectedAppointment]] = None
+    error: Optional[str] = None
+
+
 # ============== Bookable Slots Schemas ==============
 
 class BookableSlot(BaseModel):

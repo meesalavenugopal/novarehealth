@@ -444,7 +444,7 @@ export const DoctorRegisterPage: React.FC = () => {
   const removeLanguage = (lang: string) => {
     setFormData({
       ...formData,
-      languages: formData.languages.filter(l => l !== lang),
+      languages: formData.languages.filter((l: string) => l !== lang),
     });
   };
 
@@ -461,7 +461,7 @@ export const DoctorRegisterPage: React.FC = () => {
   const removeEducation = (index: number) => {
     setFormData({
       ...formData,
-      education: formData.education.filter((_, i) => i !== index),
+      education: formData.education.filter((_: Education, i: number) => i !== index),
     });
   };
 
@@ -1169,7 +1169,7 @@ export const DoctorRegisterPage: React.FC = () => {
         {/* Selected Languages */}
         {formData.languages.length > 0 && (
           <div className="flex flex-wrap gap-2">
-            {formData.languages.map((lang) => (
+            {formData.languages.map((lang: string) => (
               <span
                 key={lang}
                 className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-cyan-50 text-cyan-700 text-sm font-medium border border-cyan-100"
@@ -1297,7 +1297,7 @@ export const DoctorRegisterPage: React.FC = () => {
       {formData.education.length > 0 && (
         <div className="space-y-3">
           <p className="text-sm font-medium text-slate-700">Added Qualifications</p>
-          {formData.education.map((edu, index) => (
+          {formData.education.map((edu: Education, index: number) => (
             <div
               key={index}
               className="flex items-center justify-between p-4 bg-white rounded-xl border border-slate-200"
