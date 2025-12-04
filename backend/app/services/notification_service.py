@@ -104,6 +104,38 @@ class NotificationService:
             f"Our team will review the changes shortly."
         )
         return await self.send_sms(phone, message)
+    
+    async def notify_account_suspended(
+        self,
+        phone: str,
+        reason: Optional[str] = None,
+        doctor_name: Optional[str] = None
+    ) -> bool:
+        """Notify doctor that their account has been suspended."""
+        name = doctor_name or "Doctor"
+        message = (
+            f"NovareHealth Account Update\n\n"
+            f"Dear {name}, your account has been temporarily suspended"
+        )
+        if reason:
+            message += f".\n\nReason: {reason}"
+        message += "\n\nPlease contact support for more information."
+        return await self.send_sms(phone, message)
+    
+    async def notify_account_reinstated(
+        self,
+        phone: str,
+        doctor_name: Optional[str] = None
+    ) -> bool:
+        """Notify doctor that their account suspension has been lifted."""
+        name = doctor_name or "Doctor"
+        message = (
+            f"NovareHealth Good News! 🎉\n\n"
+            f"Dear {name}, your account suspension has been lifted. "
+            f"You can now log in and continue accepting patients.\n\n"
+            f"Thank you for your patience."
+        )
+        return await self.send_sms(phone, message)
 
 
 # Singleton instance

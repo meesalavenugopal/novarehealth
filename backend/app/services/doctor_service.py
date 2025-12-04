@@ -386,6 +386,76 @@ class DoctorService:
         
         return doctor
     
+    @staticmethod
+    async def suspend_doctor(
+        db: AsyncSession,
+        doctor_id: int,
+        reason: Optional[str] = None
+    ) -> Doctor:
+        """Suspend a verified doctor (admin action)"""
+        doctor = await DoctorService.get_doctor_by_id(db, doctor_id)
+        if not doctor:
+            raise ValueError("Doctor not found")
+        
+        if doctor.verification_status != VerificationStatus.VERIFIED:
+            raise ValueError("Only verified doctors can be suspended")
+        
+        # We'll use a new status or mark them as unavailable
+        # For now, let's set is_available to False and add a suspension flag
+        doctor.is_available = False
+        doctor.rejection_reason = f"[SUSPENDED] {reason}" if reason else "[SUSPENDED]"
+        doctor.updated_at = datetime.utcnow()
+        
+        await db.commit()
+        await db.refresh(doctor)
+        
+        # Log admin action
+        await DoctorService.add_application_history(
+            db,
+            doctor_id,
+            event_type="status_changed",
+            event_title="Account Suspended",
+            event_description=reason or "Your account has been temporarily suspended by admin.",
+            metadata={"action": "suspended", "reason": reason},
+            performed_by="admin"
+        )
+        
+        return doctor
+    
+    @staticmethod
+    async def unsuspend_doctor(
+        db: AsyncSession,
+        doctor_id: int
+    ) -> Doctor:
+        """Unsuspend a suspended doctor (admin action)"""
+        doctor = await DoctorService.get_doctor_by_id(db, doctor_id)
+        if not doctor:
+            raise ValueError("Doctor not found")
+        
+        if not doctor.rejection_reason or not doctor.rejection_reason.startswith("[SUSPENDED]"):
+            raise ValueError("Doctor is not suspended")
+        
+        # Remove suspension
+        doctor.is_available = True
+        doctor.rejection_reason = None
+        doctor.updated_at = datetime.utcnow()
+        
+        await db.commit()
+        await db.refresh(doctor)
+        
+        # Log admin action
+        await DoctorService.add_application_history(
+            db,
+            doctor_id,
+            event_type="status_changed",
+            event_title="Account Reinstated",
+            event_description="Your account suspension has been lifted. You can now accept patients again.",
+            metadata={"action": "unsuspended"},
+            performed_by="admin"
+        )
+        
+        return doctor
+    
     # ============== Availability Management ==============
     
     @staticmethod

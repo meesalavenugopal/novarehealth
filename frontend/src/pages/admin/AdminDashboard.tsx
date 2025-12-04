@@ -24,6 +24,9 @@ import {
   GraduationCap,
   Languages,
   Search,
+  Ban,
+  RotateCcw,
+  ShieldCheck,
 } from 'lucide-react';
 
 interface Doctor {
@@ -76,6 +79,8 @@ export const AdminDashboard: React.FC = () => {
   const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
+  const [showSuspendModal, setShowSuspendModal] = useState(false);
+  const [suspendReason, setSuspendReason] = useState('');
   const [expandedDoctor, setExpandedDoctor] = useState<number | null>(null);
   const [activeTab, setActiveTab] = useState<TabType>('pending');
   const [searchQuery, setSearchQuery] = useState('');
@@ -194,6 +199,86 @@ export const AdminDashboard: React.FC = () => {
     setShowRejectModal(true);
   };
 
+  const openSuspendModal = (doctor: Doctor) => {
+    setSelectedDoctor(doctor);
+    setShowSuspendModal(true);
+  };
+
+  const handleSuspend = async () => {
+    if (!selectedDoctor) return;
+
+    try {
+      setActionLoading(selectedDoctor.id);
+      const params = new URLSearchParams();
+      if (suspendReason) {
+        params.append('reason', suspendReason);
+      }
+
+      const url = 'http://localhost:8000/api/v1/admin/doctors/' + selectedDoctor.id + '/suspend?' + params.toString();
+      const response = await authFetch(url, { method: 'POST' });
+
+      if (!response.ok) {
+        throw new Error('Failed to suspend doctor');
+      }
+
+      await fetchDoctors();
+      await fetchStats();
+      setShowSuspendModal(false);
+      setSelectedDoctor(null);
+      setSuspendReason('');
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to suspend doctor';
+      setError(errorMessage);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleUnsuspend = async (doctorId: number) => {
+    try {
+      setActionLoading(doctorId);
+      const url = 'http://localhost:8000/api/v1/admin/doctors/' + doctorId + '/unsuspend';
+      const response = await authFetch(url, { method: 'POST' });
+
+      if (!response.ok) {
+        throw new Error('Failed to unsuspend doctor');
+      }
+
+      await fetchDoctors();
+      await fetchStats();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to unsuspend doctor';
+      setError(errorMessage);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const handleReApprove = async (doctorId: number) => {
+    try {
+      setActionLoading(doctorId);
+      const url = 'http://localhost:8000/api/v1/admin/doctors/' + doctorId + '/verify?approved=true';
+      const response = await authFetch(url, { method: 'POST' });
+
+      if (!response.ok) {
+        throw new Error('Failed to re-approve doctor');
+      }
+
+      await fetchDoctors();
+      await fetchStats();
+    } catch (err) {
+      const errorMessage = err instanceof Error ? err.message : 'Failed to re-approve doctor';
+      setError(errorMessage);
+    } finally {
+      setActionLoading(null);
+    }
+  };
+
+  const isSuspended = (doctor: Doctor) => {
+    return doctor.verification_status === 'verified' && 
+           doctor.rejection_reason?.startsWith('[SUSPENDED]');
+  };
+
   const formatDate = (dateString: string | undefined) => {
     if (!dateString) return 'N/A';
     const date = new Date(dateString);
@@ -209,7 +294,16 @@ export const AdminDashboard: React.FC = () => {
     setExpandedDoctor(expandedDoctor === doctorId ? null : doctorId);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, doctor?: Doctor) => {
+    // Check if doctor is suspended (verified but has [SUSPENDED] in rejection_reason)
+    if (doctor && isSuspended(doctor)) {
+      return (
+        <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-xs font-medium rounded-full">
+          Suspended
+        </span>
+      );
+    }
+    
     switch (status) {
       case 'pending':
         return (
@@ -428,7 +522,7 @@ export const AdminDashboard: React.FC = () => {
                             <h3 className="font-semibold text-gray-900">
                               Dr. {doctor.user?.first_name || 'Unknown'} {doctor.user?.last_name || ''}
                             </h3>
-                            {getStatusBadge(doctor.verification_status)}
+                            {getStatusBadge(doctor.verification_status, doctor)}
                           </div>
                           <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
                             <span>{doctor.specialization?.name || 'General Practice'}</span>
@@ -473,6 +567,66 @@ export const AdminDashboard: React.FC = () => {
                               Reject
                             </Button>
                           </>
+                        )}
+                        {/* Verified doctors - can be suspended */}
+                        {doctor.verification_status === 'verified' && !isSuspended(doctor) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              openSuspendModal(doctor);
+                            }}
+                            disabled={actionLoading === doctor.id}
+                            className="flex items-center gap-1 text-orange-600 border-orange-200 hover:bg-orange-50"
+                          >
+                            {actionLoading === doctor.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <Ban className="w-4 h-4" />
+                            )}
+                            Suspend
+                          </Button>
+                        )}
+                        {/* Suspended doctors - can be unsuspended */}
+                        {isSuspended(doctor) && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              handleUnsuspend(doctor.id);
+                            }}
+                            disabled={actionLoading === doctor.id}
+                            className="flex items-center gap-1 text-green-600 border-green-200 hover:bg-green-50"
+                          >
+                            {actionLoading === doctor.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <ShieldCheck className="w-4 h-4" />
+                            )}
+                            Unsuspend
+                          </Button>
+                        )}
+                        {/* Rejected doctors - can be re-approved */}
+                        {doctor.verification_status === 'rejected' && (
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={(e: React.MouseEvent) => {
+                              e.stopPropagation();
+                              handleReApprove(doctor.id);
+                            }}
+                            disabled={actionLoading === doctor.id}
+                            className="flex items-center gap-1 text-green-600 border-green-200 hover:bg-green-50"
+                          >
+                            {actionLoading === doctor.id ? (
+                              <Loader2 className="w-4 h-4 animate-spin" />
+                            ) : (
+                              <RotateCcw className="w-4 h-4" />
+                            )}
+                            Re-Approve
+                          </Button>
                         )}
                         {expandedDoctor === doctor.id ? (
                           <ChevronUp className="w-5 h-5 text-gray-400" />
@@ -686,6 +840,64 @@ export const AdminDashboard: React.FC = () => {
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
                 ) : null}
                 Reject Doctor
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Suspend Modal */}
+      {showSuspendModal && selectedDoctor && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-orange-100 rounded-full flex items-center justify-center">
+                <Ban className="w-5 h-5 text-orange-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Suspend Doctor</h3>
+                <p className="text-sm text-gray-500">
+                  Dr. {selectedDoctor.user?.first_name} {selectedDoctor.user?.last_name}
+                </p>
+              </div>
+            </div>
+            <p className="text-sm text-gray-600 mb-4">
+              This will temporarily disable the doctor's ability to accept new patients. 
+              They will not be visible in search results.
+            </p>
+            <div className="mb-4">
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Reason for suspension (optional)
+              </label>
+              <textarea
+                value={suspendReason}
+                onChange={(e) => setSuspendReason(e.target.value)}
+                placeholder="Provide a reason for suspension..."
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-orange-500 focus:border-transparent resize-none"
+                rows={3}
+              />
+            </div>
+            <div className="flex gap-3">
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowSuspendModal(false);
+                  setSelectedDoctor(null);
+                  setSuspendReason('');
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+              <Button
+                onClick={handleSuspend}
+                disabled={actionLoading === selectedDoctor.id}
+                className="flex-1 bg-orange-600 hover:bg-orange-700 text-white"
+              >
+                {actionLoading === selectedDoctor.id ? (
+                  <Loader2 className="w-4 h-4 animate-spin mr-2" />
+                ) : null}
+                Suspend Doctor
               </Button>
             </div>
           </div>

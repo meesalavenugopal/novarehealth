@@ -120,6 +120,72 @@ async def verify_doctor(
         )
 
 
+@router.post("/doctors/{doctor_id}/suspend")
+async def suspend_doctor(
+    doctor_id: int,
+    background_tasks: BackgroundTasks,
+    reason: Optional[str] = Query(None, description="Reason for suspension"),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Suspend a verified doctor (Admin only)"""
+    try:
+        doctor = await DoctorService.suspend_doctor(db, doctor_id, reason)
+        
+        # Send notification to doctor
+        if doctor.user and doctor.user.phone:
+            doctor_name = f"Dr. {doctor.user.first_name}" if doctor.user.first_name else None
+            background_tasks.add_task(
+                notification_service.notify_account_suspended,
+                doctor.user.phone,
+                reason,
+                doctor_name
+            )
+        
+        return {
+            "message": "Doctor suspended successfully",
+            "doctor_id": doctor.id,
+            "status": "suspended"
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
+@router.post("/doctors/{doctor_id}/unsuspend")
+async def unsuspend_doctor(
+    doctor_id: int,
+    background_tasks: BackgroundTasks,
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Unsuspend a suspended doctor (Admin only)"""
+    try:
+        doctor = await DoctorService.unsuspend_doctor(db, doctor_id)
+        
+        # Send notification to doctor
+        if doctor.user and doctor.user.phone:
+            doctor_name = f"Dr. {doctor.user.first_name}" if doctor.user.first_name else None
+            background_tasks.add_task(
+                notification_service.notify_account_reinstated,
+                doctor.user.phone,
+                doctor_name
+            )
+        
+        return {
+            "message": "Doctor reinstated successfully",
+            "doctor_id": doctor.id,
+            "status": doctor.verification_status.value
+        }
+    except ValueError as e:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=str(e)
+        )
+
+
 # ============== Specialization Management (Admin Only) ==============
 
 @router.post("/specializations", response_model=SpecializationResponse)
