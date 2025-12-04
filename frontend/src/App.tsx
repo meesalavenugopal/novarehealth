@@ -18,6 +18,8 @@ import {
 } from './pages/doctor';
 import { AdminDashboard } from './pages/admin';
 import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage } from './pages/legal';
+import ConsultationRoomPage from './pages/common/consultation/ConsultationRoomPage';
+import ConsultationSummaryPage from './pages/common/consultation/ConsultationSummaryPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
 const queryClient = new QueryClient({
@@ -135,6 +137,24 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['doctor']}>
                 <AvailabilityPage />
+              </ProtectedRoute>
+            }
+          />
+          
+          {/* Video Consultation Routes (Protected - Patient and Doctor) */}
+          <Route
+            path="/consultation/:appointmentId"
+            element={
+              <ProtectedRoute allowedRoles={['patient', 'doctor']}>
+                <ConsultationRoomPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/consultation/:appointmentId/summary"
+            element={
+              <ProtectedRoute allowedRoles={['patient', 'doctor']}>
+                <ConsultationSummaryPage />
               </ProtectedRoute>
             }
           />
