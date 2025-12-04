@@ -427,7 +427,7 @@ export const DoctorDashboard: React.FC = () => {
                     </button>
                   </Link>
                   
-                  <Link to="/doctor/profile" className="block">
+                  <Link to="/profile" className="block">
                     <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 rounded-lg bg-purple-100 flex items-center justify-center">
                         <svg className="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -438,7 +438,7 @@ export const DoctorDashboard: React.FC = () => {
                     </button>
                   </Link>
                   
-                  <Link to="/doctor/earnings" className="block">
+                  <Link to="/appointments" className="block">
                     <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
                         <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
