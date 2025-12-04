@@ -24,6 +24,7 @@ class DoctorStats(BaseModel):
     rejected_doctors: int
     total_patients: int = 0
     total_appointments: int = 0
+    today_appointments: int = 0
 
 
 # ============== Dashboard Stats ==============

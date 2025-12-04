@@ -4,11 +4,12 @@ import { Navbar } from '../../components/layout';
 import { authFetch } from '../../services/api';
 import {
   Users,
-  UserCheck,
   UserX,
   Clock,
   Stethoscope,
   Calendar,
+  Filter,
+  X,
   CheckCircle,
   XCircle,
   FileText,
@@ -67,6 +68,12 @@ interface Stats {
   rejected_doctors: number;
   total_patients: number;
   total_appointments: number;
+  today_appointments: number;
+}
+
+interface Specialization {
+  id: number;
+  name: string;
 }
 
 type TabType = 'all' | 'pending' | 'verified' | 'rejected';
@@ -82,8 +89,12 @@ export const AdminDashboard: React.FC = () => {
   const [showSuspendModal, setShowSuspendModal] = useState(false);
   const [suspendReason, setSuspendReason] = useState('');
   const [expandedDoctor, setExpandedDoctor] = useState<number | null>(null);
-  const [activeTab, setActiveTab] = useState<TabType>('pending');
+  const [activeTab, setActiveTab] = useState<TabType>('all');
   const [searchQuery, setSearchQuery] = useState('');
+  const [specializations, setSpecializations] = useState<Specialization[]>([]);
+  const [selectedSpecialization, setSelectedSpecialization] = useState<string>('');
+  const [experienceFilter, setExperienceFilter] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
   const [stats, setStats] = useState<Stats>({
     total_doctors: 0,
     pending_doctors: 0,
@@ -91,6 +102,7 @@ export const AdminDashboard: React.FC = () => {
     rejected_doctors: 0,
     total_patients: 0,
     total_appointments: 0,
+    today_appointments: 0,
   });
 
   const fetchStats = useCallback(async () => {
@@ -102,6 +114,18 @@ export const AdminDashboard: React.FC = () => {
       }
     } catch (err) {
       console.error('Failed to fetch stats:', err);
+    }
+  }, []);
+
+  const fetchSpecializations = useCallback(async () => {
+    try {
+      const response = await fetch('http://localhost:8000/api/v1/doctors/specializations/all');
+      if (response.ok) {
+        const data = await response.json();
+        setSpecializations(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch specializations:', err);
     }
   }, []);
 
@@ -117,6 +141,9 @@ export const AdminDashboard: React.FC = () => {
       if (searchQuery) {
         params.append('search', searchQuery);
       }
+      if (selectedSpecialization) {
+        params.append('specialization_id', selectedSpecialization);
+      }
       params.append('limit', '100');
 
       const url = 'http://localhost:8000/api/v1/admin/doctors?' + params.toString();
@@ -126,7 +153,22 @@ export const AdminDashboard: React.FC = () => {
         throw new Error('Failed to fetch doctors');
       }
 
-      const data = await response.json();
+      let data = await response.json();
+      
+      // Apply experience filter on frontend
+      if (experienceFilter) {
+        data = data.filter((doctor: Doctor) => {
+          const exp = doctor.experience_years;
+          switch (experienceFilter) {
+            case '0-2': return exp >= 0 && exp <= 2;
+            case '3-5': return exp >= 3 && exp <= 5;
+            case '6-10': return exp >= 6 && exp <= 10;
+            case '10+': return exp > 10;
+            default: return true;
+          }
+        });
+      }
+      
       setDoctors(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
@@ -134,15 +176,24 @@ export const AdminDashboard: React.FC = () => {
     } finally {
       setLoading(false);
     }
-  }, [activeTab, searchQuery]);
+  }, [activeTab, searchQuery, selectedSpecialization, experienceFilter]);
 
   useEffect(() => {
     fetchStats();
-  }, [fetchStats]);
+    fetchSpecializations();
+  }, [fetchStats, fetchSpecializations]);
 
   useEffect(() => {
     fetchDoctors();
   }, [fetchDoctors]);
+
+  const clearFilters = () => {
+    setSelectedSpecialization('');
+    setExperienceFilter('');
+    setSearchQuery('');
+  };
+
+  const hasActiveFilters = selectedSpecialization || experienceFilter || searchQuery;
 
   const handleApprove = async (doctorId: number) => {
     try {
@@ -389,12 +440,10 @@ export const AdminDashboard: React.FC = () => {
               active={activeTab === 'pending'}
             />
             <StatCard
-              title="Verified Doctors"
-              value={stats.verified_doctors}
-              icon={<UserCheck className="w-6 h-6 text-green-600" />}
+              title="Today's Appointments"
+              value={stats.today_appointments}
+              icon={<Calendar className="w-6 h-6 text-green-600" />}
               color="bg-green-100"
-              onClick={() => setActiveTab('verified')}
-              active={activeTab === 'verified'}
             />
             <StatCard
               title="Total Patients"
@@ -430,9 +479,20 @@ export const AdminDashboard: React.FC = () => {
                     placeholder="Search doctors..."
                     value={searchQuery}
                     onChange={(e) => setSearchQuery(e.target.value)}
-                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent w-48"
                   />
                 </div>
+                <Button
+                  variant="outline"
+                  onClick={() => setShowFilters(!showFilters)}
+                  className={'flex items-center gap-2 ' + (hasActiveFilters ? 'border-cyan-500 text-cyan-600' : '')}
+                >
+                  <Filter className="w-4 h-4" />
+                  Filters
+                  {hasActiveFilters && (
+                    <span className="w-2 h-2 bg-cyan-500 rounded-full"></span>
+                  )}
+                </Button>
                 <Button
                   variant="outline"
                   onClick={() => { fetchDoctors(); fetchStats(); }}
@@ -443,6 +503,55 @@ export const AdminDashboard: React.FC = () => {
                 </Button>
               </div>
             </div>
+
+            {/* Filters Panel */}
+            {showFilters && (
+              <div className="mb-6 p-4 bg-gray-50 rounded-xl border border-gray-200">
+                <div className="flex flex-wrap items-center gap-4">
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Specialization</label>
+                    <select
+                      value={selectedSpecialization}
+                      onChange={(e) => setSelectedSpecialization(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">All Specializations</option>
+                      {specializations.map((spec) => (
+                        <option key={spec.id} value={spec.id.toString()}>
+                          {spec.name}
+                        </option>
+                      ))}
+                    </select>
+                  </div>
+                  <div className="flex-1 min-w-[200px]">
+                    <label className="block text-xs font-medium text-gray-500 mb-1">Experience</label>
+                    <select
+                      value={experienceFilter}
+                      onChange={(e) => setExperienceFilter(e.target.value)}
+                      className="w-full px-3 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white"
+                    >
+                      <option value="">All Experience</option>
+                      <option value="0-2">0-2 years</option>
+                      <option value="3-5">3-5 years</option>
+                      <option value="6-10">6-10 years</option>
+                      <option value="10+">10+ years</option>
+                    </select>
+                  </div>
+                  {hasActiveFilters && (
+                    <div className="min-w-[140px]">
+                      <label className="block text-xs font-medium text-transparent mb-1">Action</label>
+                      <button
+                        onClick={clearFilters}
+                        className="w-full flex items-center justify-center gap-2 px-4 py-2 text-sm font-medium text-gray-500 hover:text-gray-700 bg-gray-50 hover:bg-gray-100 border border-gray-200 rounded-lg transition-colors"
+                      >
+                        <X className="w-4 h-4" />
+                        Clear Filters
+                      </button>
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
 
             {/* Tabs */}
             <div className="border-b border-gray-200 mb-6">

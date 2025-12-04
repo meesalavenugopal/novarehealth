@@ -265,13 +265,23 @@ class DoctorService:
         )
         appointments_count = appointments_result.scalar() or 0
         
+        # Count today's appointments
+        today = date.today()
+        today_appointments_result = await db.execute(
+            select(func.count(Appointment.id)).where(
+                Appointment.scheduled_date == today
+            )
+        )
+        today_appointments_count = today_appointments_result.scalar() or 0
+        
         return {
             "total_doctors": total_doctors,
             "pending_doctors": pending_count,
             "verified_doctors": verified_count,
             "rejected_doctors": rejected_count,
             "total_patients": patients_count,
-            "total_appointments": appointments_count
+            "total_appointments": appointments_count,
+            "today_appointments": today_appointments_count
         }
     
     @staticmethod

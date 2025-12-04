@@ -18,10 +18,10 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 | Phase 4: Payments | ⚪ Not Started | - | - | 0% |
 | Phase 5: Video Consultation | ⚪ Not Started | - | - | 0% |
 | Phase 6: Prescription & EHR | ⚪ Not Started | - | - | 0% |
-| Phase 7: Admin Panel | 🔵 In Progress | Dec 4, 2025 | - | 40% |
+| Phase 7: Admin Panel | 🔵 In Progress | Dec 4, 2025 | - | 60% |
 | Phase 8: Polish & Launch | ⚪ Not Started | - | - | 0% |
 
-**Overall Progress:** 40% Complete (Phase 1-2 done, Phase 3 at 50%, Phase 7 at 40%)
+**Overall Progress:** 45% Complete (Phase 1-2 done, Phase 3 at 50%, Phase 7 at 60%)
 
 ### Additional Enhancements (Beyond MVP Scope) ✨
 - [x] AI Writing Assistant - Bio generation with OpenAI GPT-4o
@@ -328,6 +328,11 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Admin Dashboard UI - Stats cards, tabs, search, expandable doctor details
 - [x] Doctor Approve/Reject - Actions with optional rejection reason modal
 - [x] Clickable Card Component - Added onClick prop for interactive stat cards
+- [x] Today's Appointments Stat - Replaced "Verified Doctors" with actionable daily metric
+- [x] Suspend/Unsuspend Doctors - Admin can temporarily disable verified doctors
+- [x] Re-Approve Rejected Doctors - Admin can reinstate rejected doctors
+- [x] Doctor Filters - Specialization and Experience dropdowns with clear filters
+- [x] Global Select Styling - Custom dropdown caret positioning across all pages
 - [ ] Patient Management UI - Search and view patient details
 - [ ] Appointment Monitoring - View all appointments across platform
 - [ ] Specialization Management UI - Add/edit/delete specializations
