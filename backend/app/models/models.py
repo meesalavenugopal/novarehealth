@@ -328,7 +328,7 @@ class OTPVerification(Base):
     id = Column(Integer, primary_key=True, index=True)
     phone = Column(String(20), nullable=True)
     email = Column(String(255), nullable=True)
-    otp_code = Column(String(6), nullable=False)
+    otp_code = Column(String(50), nullable=False)  # Extended to support "TWILIO_MANAGED" placeholder
     purpose = Column(String(50), default="login")  # login, register, reset_password
     
     is_verified = Column(Boolean, default=False)

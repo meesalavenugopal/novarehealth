@@ -17,12 +17,27 @@ from app.core.security import (
 )
 
 
-def normalize_phone(phone: Optional[str]) -> Optional[str]:
-    """Normalize phone number by removing + prefix and non-digit characters."""
+def normalize_phone(phone: Optional[str], keep_plus: bool = False) -> Optional[str]:
+    """Normalize phone number.
+    
+    Args:
+        phone: The phone number to normalize
+        keep_plus: If True, keeps the + prefix for E.164 format (required by Twilio Verify)
+    """
     if not phone:
         return phone
-    # Remove + and any non-digit characters except the digits
-    return re.sub(r'[^\d]', '', phone)
+    
+    # Remove all non-digit characters except +
+    cleaned = re.sub(r'[^\d+]', '', phone)
+    
+    if keep_plus:
+        # Ensure E.164 format: +{country_code}{number}
+        if not cleaned.startswith('+'):
+            cleaned = '+' + cleaned
+        return cleaned
+    else:
+        # Remove + for local storage/comparison
+        return re.sub(r'[^\d]', '', cleaned)
 
 
 class AuthService:
@@ -50,19 +65,21 @@ class AuthService:
         if not phone and not email:
             raise ValueError("Either phone or email is required")
 
-        # Normalize phone number
-        phone = normalize_phone(phone)
+        # Normalize phone for storage (without +)
+        phone_normalized = normalize_phone(phone)
+        # E.164 format for Twilio (with +)
+        phone_e164 = normalize_phone(phone, keep_plus=True)
 
         # Use Twilio Verify service (Twilio generates OTP internally)
-        if phone and self.twilio_client and settings.TWILIO_VERIFY_SERVICE_SID:
+        if phone_normalized and self.twilio_client and settings.TWILIO_VERIFY_SERVICE_SID:
             try:
                 verification = self.twilio_client.verify.v2.services(
                     settings.TWILIO_VERIFY_SERVICE_SID
-                ).verifications.create(to=phone, channel="sms")
+                ).verifications.create(to=phone_e164, channel="sms")
                 
                 # Store record for tracking (no OTP code stored - Twilio manages it)
                 otp_record = OTPVerification(
-                    phone=phone,
+                    phone=phone_normalized,
                     email=email,
                     otp_code="TWILIO_MANAGED",  # Placeholder - Twilio handles OTP
                     purpose=purpose,
@@ -80,12 +97,12 @@ class AuthService:
                     raise e
 
         # Fallback: Send SMS directly with our own OTP (legacy method)
-        if phone and self.twilio_client and settings.TWILIO_PHONE_NUMBER:
+        if phone_normalized and self.twilio_client and settings.TWILIO_PHONE_NUMBER:
             otp_code = self._generate_otp()
             expires_at = datetime.utcnow() + timedelta(minutes=10)
             
             otp_record = OTPVerification(
-                phone=phone,
+                phone=phone_normalized,
                 email=email,
                 otp_code=otp_code,
                 purpose=purpose,
@@ -98,7 +115,7 @@ class AuthService:
                 message = self.twilio_client.messages.create(
                     body=f"Your NovareHealth verification code is: {otp_code}",
                     from_=settings.TWILIO_PHONE_NUMBER,
-                    to=phone
+                    to=phone_e164
                 )
                 return {"message": "OTP sent successfully", "sid": message.sid}
             except Exception as e:
@@ -110,7 +127,7 @@ class AuthService:
         expires_at = datetime.utcnow() + timedelta(minutes=10)
         
         otp_record = OTPVerification(
-            phone=phone,
+            phone=phone_normalized,
             email=email,
             otp_code=otp_code,
             purpose=purpose,
@@ -134,15 +151,17 @@ class AuthService:
         if not phone and not email:
             raise ValueError("Either phone or email is required")
 
-        # Normalize phone number
-        phone = normalize_phone(phone)
+        # Normalize phone for storage (without +)
+        phone_normalized = normalize_phone(phone)
+        # E.164 format for Twilio (with +)
+        phone_e164 = normalize_phone(phone, keep_plus=True)
 
         # Use Twilio Verify service for verification
-        if phone and self.twilio_client and settings.TWILIO_VERIFY_SERVICE_SID:
+        if phone_normalized and self.twilio_client and settings.TWILIO_VERIFY_SERVICE_SID:
             try:
                 verification_check = self.twilio_client.verify.v2.services(
                     settings.TWILIO_VERIFY_SERVICE_SID
-                ).verification_checks.create(to=phone, code=otp_code)
+                ).verification_checks.create(to=phone_e164, code=otp_code)
                 
                 if verification_check.status != "approved":
                     raise ValueError("Invalid or expired OTP")
@@ -153,7 +172,7 @@ class AuthService:
                 # In dev mode, fall through to local verification
 
         # Local OTP verification (for dev mode or legacy SMS)
-        if not (phone and self.twilio_client and settings.TWILIO_VERIFY_SERVICE_SID):
+        if not (phone_normalized and self.twilio_client and settings.TWILIO_VERIFY_SERVICE_SID):
             query = select(OTPVerification).where(
                 and_(
                     OTPVerification.otp_code == otp_code,
@@ -163,8 +182,8 @@ class AuthService:
                 )
             )
             
-            if phone:
-                query = query.where(OTPVerification.phone == phone)
+            if phone_normalized:
+                query = query.where(OTPVerification.phone == phone_normalized)
             if email:
                 query = query.where(OTPVerification.email == email)
 
@@ -180,8 +199,8 @@ class AuthService:
 
         # Find or create user
         user_query = select(User)
-        if phone:
-            user_query = user_query.where(User.phone == phone)
+        if phone_normalized:
+            user_query = user_query.where(User.phone == phone_normalized)
         if email:
             user_query = user_query.where(User.email == email)
 
@@ -192,7 +211,7 @@ class AuthService:
         if not user:
             # Create new user
             user = User(
-                phone=phone,
+                phone=phone_normalized,
                 email=email,
                 role=UserRole.PATIENT,
                 is_verified=True,
