@@ -1,6 +1,7 @@
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from pydantic import BaseModel
 
 from app.db.database import get_db
 from app.api.deps import get_current_admin
@@ -12,6 +13,53 @@ from app.schemas.schemas import (
 )
 
 router = APIRouter()
+
+
+# ============== Stats Schema ==============
+
+class DoctorStats(BaseModel):
+    total_doctors: int
+    pending_doctors: int
+    verified_doctors: int
+    rejected_doctors: int
+    total_patients: int = 0
+    total_appointments: int = 0
+
+
+# ============== Dashboard Stats ==============
+
+@router.get("/stats", response_model=DoctorStats)
+async def get_admin_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Get dashboard statistics (Admin only)"""
+    stats = await DoctorService.get_doctor_stats(db)
+    return stats
+
+
+# ============== Doctor Management (Admin Only) ==============
+
+@router.get("/doctors", response_model=List[DoctorResponse])
+async def get_all_doctors(
+    status: Optional[str] = Query(None, description="Filter by status: pending, verified, rejected"),
+    search: Optional[str] = Query(None, description="Search by name, email, or license number"),
+    specialization_id: Optional[int] = Query(None, description="Filter by specialization"),
+    skip: int = Query(0, ge=0),
+    limit: int = Query(20, ge=1, le=100),
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_admin)
+):
+    """Get all doctors with optional filters (Admin only)"""
+    doctors = await DoctorService.get_all_doctors_admin(
+        db, 
+        status=status, 
+        search=search,
+        specialization_id=specialization_id,
+        skip=skip, 
+        limit=limit
+    )
+    return doctors
 
 
 # ============== Doctor Verification (Admin Only) ==============

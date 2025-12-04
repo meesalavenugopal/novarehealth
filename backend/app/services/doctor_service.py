@@ -229,6 +229,97 @@ class DoctorService:
         return list(result.scalars().all())
     
     @staticmethod
+    async def get_doctor_stats(db: AsyncSession) -> Dict:
+        """Get doctor statistics for admin dashboard"""
+        from sqlalchemy import func
+        from app.models.models import Appointment
+        
+        # Count doctors by status
+        pending_result = await db.execute(
+            select(func.count(Doctor.id)).where(Doctor.verification_status == VerificationStatus.PENDING)
+        )
+        pending_count = pending_result.scalar() or 0
+        
+        verified_result = await db.execute(
+            select(func.count(Doctor.id)).where(Doctor.verification_status == VerificationStatus.VERIFIED)
+        )
+        verified_count = verified_result.scalar() or 0
+        
+        rejected_result = await db.execute(
+            select(func.count(Doctor.id)).where(Doctor.verification_status == VerificationStatus.REJECTED)
+        )
+        rejected_count = rejected_result.scalar() or 0
+        
+        total_doctors = pending_count + verified_count + rejected_count
+        
+        # Count patients (users with role PATIENT)
+        from app.models.models import UserRole
+        patients_result = await db.execute(
+            select(func.count(User.id)).where(User.role == UserRole.PATIENT)
+        )
+        patients_count = patients_result.scalar() or 0
+        
+        # Count appointments
+        appointments_result = await db.execute(
+            select(func.count(Appointment.id))
+        )
+        appointments_count = appointments_result.scalar() or 0
+        
+        return {
+            "total_doctors": total_doctors,
+            "pending_doctors": pending_count,
+            "verified_doctors": verified_count,
+            "rejected_doctors": rejected_count,
+            "total_patients": patients_count,
+            "total_appointments": appointments_count
+        }
+    
+    @staticmethod
+    async def get_all_doctors_admin(
+        db: AsyncSession,
+        status: Optional[str] = None,
+        search: Optional[str] = None,
+        specialization_id: Optional[int] = None,
+        skip: int = 0,
+        limit: int = 20
+    ) -> List[Doctor]:
+        """Get all doctors with filters (for admin)"""
+        query = select(Doctor).options(
+            selectinload(Doctor.user),
+            selectinload(Doctor.specialization)
+        )
+        
+        # Filter by verification status
+        if status:
+            status_map = {
+                "pending": VerificationStatus.PENDING,
+                "verified": VerificationStatus.VERIFIED,
+                "rejected": VerificationStatus.REJECTED
+            }
+            if status.lower() in status_map:
+                query = query.where(Doctor.verification_status == status_map[status.lower()])
+        
+        # Filter by specialization
+        if specialization_id:
+            query = query.where(Doctor.specialization_id == specialization_id)
+        
+        # Search by name, email, or license number
+        if search:
+            query = query.join(Doctor.user).where(
+                or_(
+                    User.first_name.ilike(f"%{search}%"),
+                    User.last_name.ilike(f"%{search}%"),
+                    User.email.ilike(f"%{search}%"),
+                    Doctor.license_number.ilike(f"%{search}%")
+                )
+            )
+        
+        query = query.order_by(desc(Doctor.created_at)).offset(skip).limit(limit)
+        
+        result = await db.execute(query)
+        return list(result.scalars().all())
+    
+    @staticmethod
     async def get_pending_doctors(
         db: AsyncSession,
         skip: int = 0,

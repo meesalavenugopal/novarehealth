@@ -9,7 +9,6 @@ import {
   Clock,
   Stethoscope,
   Calendar,
-  DollarSign,
   CheckCircle,
   XCircle,
   FileText,
@@ -17,7 +16,6 @@ import {
   Loader2,
   RefreshCw,
   AlertCircle,
-  Eye,
   ChevronDown,
   ChevronUp,
   Mail,
@@ -25,10 +23,10 @@ import {
   Award,
   GraduationCap,
   Languages,
-  Image,
+  Search,
 } from 'lucide-react';
 
-interface PendingDoctor {
+interface Doctor {
   id: number;
   user_id: number;
   user: {
@@ -53,6 +51,10 @@ interface PendingDoctor {
   government_id_url?: string;
   medical_certificate_url?: string;
   created_at: string;
+  verified_at?: string;
+  rejection_reason?: string;
+  rating?: number;
+  total_reviews?: number;
 }
 
 interface Stats {
@@ -60,69 +62,95 @@ interface Stats {
   pending_doctors: number;
   verified_doctors: number;
   rejected_doctors: number;
+  total_patients: number;
+  total_appointments: number;
 }
 
+type TabType = 'all' | 'pending' | 'verified' | 'rejected';
+
 export const AdminDashboard: React.FC = () => {
-  const [pendingDoctors, setPendingDoctors] = useState<PendingDoctor[]>([]);
+  const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionLoading, setActionLoading] = useState<number | null>(null);
-  const [selectedDoctor, setSelectedDoctor] = useState<PendingDoctor | null>(null);
+  const [selectedDoctor, setSelectedDoctor] = useState<Doctor | null>(null);
   const [rejectionReason, setRejectionReason] = useState('');
   const [showRejectModal, setShowRejectModal] = useState(false);
   const [expandedDoctor, setExpandedDoctor] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState<TabType>('pending');
+  const [searchQuery, setSearchQuery] = useState('');
   const [stats, setStats] = useState<Stats>({
     total_doctors: 0,
     pending_doctors: 0,
     verified_doctors: 0,
     rejected_doctors: 0,
+    total_patients: 0,
+    total_appointments: 0,
   });
 
-  const fetchPendingDoctors = useCallback(async () => {
+  const fetchStats = useCallback(async () => {
+    try {
+      const response = await authFetch('http://localhost:8000/api/v1/admin/stats');
+      if (response.ok) {
+        const data = await response.json();
+        setStats(data);
+      }
+    } catch (err) {
+      console.error('Failed to fetch stats:', err);
+    }
+  }, []);
+
+  const fetchDoctors = useCallback(async () => {
     try {
       setLoading(true);
-      const response = await authFetch('http://localhost:8000/api/v1/admin/doctors/pending');
+      setError('');
+      
+      const params = new URLSearchParams();
+      if (activeTab !== 'all') {
+        params.append('status', activeTab);
+      }
+      if (searchQuery) {
+        params.append('search', searchQuery);
+      }
+      params.append('limit', '100');
+
+      const url = 'http://localhost:8000/api/v1/admin/doctors?' + params.toString();
+      const response = await authFetch(url);
 
       if (!response.ok) {
-        throw new Error('Failed to fetch pending doctors');
+        throw new Error('Failed to fetch doctors');
       }
 
       const data = await response.json();
-      setPendingDoctors(data);
-      setStats(prev => ({ ...prev, pending_doctors: data.length }));
+      setDoctors(data);
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to load data';
       setError(errorMessage);
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [activeTab, searchQuery]);
 
   useEffect(() => {
-    fetchPendingDoctors();
-  }, [fetchPendingDoctors]);
+    fetchStats();
+  }, [fetchStats]);
+
+  useEffect(() => {
+    fetchDoctors();
+  }, [fetchDoctors]);
 
   const handleApprove = async (doctorId: number) => {
     try {
       setActionLoading(doctorId);
-      const response = await authFetch(
-        `http://localhost:8000/api/v1/admin/doctors/${doctorId}/verify?approved=true`,
-        {
-          method: 'POST',
-        }
-      );
+      const url = 'http://localhost:8000/api/v1/admin/doctors/' + doctorId + '/verify?approved=true';
+      const response = await authFetch(url, { method: 'POST' });
 
       if (!response.ok) {
         throw new Error('Failed to approve doctor');
       }
 
-      // Remove from pending list
-      setPendingDoctors(prev => prev.filter(d => d.id !== doctorId));
-      setStats(prev => ({
-        ...prev,
-        pending_doctors: prev.pending_doctors - 1,
-        verified_doctors: prev.verified_doctors + 1,
-      }));
+      await fetchDoctors();
+      await fetchStats();
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to approve doctor';
       setError(errorMessage);
@@ -136,29 +164,20 @@ export const AdminDashboard: React.FC = () => {
 
     try {
       setActionLoading(selectedDoctor.id);
-      const params = new URLSearchParams({
-        approved: 'false',
-        ...(rejectionReason && { rejection_reason: rejectionReason }),
-      });
+      const params = new URLSearchParams({ approved: 'false' });
+      if (rejectionReason) {
+        params.append('rejection_reason', rejectionReason);
+      }
 
-      const response = await authFetch(
-        `http://localhost:8000/api/v1/admin/doctors/${selectedDoctor.id}/verify?${params}`,
-        {
-          method: 'POST',
-        }
-      );
+      const url = 'http://localhost:8000/api/v1/admin/doctors/' + selectedDoctor.id + '/verify?' + params.toString();
+      const response = await authFetch(url, { method: 'POST' });
 
       if (!response.ok) {
         throw new Error('Failed to reject doctor');
       }
 
-      // Remove from pending list
-      setPendingDoctors(prev => prev.filter(d => d.id !== selectedDoctor.id));
-      setStats(prev => ({
-        ...prev,
-        pending_doctors: prev.pending_doctors - 1,
-        rejected_doctors: prev.rejected_doctors + 1,
-      }));
+      await fetchDoctors();
+      await fetchStats();
       setShowRejectModal(false);
       setSelectedDoctor(null);
       setRejectionReason('');
@@ -170,7 +189,7 @@ export const AdminDashboard: React.FC = () => {
     }
   };
 
-  const openRejectModal = (doctor: PendingDoctor) => {
+  const openRejectModal = (doctor: Doctor) => {
     setSelectedDoctor(doctor);
     setShowRejectModal(true);
   };
@@ -190,29 +209,68 @@ export const AdminDashboard: React.FC = () => {
     setExpandedDoctor(expandedDoctor === doctorId ? null : doctorId);
   };
 
+  const getStatusBadge = (status: string) => {
+    switch (status) {
+      case 'pending':
+        return (
+          <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
+            Pending
+          </span>
+        );
+      case 'verified':
+        return (
+          <span className="px-2 py-0.5 bg-green-100 text-green-700 text-xs font-medium rounded-full">
+            Verified
+          </span>
+        );
+      case 'rejected':
+        return (
+          <span className="px-2 py-0.5 bg-red-100 text-red-700 text-xs font-medium rounded-full">
+            Rejected
+          </span>
+        );
+      default:
+        return null;
+    }
+  };
+
   const StatCard = ({
     title,
     value,
     icon,
     color,
+    onClick,
+    active,
   }: {
     title: string;
     value: number;
     icon: React.ReactNode;
     color: string;
+    onClick?: () => void;
+    active?: boolean;
   }) => (
-    <Card className="p-6">
+    <Card 
+      className={'p-6 cursor-pointer transition-all ' + (onClick ? 'hover:shadow-md ' : '') + (active ? 'ring-2 ring-cyan-500 ring-offset-2' : '')}
+      onClick={onClick}
+    >
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-gray-500">{title}</p>
           <p className="text-2xl font-bold text-gray-900 mt-1">{value}</p>
         </div>
-        <div className={`w-12 h-12 rounded-xl flex items-center justify-center ${color}`}>
+        <div className={'w-12 h-12 rounded-xl flex items-center justify-center ' + color}>
           {icon}
         </div>
       </div>
     </Card>
   );
+
+  const tabs: { id: TabType; label: string; count: number }[] = [
+    { id: 'all', label: 'All Doctors', count: stats.total_doctors },
+    { id: 'pending', label: 'Pending', count: stats.pending_doctors },
+    { id: 'verified', label: 'Verified', count: stats.verified_doctors },
+    { id: 'rejected', label: 'Rejected', count: stats.rejected_doctors },
+  ];
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -233,473 +291,380 @@ export const AdminDashboard: React.FC = () => {
               value={stats.pending_doctors}
               icon={<Clock className="w-6 h-6 text-amber-600" />}
               color="bg-amber-100"
+              onClick={() => setActiveTab('pending')}
+              active={activeTab === 'pending'}
             />
             <StatCard
               title="Verified Doctors"
               value={stats.verified_doctors}
               icon={<UserCheck className="w-6 h-6 text-green-600" />}
               color="bg-green-100"
+              onClick={() => setActiveTab('verified')}
+              active={activeTab === 'verified'}
             />
             <StatCard
-              title="Rejected"
-              value={stats.rejected_doctors}
-              icon={<UserX className="w-6 h-6 text-red-600" />}
-              color="bg-red-100"
-            />
-            <StatCard
-              title="Total Doctors"
-              value={stats.total_doctors}
-              icon={<Stethoscope className="w-6 h-6 text-cyan-600" />}
+              title="Total Patients"
+              value={stats.total_patients}
+              icon={<Users className="w-6 h-6 text-cyan-600" />}
               color="bg-cyan-100"
+            />
+            <StatCard
+              title="Total Appointments"
+              value={stats.total_appointments}
+              icon={<Calendar className="w-6 h-6 text-purple-600" />}
+              color="bg-purple-100"
             />
           </div>
 
-          {/* Pending Doctors Section */}
+          {/* Manage Doctors Section */}
           <Card className="p-6">
-            <div className="flex items-center justify-between mb-6">
-              <div>
-                <h2 className="text-xl font-semibold text-gray-900">Pending Doctor Verifications</h2>
-                <p className="text-sm text-gray-500 mt-1">
-                  Review and approve doctor applications
-                </p>
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 bg-cyan-100 rounded-xl flex items-center justify-center">
+                  <Stethoscope className="w-5 h-5 text-cyan-600" />
+                </div>
+                <div>
+                  <h2 className="text-xl font-bold text-gray-900">Manage Doctors</h2>
+                  <p className="text-sm text-gray-500">Review and manage doctor registrations</p>
+                </div>
               </div>
-              <Button
-                variant="outline"
-                onClick={fetchPendingDoctors}
-                disabled={loading}
-              >
-                <RefreshCw className={`w-4 h-4 mr-2 ${loading ? 'animate-spin' : ''}`} />
-                Refresh
-              </Button>
+              <div className="flex items-center gap-3">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-gray-400" />
+                  <input
+                    type="text"
+                    placeholder="Search doctors..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    className="pl-10 pr-4 py-2 border border-gray-200 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  />
+                </div>
+                <Button
+                  variant="outline"
+                  onClick={() => { fetchDoctors(); fetchStats(); }}
+                  className="flex items-center gap-2"
+                >
+                  <RefreshCw className="w-4 h-4" />
+                  Refresh
+                </Button>
+              </div>
             </div>
 
+            {/* Tabs */}
+            <div className="border-b border-gray-200 mb-6">
+              <div className="flex gap-1">
+                {tabs.map((tab) => (
+                  <button
+                    key={tab.id}
+                    onClick={() => setActiveTab(tab.id)}
+                    className={'px-4 py-3 text-sm font-medium border-b-2 transition-colors ' + 
+                      (activeTab === tab.id
+                        ? 'text-cyan-600 border-cyan-600'
+                        : 'text-gray-500 border-transparent hover:text-gray-700 hover:border-gray-300')}
+                  >
+                    {tab.label}
+                    <span className={'ml-2 px-2 py-0.5 text-xs rounded-full ' + 
+                      (activeTab === tab.id
+                        ? 'bg-cyan-100 text-cyan-600'
+                        : 'bg-gray-100 text-gray-500')}>
+                      {tab.count}
+                    </span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Error Message */}
             {error && (
-              <div className="bg-red-50 border border-red-200 rounded-lg p-4 mb-6 flex items-center gap-3">
-                <AlertCircle className="w-5 h-5 text-red-600" />
-                <p className="text-red-700">{error}</p>
+              <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-xl flex items-center gap-3 text-red-700">
+                <AlertCircle className="w-5 h-5 flex-shrink-0" />
+                <p>{error}</p>
               </div>
             )}
 
+            {/* Loading State */}
             {loading ? (
               <div className="flex items-center justify-center py-12">
-                <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
+                <Loader2 className="w-8 h-8 text-cyan-600 animate-spin" />
+                <span className="ml-3 text-gray-600">Loading doctors...</span>
               </div>
-            ) : pendingDoctors.length === 0 ? (
+            ) : doctors.length === 0 ? (
               <div className="text-center py-12">
-                <div className="w-16 h-16 bg-green-100 rounded-full flex items-center justify-center mx-auto mb-4">
-                  <CheckCircle className="w-8 h-8 text-green-600" />
+                <div className="w-16 h-16 bg-gray-100 rounded-full flex items-center justify-center mx-auto mb-4">
+                  <Users className="w-8 h-8 text-gray-400" />
                 </div>
-                <h3 className="text-lg font-medium text-gray-900 mb-2">All caught up!</h3>
-                <p className="text-gray-500">No pending doctor verifications at the moment.</p>
+                <h3 className="text-lg font-medium text-gray-900 mb-1">No Doctors Found</h3>
+                <p className="text-gray-500">
+                  {searchQuery 
+                    ? 'No doctors match your search criteria' 
+                    : activeTab === 'pending'
+                    ? 'There are no pending doctor verifications'
+                    : activeTab === 'verified'
+                    ? 'No doctors have been verified yet'
+                    : activeTab === 'rejected'
+                    ? 'No doctors have been rejected'
+                    : 'No doctors registered yet'}
+                </p>
               </div>
             ) : (
               <div className="space-y-4">
-                {pendingDoctors.map((doctor) => (
+                {doctors.map((doctor) => (
                   <div
                     key={doctor.id}
-                    className="border border-gray-200 rounded-xl p-5 hover:border-gray-300 transition-colors"
+                    className="border border-gray-200 rounded-xl overflow-hidden hover:border-gray-300 transition-colors"
                   >
-                    <div className="flex flex-col lg:flex-row lg:items-start lg:justify-between gap-4">
-                      {/* Doctor Info */}
-                      <div className="flex-1">
-                        <div className="flex items-start gap-4">
-                          <div className="w-12 h-12 bg-cyan-100 rounded-full flex items-center justify-center shrink-0">
-                            <Stethoscope className="w-6 h-6 text-cyan-600" />
+                    {/* Doctor Header */}
+                    <div
+                      className="p-4 flex items-center justify-between cursor-pointer bg-white hover:bg-gray-50"
+                      onClick={() => toggleExpand(doctor.id)}
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-gradient-to-br from-cyan-500 to-cyan-600 rounded-full flex items-center justify-center text-white font-semibold">
+                          {(doctor.user?.first_name?.[0] || 'D').toUpperCase()}
+                          {(doctor.user?.last_name?.[0] || '').toUpperCase()}
+                        </div>
+                        <div>
+                          <div className="flex items-center gap-2">
+                            <h3 className="font-semibold text-gray-900">
+                              Dr. {doctor.user?.first_name || 'Unknown'} {doctor.user?.last_name || ''}
+                            </h3>
+                            {getStatusBadge(doctor.verification_status)}
                           </div>
-                          <div className="flex-1">
-                            <div className="flex items-center gap-2 flex-wrap">
-                              <h3 className="font-semibold text-gray-900">
-                                {doctor.user?.first_name && doctor.user?.last_name
-                                  ? `Dr. ${doctor.user.first_name} ${doctor.user.last_name}`
-                                  : `Doctor #${doctor.id}`}
-                              </h3>
-                              <span className="px-2 py-0.5 bg-amber-100 text-amber-700 text-xs font-medium rounded-full">
-                                Pending
-                              </span>
-                            </div>
-                            <p className="text-sm text-gray-500 mt-1">
-                              {doctor.specialization?.name || 'Specialization not set'}
-                            </p>
-
-                            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 mt-4 text-sm">
-                              <div>
-                                <span className="text-gray-500">Phone:</span>{' '}
-                                <span className="text-gray-900">{doctor.user?.phone || 'N/A'}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">License:</span>{' '}
-                                <span className="text-gray-900">{doctor.license_number}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Experience:</span>{' '}
-                                <span className="text-gray-900">{doctor.experience_years} years</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Fee:</span>{' '}
-                                <span className="text-gray-900">{doctor.consultation_fee} MZN</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Applied:</span>{' '}
-                                <span className="text-gray-900">{formatDate(doctor.created_at)}</span>
-                              </div>
-                              <div>
-                                <span className="text-gray-500">Languages:</span>{' '}
-                                <span className="text-gray-900">
-                                  {doctor.languages?.join(', ') || 'N/A'}
-                                </span>
-                              </div>
-                            </div>
-
-                            {/* Education */}
-                            {doctor.education && doctor.education.length > 0 && (
-                              <div className="mt-3">
-                                <span className="text-sm text-gray-500">Education:</span>
-                                <div className="flex flex-wrap gap-2 mt-1">
-                                  {doctor.education.map((edu, idx) => (
-                                    <span
-                                      key={idx}
-                                      className="px-2 py-1 bg-gray-100 text-gray-700 text-xs rounded"
-                                    >
-                                      {edu.degree} - {edu.institution} ({edu.year})
-                                    </span>
-                                  ))}
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Bio (collapsed view) */}
-                            {doctor.bio && expandedDoctor !== doctor.id && (
-                              <div className="mt-3">
-                                <span className="text-sm text-gray-500">Bio:</span>
-                                <p className="text-sm text-gray-700 mt-1 line-clamp-2">
-                                  {doctor.bio}
-                                </p>
-                              </div>
-                            )}
-
-                            {/* View Details Toggle */}
-                            <button
-                              onClick={() => toggleExpand(doctor.id)}
-                              className="mt-4 inline-flex items-center gap-2 text-sm font-medium text-cyan-600 hover:text-cyan-700 transition-colors"
-                            >
-                              <Eye className="w-4 h-4" />
-                              {expandedDoctor === doctor.id ? 'Hide Details' : 'View Full Details'}
-                              {expandedDoctor === doctor.id ? (
-                                <ChevronUp className="w-4 h-4" />
-                              ) : (
-                                <ChevronDown className="w-4 h-4" />
-                              )}
-                            </button>
-
-                            {/* Expanded Details Section */}
-                            {expandedDoctor === doctor.id && (
-                              <div className="mt-4 pt-4 border-t border-gray-200 space-y-6">
-                                {/* Contact Information */}
-                                <div>
-                                  <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                    <Phone className="w-4 h-4" />
-                                    Contact Information
-                                  </h4>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-sm">
-                                    <div className="flex items-center gap-2">
-                                      <Phone className="w-4 h-4 text-gray-400" />
-                                      <span className="text-gray-500">Phone:</span>
-                                      <span className="text-gray-900">{doctor.user?.phone || 'N/A'}</span>
-                                    </div>
-                                    <div className="flex items-center gap-2">
-                                      <Mail className="w-4 h-4 text-gray-400" />
-                                      <span className="text-gray-500">Email:</span>
-                                      <span className="text-gray-900">{doctor.user?.email || 'N/A'}</span>
-                                    </div>
-                                  </div>
-                                </div>
-
-                                {/* Full Bio */}
-                                {doctor.bio && (
-                                  <div>
-                                    <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                                      <FileText className="w-4 h-4" />
-                                      Full Bio
-                                    </h4>
-                                    <p className="text-sm text-gray-700 bg-gray-50 p-3 rounded-lg">
-                                      {doctor.bio}
-                                    </p>
-                                  </div>
-                                )}
-
-                                {/* Complete Education */}
-                                {doctor.education && doctor.education.length > 0 && (
-                                  <div>
-                                    <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                      <GraduationCap className="w-4 h-4" />
-                                      Education & Qualifications
-                                    </h4>
-                                    <div className="space-y-2">
-                                      {doctor.education.map((edu, idx) => (
-                                        <div
-                                          key={idx}
-                                          className="flex items-start gap-3 p-3 bg-gray-50 rounded-lg"
-                                        >
-                                          <Award className="w-5 h-5 text-cyan-500 mt-0.5" />
-                                          <div>
-                                            <p className="font-medium text-gray-900">{edu.degree}</p>
-                                            <p className="text-sm text-gray-600">{edu.institution}</p>
-                                            <p className="text-xs text-gray-500">Graduated: {edu.year}</p>
-                                          </div>
-                                        </div>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Languages */}
-                                {doctor.languages && doctor.languages.length > 0 && (
-                                  <div>
-                                    <h4 className="text-sm font-semibold text-gray-900 mb-2 flex items-center gap-2">
-                                      <Languages className="w-4 h-4" />
-                                      Languages Spoken
-                                    </h4>
-                                    <div className="flex flex-wrap gap-2">
-                                      {doctor.languages.map((lang, idx) => (
-                                        <span
-                                          key={idx}
-                                          className="px-3 py-1 bg-cyan-50 text-cyan-700 text-sm rounded-full"
-                                        >
-                                          {lang}
-                                        </span>
-                                      ))}
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Documents with Preview */}
-                                <div>
-                                  <h4 className="text-sm font-semibold text-gray-900 mb-3 flex items-center gap-2">
-                                    <Image className="w-4 h-4" />
-                                    Uploaded Documents
-                                  </h4>
-                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                    {/* Government ID */}
-                                    {doctor.government_id_url ? (
-                                      <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                        <div className="bg-blue-50 px-4 py-2 flex items-center justify-between">
-                                          <span className="text-sm font-medium text-blue-700 flex items-center gap-2">
-                                            <FileText className="w-4 h-4" />
-                                            Government ID
-                                          </span>
-                                          <a
-                                            href={`http://localhost:8000${doctor.government_id_url}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-blue-600 hover:text-blue-800"
-                                          >
-                                            <ExternalLink className="w-4 h-4" />
-                                          </a>
-                                        </div>
-                                        <a
-                                          href={`http://localhost:8000${doctor.government_id_url}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="block"
-                                        >
-                                          <img
-                                            src={`http://localhost:8000${doctor.government_id_url}`}
-                                            alt="Government ID"
-                                            className="w-full h-40 object-cover hover:opacity-90 transition-opacity"
-                                            onError={(e) => {
-                                              (e.target as HTMLImageElement).src = '';
-                                              (e.target as HTMLImageElement).alt = 'Failed to load image';
-                                              (e.target as HTMLImageElement).className = 'w-full h-40 bg-gray-100 flex items-center justify-center';
-                                            }}
-                                          />
-                                        </a>
-                                      </div>
-                                    ) : (
-                                      <div className="border border-dashed border-gray-300 rounded-lg p-8 text-center">
-                                        <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-400">No Government ID uploaded</p>
-                                      </div>
-                                    )}
-
-                                    {/* Medical Certificate */}
-                                    {doctor.medical_certificate_url ? (
-                                      <div className="border border-gray-200 rounded-lg overflow-hidden">
-                                        <div className="bg-purple-50 px-4 py-2 flex items-center justify-between">
-                                          <span className="text-sm font-medium text-purple-700 flex items-center gap-2">
-                                            <FileText className="w-4 h-4" />
-                                            Medical Certificate
-                                          </span>
-                                          <a
-                                            href={`http://localhost:8000${doctor.medical_certificate_url}`}
-                                            target="_blank"
-                                            rel="noopener noreferrer"
-                                            className="text-purple-600 hover:text-purple-800"
-                                          >
-                                            <ExternalLink className="w-4 h-4" />
-                                          </a>
-                                        </div>
-                                        <a
-                                          href={`http://localhost:8000${doctor.medical_certificate_url}`}
-                                          target="_blank"
-                                          rel="noopener noreferrer"
-                                          className="block"
-                                        >
-                                          <img
-                                            src={`http://localhost:8000${doctor.medical_certificate_url}`}
-                                            alt="Medical Certificate"
-                                            className="w-full h-40 object-cover hover:opacity-90 transition-opacity"
-                                            onError={(e) => {
-                                              (e.target as HTMLImageElement).src = '';
-                                              (e.target as HTMLImageElement).alt = 'Failed to load image';
-                                              (e.target as HTMLImageElement).className = 'w-full h-40 bg-gray-100 flex items-center justify-center';
-                                            }}
-                                          />
-                                        </a>
-                                      </div>
-                                    ) : (
-                                      <div className="border border-dashed border-gray-300 rounded-lg p-8 text-center">
-                                        <FileText className="w-8 h-8 text-gray-300 mx-auto mb-2" />
-                                        <p className="text-sm text-gray-400">No Medical Certificate uploaded</p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-                              </div>
-                            )}
-
-                            {/* Quick Document Links (collapsed view) */}
-                            {expandedDoctor !== doctor.id && (
-                              <div className="flex flex-wrap gap-3 mt-4">
-                                {doctor.government_id_url && (
-                                  <a
-                                    href={`http://localhost:8000${doctor.government_id_url}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-blue-50 text-blue-700 text-sm rounded-lg hover:bg-blue-100 transition-colors"
-                                  >
-                                    <FileText className="w-4 h-4" />
-                                    Government ID
-                                    <ExternalLink className="w-3 h-3" />
-                                  </a>
-                                )}
-                                {doctor.medical_certificate_url && (
-                                  <a
-                                    href={`http://localhost:8000${doctor.medical_certificate_url}`}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center gap-1.5 px-3 py-1.5 bg-purple-50 text-purple-700 text-sm rounded-lg hover:bg-purple-100 transition-colors"
-                                  >
-                                    <FileText className="w-4 h-4" />
-                                    Medical Certificate
-                                    <ExternalLink className="w-3 h-3" />
-                                  </a>
-                                )}
-                              </div>
-                            )}
+                          <div className="flex items-center gap-3 text-sm text-gray-500 mt-1">
+                            <span>{doctor.specialization?.name || 'General Practice'}</span>
+                            <span>•</span>
+                            <span>{doctor.experience_years} years exp.</span>
+                            <span>•</span>
+                            <span>₹{doctor.consultation_fee}</span>
                           </div>
                         </div>
                       </div>
-
-                      {/* Actions */}
-                      <div className="flex gap-3 lg:flex-col">
-                        <Button
-                          onClick={() => handleApprove(doctor.id)}
-                          disabled={actionLoading === doctor.id}
-                          className="flex-1 lg:flex-none"
-                        >
-                          {actionLoading === doctor.id ? (
-                            <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                          ) : (
-                            <CheckCircle className="w-4 h-4 mr-2" />
-                          )}
-                          Approve
-                        </Button>
-                        <Button
-                          variant="outline"
-                          onClick={() => openRejectModal(doctor)}
-                          disabled={actionLoading === doctor.id}
-                          className="flex-1 lg:flex-none text-red-600 border-red-200 hover:bg-red-50"
-                        >
-                          <XCircle className="w-4 h-4 mr-2" />
-                          Reject
-                        </Button>
+                      <div className="flex items-center gap-3">
+                        {doctor.verification_status === 'pending' && (
+                          <>
+                            <Button
+                              variant="primary"
+                              size="sm"
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                handleApprove(doctor.id);
+                              }}
+                              disabled={actionLoading === doctor.id}
+                              className="flex items-center gap-1"
+                            >
+                              {actionLoading === doctor.id ? (
+                                <Loader2 className="w-4 h-4 animate-spin" />
+                              ) : (
+                                <CheckCircle className="w-4 h-4" />
+                              )}
+                              Approve
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              onClick={(e: React.MouseEvent) => {
+                                e.stopPropagation();
+                                openRejectModal(doctor);
+                              }}
+                              disabled={actionLoading === doctor.id}
+                              className="flex items-center gap-1 text-red-600 border-red-200 hover:bg-red-50"
+                            >
+                              <XCircle className="w-4 h-4" />
+                              Reject
+                            </Button>
+                          </>
+                        )}
+                        {expandedDoctor === doctor.id ? (
+                          <ChevronUp className="w-5 h-5 text-gray-400" />
+                        ) : (
+                          <ChevronDown className="w-5 h-5 text-gray-400" />
+                        )}
                       </div>
                     </div>
+
+                    {/* Expanded Details */}
+                    {expandedDoctor === doctor.id && (
+                      <div className="border-t border-gray-200 p-4 bg-gray-50">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                          {/* Contact Info */}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                              <Mail className="w-4 h-4 text-gray-400" />
+                              Contact Information
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              <p className="flex items-center gap-2 text-gray-600">
+                                <Phone className="w-4 h-4 text-gray-400" />
+                                {doctor.user?.phone || 'N/A'}
+                              </p>
+                              <p className="flex items-center gap-2 text-gray-600">
+                                <Mail className="w-4 h-4 text-gray-400" />
+                                {doctor.user?.email || 'N/A'}
+                              </p>
+                            </div>
+                          </div>
+
+                          {/* License Info */}
+                          <div>
+                            <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                              <Award className="w-4 h-4 text-gray-400" />
+                              License Details
+                            </h4>
+                            <div className="space-y-2 text-sm">
+                              <p className="text-gray-600">
+                                <span className="text-gray-500">License #:</span> {doctor.license_number}
+                              </p>
+                              <p className="text-gray-600">
+                                <span className="text-gray-500">Registered:</span> {formatDate(doctor.created_at)}
+                              </p>
+                              {doctor.verified_at && (
+                                <p className="text-gray-600">
+                                  <span className="text-gray-500">Verified:</span> {formatDate(doctor.verified_at)}
+                                </p>
+                              )}
+                            </div>
+                          </div>
+
+                          {/* Education */}
+                          {doctor.education && doctor.education.length > 0 && (
+                            <div>
+                              <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                                <GraduationCap className="w-4 h-4 text-gray-400" />
+                                Education
+                              </h4>
+                              <div className="space-y-2">
+                                {doctor.education.map((edu, idx) => (
+                                  <div key={idx} className="text-sm text-gray-600">
+                                    <p className="font-medium">{edu.degree}</p>
+                                    <p className="text-gray-500">{edu.institution} • {edu.year}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Languages */}
+                          {doctor.languages && doctor.languages.length > 0 && (
+                            <div>
+                              <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                                <Languages className="w-4 h-4 text-gray-400" />
+                                Languages
+                              </h4>
+                              <div className="flex flex-wrap gap-2">
+                                {doctor.languages.map((lang, idx) => (
+                                  <span
+                                    key={idx}
+                                    className="px-2 py-1 bg-gray-100 text-gray-600 text-xs rounded-full"
+                                  >
+                                    {lang}
+                                  </span>
+                                ))}
+                              </div>
+                            </div>
+                          )}
+
+                          {/* Bio */}
+                          {doctor.bio && (
+                            <div className="md:col-span-2">
+                              <h4 className="font-medium text-gray-900 mb-3">About</h4>
+                              <p className="text-sm text-gray-600">{doctor.bio}</p>
+                            </div>
+                          )}
+
+                          {/* Rejection Reason */}
+                          {doctor.verification_status === 'rejected' && doctor.rejection_reason && (
+                            <div className="md:col-span-2">
+                              <h4 className="font-medium text-red-600 mb-3 flex items-center gap-2">
+                                <XCircle className="w-4 h-4" />
+                                Rejection Reason
+                              </h4>
+                              <p className="text-sm text-red-600 bg-red-50 p-3 rounded-lg">
+                                {doctor.rejection_reason}
+                              </p>
+                            </div>
+                          )}
+
+                          {/* Documents */}
+                          <div className="md:col-span-2">
+                            <h4 className="font-medium text-gray-900 mb-3 flex items-center gap-2">
+                              <FileText className="w-4 h-4 text-gray-400" />
+                              Verification Documents
+                            </h4>
+                            <div className="flex flex-wrap gap-3">
+                              {doctor.government_id_url ? (
+                                <a
+                                  href={doctor.government_id_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  Government ID
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                <span className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm text-gray-400">
+                                  <FileText className="w-4 h-4" />
+                                  No Government ID
+                                </span>
+                              )}
+                              {doctor.medical_certificate_url ? (
+                                <a
+                                  href={doctor.medical_certificate_url}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="flex items-center gap-2 px-3 py-2 bg-white border border-gray-200 rounded-lg text-sm text-gray-600 hover:bg-gray-50 transition-colors"
+                                >
+                                  <FileText className="w-4 h-4" />
+                                  Medical Certificate
+                                  <ExternalLink className="w-3 h-3" />
+                                </a>
+                              ) : (
+                                <span className="flex items-center gap-2 px-3 py-2 bg-gray-100 rounded-lg text-sm text-gray-400">
+                                  <FileText className="w-4 h-4" />
+                                  No Medical Certificate
+                                </span>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 ))}
               </div>
             )}
           </Card>
-
-          {/* Quick Links */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-8">
-            <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center">
-                  <Users className="w-6 h-6 text-cyan-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">All Doctors</h3>
-                  <p className="text-sm text-gray-500">View and manage all doctors</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-purple-100 rounded-xl flex items-center justify-center">
-                  <Calendar className="w-6 h-6 text-purple-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Appointments</h3>
-                  <p className="text-sm text-gray-500">Monitor all appointments</p>
-                </div>
-              </div>
-            </Card>
-
-            <Card className="p-6 hover:shadow-md transition-shadow cursor-pointer">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 bg-green-100 rounded-xl flex items-center justify-center">
-                  <DollarSign className="w-6 h-6 text-green-600" />
-                </div>
-                <div>
-                  <h3 className="font-semibold text-gray-900">Payments</h3>
-                  <p className="text-sm text-gray-500">Track all transactions</p>
-                </div>
-              </div>
-            </Card>
-          </div>
         </div>
       </main>
 
       {/* Reject Modal */}
       {showRejectModal && selectedDoctor && (
         <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
-          <Card className="w-full max-w-md p-6">
-            <h3 className="text-lg font-semibold text-gray-900 mb-2">Reject Application</h3>
-            <p className="text-gray-600 text-sm mb-4">
-              Are you sure you want to reject the application from{' '}
-              <strong>
-                {selectedDoctor.user?.first_name
-                  ? `Dr. ${selectedDoctor.user.first_name}`
-                  : `Doctor #${selectedDoctor.id}`}
-              </strong>
-              ?
-            </p>
-
+          <div className="bg-white rounded-2xl max-w-md w-full p-6">
+            <div className="flex items-center gap-3 mb-4">
+              <div className="w-10 h-10 bg-red-100 rounded-full flex items-center justify-center">
+                <UserX className="w-5 h-5 text-red-600" />
+              </div>
+              <div>
+                <h3 className="font-semibold text-gray-900">Reject Doctor</h3>
+                <p className="text-sm text-gray-500">
+                  Dr. {selectedDoctor.user?.first_name} {selectedDoctor.user?.last_name}
+                </p>
+              </div>
+            </div>
             <div className="mb-4">
               <label className="block text-sm font-medium text-gray-700 mb-2">
-                Rejection Reason (optional)
+                Reason for rejection (optional)
               </label>
               <textarea
                 value={rejectionReason}
                 onChange={(e) => setRejectionReason(e.target.value)}
                 placeholder="Provide a reason for rejection..."
-                className="w-full px-3 py-2 border border-gray-300 rounded-lg focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
+                className="w-full px-4 py-3 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 focus:border-transparent resize-none"
                 rows={3}
               />
             </div>
-
             <div className="flex gap-3">
               <Button
                 variant="outline"
@@ -715,17 +680,15 @@ export const AdminDashboard: React.FC = () => {
               <Button
                 onClick={handleReject}
                 disabled={actionLoading === selectedDoctor.id}
-                className="flex-1 bg-red-600 hover:bg-red-700"
+                className="flex-1 bg-red-600 hover:bg-red-700 text-white"
               >
                 {actionLoading === selectedDoctor.id ? (
                   <Loader2 className="w-4 h-4 animate-spin mr-2" />
-                ) : (
-                  <XCircle className="w-4 h-4 mr-2" />
-                )}
-                Reject
+                ) : null}
+                Reject Doctor
               </Button>
             </div>
-          </Card>
+          </div>
         </div>
       )}
     </div>
