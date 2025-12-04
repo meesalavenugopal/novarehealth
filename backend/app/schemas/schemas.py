@@ -100,6 +100,8 @@ class DoctorCreate(DoctorBase):
 
 class DoctorUpdate(DoctorBase):
     is_available: Optional[bool] = None
+    government_id_url: Optional[str] = None
+    medical_certificate_url: Optional[str] = None
 
 
 class DoctorResponse(BaseModel):
@@ -114,11 +116,17 @@ class DoctorResponse(BaseModel):
     bio: Optional[str] = None
     consultation_fee: float
     consultation_duration: int
+    government_id_url: Optional[str] = None
+    medical_certificate_url: Optional[str] = None
     verification_status: str
+    verified_at: Optional[datetime] = None
+    rejection_reason: Optional[str] = None
     rating: float
     total_reviews: int
     total_consultations: int
     is_available: bool
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
     user: Optional[UserResponse] = None
 
     class Config:

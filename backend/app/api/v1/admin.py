@@ -1,11 +1,12 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
 from app.api.deps import get_current_admin
 from app.models.models import User
 from app.services.doctor_service import DoctorService, SpecializationService
+from app.services.notification_service import notification_service
 from app.schemas.schemas import (
     DoctorResponse, SpecializationCreate, SpecializationResponse
 )
@@ -30,6 +31,7 @@ async def get_pending_doctors(
 @router.post("/doctors/{doctor_id}/verify")
 async def verify_doctor(
     doctor_id: int,
+    background_tasks: BackgroundTasks,
     approved: bool = Query(..., description="Whether to approve or reject"),
     rejection_reason: Optional[str] = Query(None, description="Reason for rejection"),
     db: AsyncSession = Depends(get_db),
@@ -40,6 +42,24 @@ async def verify_doctor(
         doctor = await DoctorService.verify_doctor(
             db, doctor_id, approved, rejection_reason
         )
+        
+        # Send notification to doctor
+        if doctor.user and doctor.user.phone:
+            doctor_name = f"Dr. {doctor.user.first_name}" if doctor.user.first_name else None
+            if approved:
+                background_tasks.add_task(
+                    notification_service.notify_application_approved,
+                    doctor.user.phone,
+                    doctor_name
+                )
+            else:
+                background_tasks.add_task(
+                    notification_service.notify_application_rejected,
+                    doctor.user.phone,
+                    rejection_reason,
+                    doctor_name
+                )
+        
         return {
             "message": "Doctor verified successfully" if approved else "Doctor registration rejected",
             "doctor_id": doctor.id,

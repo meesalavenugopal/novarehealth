@@ -1,11 +1,12 @@
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.db.database import get_db
 from app.api.deps import get_current_user, require_role
 from app.models.models import User, UserRole
 from app.services.doctor_service import DoctorService, SpecializationService
+from app.services.notification_service import notification_service
 from app.schemas.schemas import (
     DoctorCreate, DoctorUpdate, DoctorResponse, DoctorListResponse,
     AvailabilitySlotCreate, AvailabilitySlotResponse,
@@ -20,6 +21,7 @@ router = APIRouter()
 @router.post("/register", response_model=DoctorResponse, status_code=status.HTTP_201_CREATED)
 async def register_as_doctor(
     doctor_data: DoctorCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -31,6 +33,16 @@ async def register_as_doctor(
         doctor = await DoctorService.create_doctor_profile(
             db, current_user.id, doctor_data
         )
+        
+        # Send notification in background
+        if current_user.phone:
+            doctor_name = f"Dr. {current_user.first_name}" if current_user.first_name else None
+            background_tasks.add_task(
+                notification_service.notify_application_received,
+                current_user.phone,
+                doctor_name
+            )
+        
         return doctor
     except ValueError as e:
         raise HTTPException(
@@ -57,6 +69,7 @@ async def get_my_doctor_profile(
 @router.put("/me", response_model=DoctorResponse)
 async def update_my_doctor_profile(
     doctor_data: DoctorUpdate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(require_role([UserRole.DOCTOR]))
 ):
@@ -68,10 +81,25 @@ async def update_my_doctor_profile(
             detail="Doctor profile not found"
         )
     
+    # Only allow updates if pending verification
+    if doctor.verification_status != "pending":
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="Cannot update profile after verification is complete"
+        )
+    
     try:
         updated_doctor = await DoctorService.update_doctor_profile(
             db, doctor.id, doctor_data
         )
+        
+        # Send notification in background
+        if current_user.phone:
+            background_tasks.add_task(
+                notification_service.notify_application_updated,
+                current_user.phone
+            )
+        
         return updated_doctor
     except ValueError as e:
         raise HTTPException(
