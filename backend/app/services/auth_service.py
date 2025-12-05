@@ -17,27 +17,68 @@ from app.core.security import (
 )
 
 
-def normalize_phone(phone: Optional[str], keep_plus: bool = False) -> Optional[str]:
-    """Normalize phone number.
+def normalize_phone_for_storage(phone: Optional[str], country_code: str = None) -> Optional[str]:
+    """
+    Normalize phone number for database storage.
+    
+    Format: digits only, with country code (e.g., 258841234567)
+    - No + prefix
+    - Includes country code
     
     Args:
         phone: The phone number to normalize
-        keep_plus: If True, keeps the + prefix for E.164 format (required by Twilio Verify)
+        country_code: Country code to use (defaults to settings.DEFAULT_COUNTRY_CODE)
     """
     if not phone:
         return phone
     
-    # Remove all non-digit characters except +
-    cleaned = re.sub(r'[^\d+]', '', phone)
+    cc = country_code or settings.DEFAULT_COUNTRY_CODE
     
+    # Remove all non-digit characters
+    digits = re.sub(r'\D', '', phone)
+    
+    # If too short, might be missing country code
+    if len(digits) <= 9:
+        digits = cc + digits
+    elif not digits.startswith(cc) and len(digits) < 12:
+        digits = cc + digits
+    
+    return digits
+
+
+def normalize_phone_e164(phone: Optional[str], country_code: str = None) -> Optional[str]:
+    """
+    Normalize phone number to E.164 format for Twilio.
+    
+    Format: +{country_code}{number} (e.g., +258841234567)
+    
+    Args:
+        phone: The phone number to normalize
+        country_code: Country code to use (defaults to settings.DEFAULT_COUNTRY_CODE)
+    """
+    if not phone:
+        return phone
+    
+    # First get the storage format (digits only with country code)
+    digits = normalize_phone_for_storage(phone, country_code)
+    
+    # Add + prefix for E.164
+    return f'+{digits}' if digits else None
+
+
+# Keep old function name for backward compatibility
+def normalize_phone(phone: Optional[str], keep_plus: bool = False, country_code: str = None) -> Optional[str]:
+    """
+    Normalize phone number (backward compatible wrapper).
+    
+    Args:
+        phone: The phone number to normalize
+        keep_plus: If True, returns E.164 format (+258841234567), else digits only
+        country_code: Country code to use (defaults to settings.DEFAULT_COUNTRY_CODE)
+    """
     if keep_plus:
-        # Ensure E.164 format: +{country_code}{number}
-        if not cleaned.startswith('+'):
-            cleaned = '+' + cleaned
-        return cleaned
-    else:
-        # Remove + for local storage/comparison
-        return re.sub(r'[^\d]', '', cleaned)
+        return normalize_phone_e164(phone, country_code)
+    return normalize_phone_for_storage(phone, country_code)
 
 
 class AuthService:

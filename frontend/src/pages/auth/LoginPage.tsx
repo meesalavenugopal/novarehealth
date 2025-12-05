@@ -21,9 +21,31 @@ import { authService } from '../../services/auth';
 import { useAuthStore } from '../../store/authStore';
 import Button from '../../components/ui/Button';
 import { getBookingContext, clearBookingContext } from '../../services/api';
+import config from '../../config';
 
+// Get country rules for validation messages
+const countryRules = config.phone.rules;
+
+// Strict phone validation schema using country-specific rules
 const phoneSchema = z.object({
-  phone: z.string().min(10, 'Please enter a valid phone number'),
+  phone: z.string()
+    .refine((val) => {
+      const digits = val.replace(/\D/g, '');
+      return digits.length >= config.phone.minLength;
+    }, `${countryRules.name} phone numbers must be ${countryRules.localLength} digits`)
+    .refine((val) => {
+      const digits = val.replace(/\D/g, '');
+      return digits.length <= config.phone.maxLength;
+    }, `${countryRules.name} phone numbers must be ${countryRules.localLength} digits`)
+    .refine((val) => {
+      const digits = val.replace(/\D/g, '');
+      // Validate prefix based on country rules
+      if (countryRules.validPrefixes.length > 0) {
+        const prefix = digits.slice(0, countryRules.prefixLength);
+        return countryRules.validPrefixes.some(p => prefix.startsWith(p));
+      }
+      return true;
+    }, countryRules.description),
 });
 
 const otpSchema = z.object({
@@ -39,6 +61,7 @@ export default function LoginPage() {
   const { setAuth } = useAuthStore();
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
   const [phone, setPhone] = useState('');
+  const [phoneDisplay, setPhoneDisplay] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState('');
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
@@ -54,6 +77,7 @@ export default function LoginPage() {
 
   const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
+    mode: 'onChange', // Validate on every change for real-time feedback
   });
 
   const otpForm = useForm<OTPFormData>({
@@ -67,12 +91,44 @@ export default function LoginPage() {
     }
   }, [step]);
 
+  // Handle phone input with formatting
+  const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const input = e.target.value;
+    // Only allow digits and spaces
+    const cleaned = input.replace(/[^\d\s]/g, '');
+    const digits = cleaned.replace(/\s/g, '');
+    
+    // Limit to max length
+    if (digits.length > config.phone.maxLength) {
+      return;
+    }
+    
+    // Format with spaces for display (XX XXX XXXX)
+    const formatted = config.phone.formatDisplay(digits);
+    setPhoneDisplay(formatted);
+    phoneForm.setValue('phone', digits, { shouldValidate: true });
+  };
+
+  // Normalize phone: prepend country code from config
+  const normalizePhone = (phone: string): string => {
+    const digitsOnly = phone.replace(/\D/g, '');
+    
+    // If already starts with country code, return as-is
+    if (digitsOnly.startsWith(config.phone.defaultCountryCode)) {
+      return digitsOnly;
+    }
+    
+    // Prepend country code from config
+    return `${config.phone.defaultCountryCode}${digitsOnly}`;
+  };
+
   const handleSendOTP = async (data: PhoneFormData) => {
     setIsLoading(true);
     setError('');
     try {
-      await authService.sendOTPPhone(data.phone);
-      setPhone(data.phone);
+      const normalizedPhone = normalizePhone(data.phone);
+      await authService.sendOTPPhone(normalizedPhone);
+      setPhone(normalizedPhone);
       setStep('otp');
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to send OTP. Please try again.');
@@ -310,15 +366,26 @@ export default function LoginPage() {
                     </label>
                     <div className="relative">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-slate-400">
-                        <span className="text-slate-600 font-medium">+258</span>
+                        <span className="text-slate-600 font-medium">{config.phone.displayPrefix}</span>
                         <div className="w-px h-6 bg-slate-200" />
                       </div>
                       <input
                         type="tel"
-                        placeholder="84 123 4567"
-                        className="w-full pl-20 pr-4 py-4 border-2 border-slate-200 rounded-xl focus:ring-0 focus:border-cyan-500 outline-none transition text-lg"
-                        {...phoneForm.register('phone')}
+                        placeholder={config.phone.placeholder}
+                        value={phoneDisplay}
+                        onChange={handlePhoneChange}
+                        className={`w-full pl-20 pr-4 py-4 border-2 rounded-xl focus:ring-0 outline-none transition text-lg tracking-wide ${
+                          phoneForm.formState.errors.phone 
+                            ? 'border-red-300 focus:border-red-500' 
+                            : phoneDisplay && !phoneForm.formState.errors.phone
+                              ? 'border-green-300 focus:border-green-500'
+                              : 'border-slate-200 focus:border-cyan-500'
+                        }`}
                       />
+                      {/* Character count indicator */}
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 text-xs text-slate-400">
+                        {phoneDisplay.replace(/\s/g, '').length}/{config.phone.maxLength}
+                      </div>
                     </div>
                     {phoneForm.formState.errors.phone && (
                       <p className="text-red-500 text-sm mt-2 flex items-center gap-1">
@@ -328,11 +395,16 @@ export default function LoginPage() {
                         {phoneForm.formState.errors.phone.message}
                       </p>
                     )}
+                    {/* Format hint */}
+                    <p className="text-slate-400 text-xs mt-2">
+                      Enter your {config.phone.maxLength}-digit mobile number (e.g., {config.phone.placeholder})
+                    </p>
                   </div>
 
                   <Button
                     type="submit"
                     isLoading={isLoading}
+                    disabled={!phoneForm.formState.isValid || phoneDisplay.replace(/\s/g, '').length !== config.phone.maxLength}
                     fullWidth
                     size="lg"
                     rightIcon={<ArrowRight className="w-5 h-5" />}
@@ -381,7 +453,7 @@ export default function LoginPage() {
                   <h2 className="text-2xl font-bold text-slate-900">Verify OTP</h2>
                   <p className="text-slate-500 mt-2">
                     Enter the 6-digit code sent to<br />
-                    <span className="font-medium text-slate-700">{phone}</span>
+                    <span className="font-medium text-slate-700">+{phone}</span>
                   </p>
                 </div>
 

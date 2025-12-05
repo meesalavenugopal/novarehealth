@@ -11,6 +11,7 @@ from app.schemas import (
     RefreshTokenRequest,
     UserResponse,
 )
+from app.schemas.schemas import get_supported_countries, get_country_rules, DEFAULT_COUNTRY_CODE
 
 router = APIRouter(prefix="/auth", tags=["Authentication"])
 
@@ -103,3 +104,23 @@ async def refresh_tokens(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail=str(e),
         )
+
+
+@router.get("/phone-config", summary="Get phone validation configuration")
+async def get_phone_config():
+    """
+    Get phone number validation configuration for the current market.
+    Returns country code, validation rules, and supported countries.
+    """
+    current_rules = get_country_rules(DEFAULT_COUNTRY_CODE)
+    
+    return {
+        "current": {
+            "country_code": DEFAULT_COUNTRY_CODE,
+            "name": current_rules["name"],
+            "local_length": current_rules["local_length"],
+            "valid_prefixes": current_rules.get("valid_prefixes", []),
+            "description": current_rules["description"]
+        },
+        "supported_countries": get_supported_countries()
+    }

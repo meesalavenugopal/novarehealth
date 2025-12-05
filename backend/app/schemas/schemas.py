@@ -1,7 +1,10 @@
 from datetime import datetime, date
-from typing import Optional, List, Any
-from pydantic import BaseModel, EmailStr, Field, validator
+from typing import Optional, List, Any, Dict
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from enum import Enum
+import re
+
+from app.core.config import settings
 
 
 class UserRole(str, Enum):
@@ -10,10 +13,212 @@ class UserRole(str, Enum):
     ADMIN = "admin"
 
 
+# Get country code from settings (configurable per market)
+DEFAULT_COUNTRY_CODE = settings.DEFAULT_COUNTRY_CODE  # e.g., "258" for Mozambique
+
+
+# ============== Country-Specific Phone Validation Rules ==============
+# Each country has specific rules for phone number validation
+COUNTRY_PHONE_RULES: Dict[str, Dict] = {
+    # Mozambique
+    "258": {
+        "name": "Mozambique",
+        "local_length": 9,
+        "valid_prefixes": ["82", "83", "84", "85", "86", "87"],  # Mobile operators
+        "prefix_length": 2,
+        "description": "Mobile numbers must start with 82, 83, 84, 85, 86, or 87"
+    },
+    # South Africa
+    "27": {
+        "name": "South Africa",
+        "local_length": 9,
+        "valid_prefixes": ["6", "7", "8"],  # Mobile numbers start with 6, 7, or 8
+        "prefix_length": 1,
+        "description": "Mobile numbers must start with 6, 7, or 8"
+    },
+    # Kenya
+    "254": {
+        "name": "Kenya",
+        "local_length": 9,
+        "valid_prefixes": ["7", "1"],  # Mobile: 7xx, 1xx
+        "prefix_length": 1,
+        "description": "Mobile numbers must start with 7 or 1"
+    },
+    # Nigeria
+    "234": {
+        "name": "Nigeria",
+        "local_length": 10,
+        "valid_prefixes": ["70", "80", "81", "90", "91"],  # Mobile prefixes
+        "prefix_length": 2,
+        "description": "Mobile numbers must start with 70, 80, 81, 90, or 91"
+    },
+    # Tanzania
+    "255": {
+        "name": "Tanzania",
+        "local_length": 9,
+        "valid_prefixes": ["6", "7"],  # Mobile numbers
+        "prefix_length": 1,
+        "description": "Mobile numbers must start with 6 or 7"
+    },
+    # Zimbabwe
+    "263": {
+        "name": "Zimbabwe",
+        "local_length": 9,
+        "valid_prefixes": ["71", "73", "77", "78"],  # Mobile operators
+        "prefix_length": 2,
+        "description": "Mobile numbers must start with 71, 73, 77, or 78"
+    },
+    # India
+    "91": {
+        "name": "India",
+        "local_length": 10,
+        "valid_prefixes": ["6", "7", "8", "9"],  # Mobile numbers
+        "prefix_length": 1,
+        "description": "Mobile numbers must start with 6, 7, 8, or 9"
+    },
+    # Brazil
+    "55": {
+        "name": "Brazil",
+        "local_length": 11,  # DDD + 9 digits
+        "valid_prefixes": ["9"],  # After DDD, mobile starts with 9
+        "prefix_length": 1,
+        "skip_prefix_positions": 2,  # Skip first 2 digits (DDD area code)
+        "description": "Mobile numbers must have 9 as the 3rd digit (after area code)"
+    },
+    # Default/fallback for unknown country codes
+    "default": {
+        "name": "Default",
+        "local_length": settings.PHONE_MIN_LENGTH,
+        "valid_prefixes": None,  # No prefix validation
+        "prefix_length": 0,
+        "description": "No specific prefix validation"
+    }
+}
+
+
+def get_country_rules(country_code: str) -> Dict:
+    """Get validation rules for a specific country code."""
+    return COUNTRY_PHONE_RULES.get(country_code, COUNTRY_PHONE_RULES["default"])
+
+
+def normalize_phone(phone: str, country_code: str = None) -> str:
+    """
+    Normalize phone number to consistent format: digits only, with country code.
+    
+    Storage format: {country_code}{local_number} (e.g., 258841234567)
+    - No + prefix
+    - Includes country code
+    
+    Args:
+        phone: The phone number to normalize
+        country_code: Country code to use (defaults to DEFAULT_COUNTRY_CODE from settings)
+    """
+    if not phone:
+        return phone
+    
+    cc = country_code or DEFAULT_COUNTRY_CODE
+    rules = get_country_rules(cc)
+    local_length = rules["local_length"]
+    
+    # Remove all non-digit characters
+    digits = re.sub(r'\D', '', phone)
+    
+    # If it's a local number (without country code), prepend it
+    if len(digits) <= local_length:
+        digits = cc + digits
+    elif not digits.startswith(cc) and len(digits) < len(cc) + local_length + 2:
+        # Might be a local number, prepend country code
+        digits = cc + digits
+    
+    return digits
+
+
+def validate_phone_format(phone: str, country_code: str = None) -> str:
+    """
+    Validate phone number format based on country-specific rules.
+    
+    Expected: Local number or full number with country code.
+    Normalizes to: {country_code}{local_number} format
+    
+    Args:
+        phone: The phone number to validate
+        country_code: Country code to use (defaults to DEFAULT_COUNTRY_CODE from settings)
+    
+    Raises:
+        ValueError: If phone number format is invalid for the country
+    """
+    cc = country_code or DEFAULT_COUNTRY_CODE
+    rules = get_country_rules(cc)
+    
+    # Normalize first
+    normalized = normalize_phone(phone, cc)
+    
+    # Must be all digits
+    if not normalized.isdigit():
+        raise ValueError('Phone number must contain only digits')
+    
+    # Get expected lengths
+    local_length = rules["local_length"]
+    expected_total_length = len(cc) + local_length
+    
+    # Validate length
+    if len(normalized) != expected_total_length:
+        actual_local_length = len(normalized) - len(cc)
+        raise ValueError(
+            f'{rules["name"]} phone numbers must be exactly {local_length} digits. '
+            f'Got {actual_local_length} digits.'
+        )
+    
+    # Extract local number
+    local_number = normalized[len(cc):]
+    
+    # Validate prefix if rules exist
+    valid_prefixes = rules.get("valid_prefixes")
+    if valid_prefixes:
+        prefix_length = rules.get("prefix_length", 1)
+        skip_positions = rules.get("skip_prefix_positions", 0)
+        
+        # Get the prefix to check (possibly skipping some positions like area codes)
+        check_from = skip_positions
+        prefix_to_check = local_number[check_from:check_from + prefix_length]
+        
+        # Check if prefix is valid
+        is_valid_prefix = any(
+            prefix_to_check.startswith(p) for p in valid_prefixes
+        )
+        
+        if not is_valid_prefix:
+            raise ValueError(
+                f'{rules["name"]}: {rules["description"]}. '
+                f'Got prefix "{prefix_to_check}".'
+            )
+    
+    return normalized
+
+
+def get_supported_countries() -> List[Dict]:
+    """Get list of supported countries with their validation rules."""
+    countries = []
+    for code, rules in COUNTRY_PHONE_RULES.items():
+        if code != "default":
+            countries.append({
+                "country_code": code,
+                "name": rules["name"],
+                "local_length": rules["local_length"],
+                "description": rules["description"]
+            })
+    return countries
+
+
 # ============== Auth Schemas ==============
 
 class PhoneLoginRequest(BaseModel):
-    phone: str = Field(..., min_length=10, max_length=20)
+    phone: str = Field(..., min_length=8, max_length=20, description="Phone number (will be normalized)")
+    
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v: str) -> str:
+        return validate_phone_format(v)
 
 
 class EmailLoginRequest(BaseModel):
@@ -24,6 +229,13 @@ class OTPVerifyRequest(BaseModel):
     phone: Optional[str] = None
     email: Optional[EmailStr] = None
     otp_code: str = Field(..., min_length=6, max_length=6)
+    
+    @field_validator('phone')
+    @classmethod
+    def validate_phone(cls, v: Optional[str]) -> Optional[str]:
+        if v is None:
+            return v
+        return validate_phone_format(v)
 
 
 class TokenResponse(BaseModel):
