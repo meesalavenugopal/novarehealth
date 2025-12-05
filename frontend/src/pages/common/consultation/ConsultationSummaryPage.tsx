@@ -22,6 +22,7 @@ import {
 import consultationService from '../../../services/consultation';
 import type { ConsultationStatusResponse } from '../../../services/consultation';
 import { getPrescriptionByAppointment, getPrescriptionPdfUrl, type PrescriptionDetail } from '../../../services/prescription';
+import { submitReview, getAppointmentReview } from '../../../services/reviews';
 import { useAuthStore } from '../../../store/authStore';
 import Button from '../../../components/ui/Button';
 import PrescriptionEditor from '../../../components/doctor/PrescriptionEditor';
@@ -40,6 +41,8 @@ export default function ConsultationSummaryPage() {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [submittingReview, setSubmittingReview] = useState(false);
+  const [reviewError, setReviewError] = useState<string | null>(null);
   const [showPrescriptionEditor, setShowPrescriptionEditor] = useState(false);
   const [prescriptionSaved, setPrescriptionSaved] = useState(false);
   const [existingPrescription, setExistingPrescription] = useState<PrescriptionDetail | null>(null);
@@ -124,6 +127,26 @@ export default function ConsultationSummaryPage() {
     fetchExistingPrescription();
   }, [appointmentId, isDoctor]);
 
+  // Check if patient already submitted a review
+  useEffect(() => {
+    const checkExistingReview = async () => {
+      if (!appointmentId || isDoctor) return;
+      
+      try {
+        const existingReview = await getAppointmentReview(parseInt(appointmentId));
+        if (existingReview) {
+          setRating(existingReview.rating);
+          setFeedback(existingReview.comment || '');
+          setSubmitted(true);
+        }
+      } catch (err) {
+        // Ignore - no review yet
+      }
+    };
+
+    checkExistingReview();
+  }, [appointmentId, isDoctor]);
+
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
@@ -144,8 +167,24 @@ export default function ConsultationSummaryPage() {
   };
 
   const handleSubmitFeedback = async () => {
-    // TODO: Implement feedback submission API
-    setSubmitted(true);
+    if (!appointmentId || rating === 0) return;
+    
+    setSubmittingReview(true);
+    setReviewError(null);
+    
+    try {
+      await submitReview({
+        appointment_id: parseInt(appointmentId),
+        rating,
+        comment: feedback.trim() || undefined,
+      });
+      setSubmitted(true);
+    } catch (err) {
+      const error = err as Error;
+      setReviewError(error.message || 'Failed to submit review');
+    } finally {
+      setSubmittingReview(false);
+    }
   };
 
   if (loading) {
@@ -321,6 +360,7 @@ export default function ConsultationSummaryPage() {
                   key={star}
                   onClick={() => setRating(star)}
                   className="transition-transform hover:scale-110"
+                  disabled={submittingReview}
                 >
                   <Star
                     className={`w-10 h-10 ${
@@ -339,16 +379,33 @@ export default function ConsultationSummaryPage() {
               placeholder="Share your feedback (optional)"
               className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
               rows={3}
+              disabled={submittingReview}
+              maxLength={1000}
             />
+
+            {reviewError && (
+              <div className="mt-3 p-3 bg-red-50 text-red-600 rounded-lg text-sm">
+                {reviewError}
+              </div>
+            )}
 
             <Button
               fullWidth
               onClick={handleSubmitFeedback}
-              disabled={rating === 0}
+              disabled={rating === 0 || submittingReview}
               className="mt-4"
             >
-              <MessageSquare className="w-5 h-5 mr-2" />
-              Submit Feedback
+              {submittingReview ? (
+                <>
+                  <RefreshCw className="w-5 h-5 mr-2 animate-spin" />
+                  Submitting...
+                </>
+              ) : (
+                <>
+                  <MessageSquare className="w-5 h-5 mr-2" />
+                  Submit Review
+                </>
+              )}
             </Button>
           </div>
         )}

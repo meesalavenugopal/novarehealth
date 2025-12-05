@@ -1,4 +1,4 @@
-import { Link } from 'react-router-dom';
+import { Link, Navigate } from 'react-router-dom';
 import { 
   Video, 
   Shield, 
@@ -21,8 +21,24 @@ import {
 import { Footer } from '../../components/layout';
 import { AIChatWidget } from '../../components/chat';
 import Button from '../../components/ui/Button';
+import { useAuthStore } from '../../store/authStore';
 
 export default function HomePage() {
+  const { user } = useAuthStore();
+
+  // Redirect logged-in users to their dashboard
+  if (user) {
+    switch (user.role) {
+      case 'admin':
+      case 'super_admin':
+        return <Navigate to="/admin/dashboard" replace />;
+      case 'doctor':
+        return <Navigate to="/doctor/dashboard" replace />;
+      case 'patient':
+        return <Navigate to="/patient/dashboard" replace />;
+    }
+  }
+
   const features = [
     {
       icon: <Video className="w-6 h-6" />,

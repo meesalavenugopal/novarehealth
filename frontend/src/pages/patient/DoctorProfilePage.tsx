@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
 import LoginPromptModal from '../../components/auth/LoginPromptModal';
+import { ReviewsList } from '../../components/reviews';
 import { guestFetch, authFetch } from '../../services/api';
 import type { BookingContext } from '../../services/api';
 
@@ -451,7 +452,7 @@ export default function DoctorProfilePage() {
 
                 {/* Hospital Affiliations */}
                 {doctor.hospital_affiliations && doctor.hospital_affiliations.length > 0 && (
-                  <div>
+                  <div className="mb-6">
                     <h2 className="text-lg font-semibold text-slate-900 mb-3">Hospital Affiliations</h2>
                     <div className="space-y-2">
                       {doctor.hospital_affiliations.map((hospital, index) => (
@@ -463,6 +464,12 @@ export default function DoctorProfilePage() {
                     </div>
                   </div>
                 )}
+
+                {/* Patient Reviews */}
+                <div>
+                  <h2 className="text-lg font-semibold text-slate-900 mb-4">Patient Reviews</h2>
+                  <ReviewsList doctorId={doctor.id} />
+                </div>
               </div>
             </div>
           </div>

@@ -139,6 +139,12 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Admin Quick Links - Dashboard cards for quick navigation to admin pages
 - [x] Admin Route Protection - Protected routes for admin-only access
 - [x] Role-Based Navigation - Dynamic navbar based on user role (patient/doctor/admin)
+- [x] Reviews API - POST /reviews, GET /reviews/doctor/:id, GET /reviews/my-reviews
+- [x] Review Submission - Submit reviews after completed consultations
+- [x] Doctor Profile Reviews - Reviews section on doctor profile with rating distribution
+- [x] Auto Doctor Rating - Auto-update doctor rating/total_reviews on new review
+- [x] Smart Logo Navigation - Logo redirects to role-based dashboard for logged-in users
+- [x] HomePage Auth Redirect - Logged-in users redirected to their dashboard from homepage
 
 ---
 
