@@ -44,7 +44,7 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Availability Page UX - Back to Dashboard button, conditional Save button display
 - [x] Navigation Pages - Profile, Settings, Help & Support pages
 - [x] Find Doctors Page - Doctor search with filters and specializations
-- [x] Appointments Page - List appointments with tabs (Upcoming/Past/Cancelled)
+- [x] Appointments Page - List appointments with tabs, filters, and cancel functionality
 - [x] Prescriptions Page - View and download prescriptions
 - [x] Health Records Page - Medical records management with folders
 - [x] Admin Dashboard Stats API - /api/v1/admin/stats endpoint for counts
@@ -208,6 +208,8 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Cancel Appointment - Patients can cancel pending/confirmed appointments
 - [x] Success State - Banner shown after successful booking
 - [x] Expandable Appointment Cards - View full appointment details
+- [x] Appointment Filters - Filter by consultation type, date range
+- [x] Payment Status Display - Show paid/pending status (auto-paid for dev testing)
 
 ---
 

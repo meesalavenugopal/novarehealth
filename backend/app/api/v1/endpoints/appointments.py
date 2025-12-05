@@ -45,6 +45,7 @@ class AppointmentResponse(BaseModel):
     appointment_type: str
     status: str
     consultation_fee: float
+    payment_status: str = "pending"  # pending, paid, refunded
     patient_notes: Optional[str] = None
     created_at: str
 
@@ -132,6 +133,8 @@ async def book_appointment(
         appointment_type = AppointmentType.IN_PERSON
     
     # Create appointment
+    # NOTE: For dev testing, mark as CONFIRMED directly (skip payment flow)
+    # TODO: Change to PENDING once payment integration is complete
     appointment = Appointment(
         patient_id=current_user.id,
         doctor_id=doctor.id,
@@ -139,13 +142,16 @@ async def book_appointment(
         scheduled_time=scheduled_time,
         duration=doctor.consultation_duration or 30,
         appointment_type=appointment_type,
-        status=AppointmentStatus.PENDING,
+        status=AppointmentStatus.CONFIRMED,
         patient_notes=request.notes,
     )
     
     db.add(appointment)
     await db.commit()
     await db.refresh(appointment)
+    
+    # For dev testing: confirmed = paid, otherwise pending
+    payment_status = "paid" if appointment.status == AppointmentStatus.CONFIRMED else "pending"
     
     return AppointmentResponse(
         id=appointment.id,
@@ -160,6 +166,7 @@ async def book_appointment(
         appointment_type=appointment.appointment_type.value,
         status=appointment.status.value,
         consultation_fee=float(doctor.consultation_fee),
+        payment_status=payment_status,
         patient_notes=appointment.patient_notes,
         created_at=appointment.created_at.isoformat(),
     )
@@ -210,6 +217,9 @@ async def list_my_appointments(
     
     response_list = []
     for apt in appointments:
+        # For dev testing: confirmed = paid, otherwise pending
+        payment_status = "paid" if apt.status == AppointmentStatus.CONFIRMED else "pending"
+        
         response_list.append(AppointmentResponse(
             id=apt.id,
             doctor_id=apt.doctor_id,
@@ -223,6 +233,7 @@ async def list_my_appointments(
             appointment_type=apt.appointment_type.value,
             status=apt.status.value,
             consultation_fee=float(apt.doctor.consultation_fee),
+            payment_status=payment_status,
             patient_notes=apt.patient_notes,
             created_at=apt.created_at.isoformat(),
         ))

@@ -15,7 +15,9 @@ import {
   ChevronUp,
   CreditCard,
   FileText,
-  User
+  User,
+  Filter,
+  X
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
@@ -61,6 +63,20 @@ export default function AppointmentsPage() {
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
   const [searchQuery, setSearchQuery] = useState('');
   const [successMessage, setSuccessMessage] = useState<string | null>(null);
+  
+  // Filters
+  const [consultationType, setConsultationType] = useState<string>('');
+  const [dateFrom, setDateFrom] = useState<string>('');
+  const [dateTo, setDateTo] = useState<string>('');
+  const [showFilters, setShowFilters] = useState(false);
+
+  const hasActiveFilters = consultationType || dateFrom || dateTo;
+
+  const clearFilters = () => {
+    setConsultationType('');
+    setDateFrom('');
+    setDateTo('');
+  };
 
   // Check for success message from navigation state
   useEffect(() => {
@@ -93,7 +109,7 @@ export default function AppointmentsPage() {
           scheduled_time: apt.scheduled_time,
           consultation_type: apt.appointment_type,
           status: apt.status,
-          payment_status: 'pending', // TODO: Get from API when payment is implemented
+          payment_status: apt.payment_status || 'pending',
           consultation_fee: apt.consultation_fee,
           notes: apt.patient_notes,
         }));
@@ -149,10 +165,28 @@ export default function AppointmentsPage() {
     // Search filter
     if (searchQuery) {
       const query = searchQuery.toLowerCase();
-      return (
+      const matchesSearch = (
         apt.doctor_name.toLowerCase().includes(query) ||
         apt.doctor_specialization.toLowerCase().includes(query)
       );
+      if (!matchesSearch) return false;
+    }
+
+    // Consultation type filter
+    if (consultationType && apt.consultation_type !== consultationType) {
+      return false;
+    }
+
+    // Date range filter
+    if (dateFrom) {
+      const fromDate = new Date(dateFrom);
+      fromDate.setHours(0, 0, 0, 0);
+      if (aptDate < fromDate) return false;
+    }
+    if (dateTo) {
+      const toDate = new Date(dateTo);
+      toDate.setHours(23, 59, 59, 999);
+      if (aptDate > toDate) return false;
     }
 
     return true;
@@ -227,7 +261,88 @@ export default function AppointmentsPage() {
                 className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm"
               />
             </div>
+
+            {/* Filter Toggle Button */}
+            <button
+              onClick={() => setShowFilters(!showFilters)}
+              className={`inline-flex items-center gap-2 px-4 py-2 border rounded-xl text-sm font-medium transition-colors ${
+                hasActiveFilters
+                  ? 'bg-cyan-50 border-cyan-200 text-cyan-700'
+                  : 'border-slate-200 text-slate-600 hover:bg-slate-50'
+              }`}
+            >
+              <Filter className="w-4 h-4" />
+              Filters
+              {hasActiveFilters && (
+                <span className="bg-cyan-600 text-white text-xs px-1.5 py-0.5 rounded-full">
+                  {[consultationType, dateFrom, dateTo].filter(Boolean).length}
+                </span>
+              )}
+            </button>
           </div>
+
+          {/* Expanded Filters */}
+          {showFilters && (
+            <div className="mt-4 pt-4 border-t border-slate-200">
+              <div className="flex flex-wrap gap-4">
+                {/* Consultation Type */}
+                <div className="flex-1 min-w-[180px]">
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                    Consultation Type
+                  </label>
+                  <select
+                    value={consultationType}
+                    onChange={(e) => setConsultationType(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white"
+                  >
+                    <option value="">All Types</option>
+                    <option value="video">Video</option>
+                    <option value="audio">Audio</option>
+                    <option value="in_person">In-Person</option>
+                  </select>
+                </div>
+
+                {/* Date From */}
+                <div className="flex-1 min-w-[180px]">
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                    From Date
+                  </label>
+                  <input
+                    type="date"
+                    value={dateFrom}
+                    onChange={(e) => setDateFrom(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Date To */}
+                <div className="flex-1 min-w-[180px]">
+                  <label className="block text-xs font-medium text-slate-500 mb-1.5">
+                    To Date
+                  </label>
+                  <input
+                    type="date"
+                    value={dateTo}
+                    onChange={(e) => setDateTo(e.target.value)}
+                    className="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
+                  />
+                </div>
+
+                {/* Clear Filters */}
+                {hasActiveFilters && (
+                  <div className="flex items-end">
+                    <button
+                      onClick={clearFilters}
+                      className="inline-flex items-center gap-1.5 px-3 py-2 text-sm text-slate-600 hover:text-slate-900 hover:bg-slate-100 rounded-lg transition-colors"
+                    >
+                      <X className="w-4 h-4" />
+                      Clear
+                    </button>
+                  </div>
+                )}
+              </div>
+            </div>
+          )}
         </div>
 
         {/* Appointments List */}
