@@ -30,6 +30,7 @@ class AppointmentBookRequest(BaseModel):
     scheduled_time: str  # HH:MM
     consultation_type: str = "video"  # video, audio, in-person
     notes: Optional[str] = None
+    timezone: Optional[str] = None  # User's timezone (e.g., "America/New_York")
 
 
 class AppointmentResponse(BaseModel):
@@ -144,6 +145,7 @@ async def book_appointment(
         appointment_type=appointment_type,
         status=AppointmentStatus.CONFIRMED,
         patient_notes=request.notes,
+        timezone=request.timezone or current_user.timezone or "Africa/Maputo",
     )
     
     db.add(appointment)

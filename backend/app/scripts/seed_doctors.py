@@ -4,11 +4,17 @@ Run with: cd backend && python -m app.scripts.seed_doctors
 """
 import asyncio
 import random
+import re
 from datetime import datetime, time
 from decimal import Decimal
 from sqlalchemy import select
 from app.db.database import AsyncSessionLocal
 from app.models.models import User, UserRole, Doctor, Specialization, AvailabilitySlot, VerificationStatus
+
+
+def normalize_phone(phone: str) -> str:
+    """Normalize phone number by removing non-digit characters."""
+    return re.sub(r'[^\d]', '', phone)
 
 # Specializations data
 SPECIALIZATIONS = [
@@ -235,9 +241,12 @@ async def seed_doctors(session):
     specializations = {s.name: s for s in result.scalars().all()}
     
     for doc_data in DOCTORS:
+        # Normalize phone number (remove +)
+        phone_normalized = normalize_phone(doc_data["phone"])
+        
         # Check if user exists
         result = await session.execute(
-            select(User).where(User.phone == doc_data["phone"])
+            select(User).where(User.phone == phone_normalized)
         )
         existing_user = result.scalar_one_or_none()
         
@@ -247,7 +256,7 @@ async def seed_doctors(session):
         
         # Create user
         user = User(
-            phone=doc_data["phone"],
+            phone=phone_normalized,
             first_name=doc_data["first_name"],
             last_name=doc_data["last_name"],
             role=UserRole.DOCTOR,

@@ -57,6 +57,7 @@ class User(Base):
     date_of_birth = Column(Date, nullable=True)
     gender = Column(String(20), nullable=True)
     avatar_url = Column(String(500), nullable=True)
+    timezone = Column(String(50), default="Africa/Maputo", nullable=False)  # User's timezone (IANA format)
     
     # Status
     is_active = Column(Boolean, default=True)
@@ -165,6 +166,7 @@ class Appointment(Base):
     scheduled_date = Column(Date, nullable=False)
     scheduled_time = Column(Time, nullable=False)
     duration = Column(Integer, default=30)  # in minutes
+    timezone = Column(String(50), default="Africa/Maputo", nullable=False)  # Timezone when appointment was booked
     
     # Type and Status
     appointment_type = Column(Enum(AppointmentType, values_callable=lambda x: [e.value for e in x]), default=AppointmentType.VIDEO)

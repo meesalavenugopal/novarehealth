@@ -96,6 +96,16 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Error Handling - 401/403/404 errors with proper UI and redirects
 - [x] Unauthorized Handling - Session expired redirect to login
 - [x] Access Denied Handling - Forbidden access redirect to appointments
+- [x] Phone Normalization - Consistent +258 prefix handling for login/registration
+- [x] Real Dashboard Data - Fetching appointments from API instead of mock data
+- [x] Camera Cleanup - Proper track.stop() when leaving consultation room
+- [x] Navigation Routes - Correct routes for doctor/patient after leaving call
+- [x] Video Preview Fix - Native getUserMedia for camera preview in waiting room
+- [x] Timezone Support - Store patient timezone with appointments for global users
+- [x] Timezone-Aware Join - Proper timezone comparison for can_join calculation
+- [x] In-Progress Rejoin - Allow rejoining in_progress consultations at any time
+- [x] Dev Mode Support - Simulated Twilio connection for local development
+- [x] Rejoin Button - "Rejoin Call" button for in_progress appointments on dashboard
 
 ---
 

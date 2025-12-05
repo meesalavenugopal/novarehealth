@@ -76,44 +76,43 @@ export const DoctorDashboard: React.FC = () => {
     checkVerificationStatus();
   }, [navigate]);
 
-  // Mock data for now
+  // Fetch real appointments from API
   useEffect(() => {
-    if (!checkingVerification) {
-      setStats({
-        total_consultations: 156,
-        today_appointments: 5,
-        pending_appointments: 3,
-        total_earnings: 78500,
-        rating: 4.8,
-        total_reviews: 124,
-      });
+    const fetchAppointments = async () => {
+      try {
+        // Fetch today's appointments
+        const response = await authFetch('http://localhost:8000/api/v1/appointments?upcoming_only=true');
+        
+        if (response.ok) {
+          const data = await response.json();
+          const appointments = data.appointments || [];
+          
+          // Filter for today's date
+          const today = new Date().toISOString().split('T')[0];
+          const todayAppointments = appointments.filter((apt: Appointment) => 
+            apt.scheduled_date === today
+          );
+          const pendingAppointments = appointments.filter((apt: Appointment) => 
+            apt.status === 'pending' || apt.status === 'scheduled'
+          );
+          
+          setUpcomingAppointments(todayAppointments.length > 0 ? todayAppointments : appointments.slice(0, 5));
+          
+          setStats(prev => ({
+            ...prev,
+            today_appointments: todayAppointments.length,
+            pending_appointments: pendingAppointments.length,
+          }));
+        }
+      } catch (err) {
+        console.error('Failed to fetch appointments:', err);
+        // Keep empty array on error
+        setUpcomingAppointments([]);
+      }
+    };
 
-      setUpcomingAppointments([
-        {
-          id: 1,
-          patient_name: 'Maria Silva',
-          scheduled_date: '2024-01-15',
-          scheduled_time: '10:00',
-          appointment_type: 'video',
-          status: 'confirmed',
-        },
-        {
-          id: 2,
-          patient_name: 'João Santos',
-          scheduled_date: '2024-01-15',
-          scheduled_time: '11:00',
-          appointment_type: 'video',
-          status: 'confirmed',
-        },
-        {
-          id: 3,
-          patient_name: 'Ana Pereira',
-          scheduled_date: '2024-01-15',
-          scheduled_time: '14:00',
-          appointment_type: 'chat',
-          status: 'pending',
-        },
-      ]);
+    if (!checkingVerification) {
+      fetchAppointments();
     }
   }, [checkingVerification]);
 
@@ -339,6 +338,8 @@ export const DoctorDashboard: React.FC = () => {
                               px-3 py-1 rounded-full text-xs font-medium
                               ${appointment.status === 'confirmed'
                                 ? 'bg-green-100 text-green-700'
+                                : appointment.status === 'in_progress'
+                                ? 'bg-blue-100 text-blue-700'
                                 : 'bg-amber-100 text-amber-700'
                               }
                             `}
@@ -346,9 +347,12 @@ export const DoctorDashboard: React.FC = () => {
                             {appointment.status}
                           </span>
                           
-                          {appointment.status === 'confirmed' && (
-                            <Button size="sm">
-                              Start Call
+                          {(appointment.status === 'confirmed' || appointment.status === 'in_progress') && (
+                            <Button 
+                              size="sm"
+                              onClick={() => navigate(`/consultation/${appointment.id}`)}
+                            >
+                              {appointment.status === 'in_progress' ? 'Rejoin Call' : 'Start Call'}
                             </Button>
                           )}
                           {appointment.status === 'pending' && (

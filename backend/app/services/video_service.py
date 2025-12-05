@@ -10,6 +10,7 @@ This service handles:
 import time
 from datetime import datetime, timedelta
 from typing import Optional
+from zoneinfo import ZoneInfo
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from twilio.jwt.access_token import AccessToken
@@ -202,24 +203,29 @@ class VideoService:
         if appointment.status == AppointmentStatus.COMPLETED:
             raise ValueError("This consultation has already ended")
         
-        # Check if appointment is within valid time window (30 min before to end time)
-        now = datetime.utcnow()
-        scheduled_datetime = datetime.combine(
-            appointment.scheduled_date,
-            appointment.scheduled_time
-        )
-        
-        # Allow joining 30 minutes before scheduled time
-        earliest_join = scheduled_datetime - timedelta(minutes=30)
-        # Allow joining until scheduled end time + 15 min buffer
-        latest_join = scheduled_datetime + timedelta(minutes=appointment.duration + 15)
-        
-        if now < earliest_join:
-            minutes_until = int((earliest_join - now).total_seconds() / 60)
-            raise ValueError(f"Consultation room will open {minutes_until} minutes before scheduled time")
-        
-        if now > latest_join:
-            raise ValueError("The time window for this consultation has passed")
+        # If appointment is in progress, always allow joining (for reconnection)
+        if appointment.status != AppointmentStatus.IN_PROGRESS:
+            # Check if appointment is within valid time window (30 min before to end time)
+            # Use timezone-aware comparison
+            appointment_tz = ZoneInfo(getattr(appointment, 'timezone', None) or "Africa/Maputo")
+            now_in_tz = datetime.now(appointment_tz)
+            scheduled_datetime_naive = datetime.combine(
+                appointment.scheduled_date,
+                appointment.scheduled_time
+            )
+            scheduled_datetime = scheduled_datetime_naive.replace(tzinfo=appointment_tz)
+            
+            # Allow joining 30 minutes before scheduled time
+            earliest_join = scheduled_datetime - timedelta(minutes=30)
+            # Allow joining until scheduled end time + 15 min buffer
+            latest_join = scheduled_datetime + timedelta(minutes=appointment.duration + 15)
+            
+            if now_in_tz < earliest_join:
+                minutes_until = int((earliest_join - now_in_tz).total_seconds() / 60)
+                raise ValueError(f"Consultation room will open {minutes_until} minutes before scheduled time")
+            
+            if now_in_tz > latest_join:
+                raise ValueError("The time window for this consultation has passed")
         
         # Generate room name
         room_name = self._generate_room_name(appointment_id)
@@ -408,21 +414,36 @@ class VideoService:
         doctor_user_result = await self.db.execute(doctor_user_query)
         doctor_user = doctor_user_result.scalar_one_or_none()
         
-        # Calculate time info
-        now = datetime.utcnow()
-        scheduled_datetime = datetime.combine(
+        # Calculate time info with proper timezone handling
+        # Get the appointment's timezone (stored when booking)
+        appointment_tz = ZoneInfo(appointment.timezone or "Africa/Maputo")
+        
+        # Create timezone-aware scheduled datetime
+        scheduled_datetime_naive = datetime.combine(
             appointment.scheduled_date,
             appointment.scheduled_time
         )
+        scheduled_datetime = scheduled_datetime_naive.replace(tzinfo=appointment_tz)
         
-        time_until_start = (scheduled_datetime - now).total_seconds()
-        can_join = time_until_start <= 30 * 60  # 30 minutes before
+        # Get current time in the appointment's timezone
+        now_in_tz = datetime.now(appointment_tz)
+        
+        # Calculate time until start in the correct timezone
+        time_until_start = (scheduled_datetime - now_in_tz).total_seconds()
+        
+        # Allow joining 30 minutes before scheduled time (timezone-aware)
+        can_join = (
+            time_until_start <= 30 * 60 or  # 30 minutes before
+            appointment.status == AppointmentStatus.IN_PROGRESS  # Already started
+        )
         
         # Calculate elapsed time if in progress
         elapsed_seconds = 0
         remaining_seconds = appointment.duration * 60
         if appointment.started_at and appointment.status == AppointmentStatus.IN_PROGRESS:
-            elapsed_seconds = int((now - appointment.started_at).total_seconds())
+            # started_at is stored in UTC, convert to appointment timezone for display
+            started_at_utc = appointment.started_at.replace(tzinfo=ZoneInfo("UTC"))
+            elapsed_seconds = int((datetime.now(ZoneInfo("UTC")) - started_at_utc).total_seconds())
             remaining_seconds = max(0, (appointment.duration * 60) - elapsed_seconds)
         
         return {

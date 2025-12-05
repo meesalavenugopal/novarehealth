@@ -19,7 +19,7 @@ import {
   Filter,
   X
 } from 'lucide-react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import { useAuthStore } from '../../store/authStore';
 import { authFetch } from '../../services/api';
@@ -32,7 +32,7 @@ interface Appointment {
   scheduled_date: string;
   scheduled_time: string;
   consultation_type: 'video' | 'audio' | 'in_person';
-  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show';
+  status: 'scheduled' | 'confirmed' | 'completed' | 'cancelled' | 'no_show' | 'in_progress' | 'pending';
   payment_status: 'pending' | 'paid' | 'refunded';
   consultation_fee: number;
   notes?: string;
@@ -390,6 +390,7 @@ export default function AppointmentsPage() {
 }
 
 function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: Appointment; isDoctor: boolean; onCancel?: (id: number) => void }) {
+  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
   const status = statusConfig[appointment.status] || { label: appointment.status, color: 'bg-slate-100 text-slate-700', icon: Clock };
   const StatusIcon = status.icon;
@@ -397,8 +398,9 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
 
   const appointmentDate = new Date(appointment.scheduled_date);
   const isUpcoming = appointmentDate >= new Date() && appointment.status !== 'completed' && appointment.status !== 'cancelled';
-  const canJoin = appointment.status === 'confirmed' && isUpcoming;
+  const canJoin = ['confirmed', 'in_progress'].includes(appointment.status) && (isUpcoming || appointment.status === 'in_progress');
   const canCancel = ['pending', 'scheduled', 'confirmed'].includes(appointment.status) && isUpcoming;
+  const isInProgress = appointment.status === 'in_progress';
 
   // Check if appointment is starting soon (within 15 minutes)
   const now = new Date();
@@ -539,14 +541,17 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
                 <div className="flex flex-wrap gap-2 pt-2">
                   {canJoin && (
                     <button 
+                      onClick={() => navigate(`/consultation/${appointment.id}`)}
                       className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${
-                        isStartingSoon
-                          ? 'bg-green-600 text-white hover:bg-green-700'
+                        isInProgress
+                          ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
+                          : isStartingSoon
+                          ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
                           : 'bg-cyan-600 text-white hover:bg-cyan-700'
                       }`}
                     >
                       <Video className="w-4 h-4" />
-                      {isStartingSoon ? 'Join Now' : 'Join Consultation'}
+                      {isInProgress ? 'Rejoin Call' : isStartingSoon ? 'Join Now' : 'Join Consultation'}
                     </button>
                   )}
                   

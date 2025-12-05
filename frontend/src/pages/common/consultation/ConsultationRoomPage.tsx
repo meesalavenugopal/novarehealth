@@ -20,7 +20,7 @@ import {
   X,
   Shield
 } from 'lucide-react';
-import { connect, Room, RemoteParticipant, createLocalVideoTrack, createLocalAudioTrack, LocalVideoTrack, LocalAudioTrack } from 'twilio-video';
+import { connect, Room, RemoteParticipant } from 'twilio-video';
 import type { RemoteTrack } from 'twilio-video';
 import consultationService from '../../../services/consultation';
 import type { ConsultationStatusResponse } from '../../../services/consultation';
@@ -50,9 +50,8 @@ export default function ConsultationRoomPage() {
   
   // Device preview state
   const [deviceStatus, setDeviceStatus] = useState<DeviceStatus>({ camera: 'checking', microphone: 'checking' });
-  const [localPreviewTrack, setLocalPreviewTrack] = useState<LocalVideoTrack | null>(null);
-  const [localAudioTrack, setLocalAudioTrack] = useState<LocalAudioTrack | null>(null);
   const [showDeviceSettings, setShowDeviceSettings] = useState(false);
+  const [previewStream, setPreviewStream] = useState<MediaStream | null>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
   
   // Media controls
@@ -122,35 +121,90 @@ export default function ConsultationRoomPage() {
 
   // Initialize device preview in waiting room
   useEffect(() => {
+    let stream: MediaStream | null = null;
+    let cancelled = false;
+
     const initDevicePreview = async () => {
-      // Check camera
+      // Check camera using native getUserMedia for preview
       try {
-        const videoTrack = await createLocalVideoTrack({ width: 640, height: 480 });
-        setLocalPreviewTrack(videoTrack);
-        setDeviceStatus(prev => ({ ...prev, camera: 'granted' }));
+        stream = await navigator.mediaDevices.getUserMedia({ 
+          video: { width: 640, height: 480 }, 
+          audio: true 
+        });
         
-        if (previewVideoRef.current) {
-          const videoElement = videoTrack.attach();
-          previewVideoRef.current.srcObject = videoElement.srcObject;
+        if (cancelled) {
+          stream.getTracks().forEach(track => track.stop());
+          return;
         }
-      } catch {
-        setDeviceStatus(prev => ({ ...prev, camera: 'denied' }));
-      }
-      
-      // Check microphone
-      try {
-        const audioTrack = await createLocalAudioTrack();
-        setLocalAudioTrack(audioTrack);
-        setDeviceStatus(prev => ({ ...prev, microphone: 'granted' }));
-      } catch {
-        setDeviceStatus(prev => ({ ...prev, microphone: 'denied' }));
+        
+        setPreviewStream(stream);
+        setDeviceStatus({ camera: 'granted', microphone: 'granted' });
+      } catch (err) {
+        console.error('Failed to get media devices:', err);
+        // Try just video
+        try {
+          stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          
+          if (cancelled) {
+            stream.getTracks().forEach(track => track.stop());
+            return;
+          }
+          
+          setPreviewStream(stream);
+          setDeviceStatus(prev => ({ ...prev, camera: 'granted' }));
+        } catch {
+          setDeviceStatus(prev => ({ ...prev, camera: 'denied' }));
+        }
+        
+        // Try just audio
+        try {
+          const audioStream = await navigator.mediaDevices.getUserMedia({ audio: true });
+          if (!cancelled) {
+            // We just need to verify audio works, don't need to keep this stream
+            audioStream.getTracks().forEach(track => track.stop());
+            setDeviceStatus(prev => ({ ...prev, microphone: 'granted' }));
+          } else {
+            audioStream.getTracks().forEach(track => track.stop());
+          }
+        } catch {
+          setDeviceStatus(prev => ({ ...prev, microphone: 'denied' }));
+        }
       }
     };
     
     if (connectionState === 'disconnected') {
       initDevicePreview();
     }
+    
+    // Cleanup on unmount or when connectionState changes
+    return () => {
+      cancelled = true;
+      if (stream) {
+        stream.getTracks().forEach(track => track.stop());
+      }
+    };
   }, [connectionState]);
+
+  // Attach preview stream to video element
+  useEffect(() => {
+    console.log('Preview stream effect:', { 
+      hasStream: !!previewStream, 
+      hasRef: !!previewVideoRef.current,
+      streamTracks: previewStream?.getTracks().map(t => ({ kind: t.kind, enabled: t.enabled, readyState: t.readyState }))
+    });
+    
+    if (previewVideoRef.current && previewStream) {
+      const videoElement = previewVideoRef.current;
+      videoElement.srcObject = previewStream;
+      
+      // Ensure video plays
+      videoElement.play().catch(err => {
+        console.error('Failed to play video:', err);
+      });
+    }
+  }, [previewStream]);
+
+  // Fetch status callback for use in other places
 
   // Fetch status callback for use in other places
   const fetchStatus = useCallback(async () => {
@@ -181,10 +235,15 @@ export default function ConsultationRoomPage() {
 
   // Go back based on role
   const handleGoBack = () => {
+    // Stop preview stream before navigating
+    if (previewStream) {
+      previewStream.getTracks().forEach(track => track.stop());
+    }
+    
     if (user?.role === 'doctor') {
-      navigate('/doctor/appointments');
+      navigate('/doctor/dashboard');
     } else {
-      navigate('/patient/appointments');
+      navigate('/appointments');
     }
   };
 
@@ -264,7 +323,22 @@ export default function ConsultationRoomPage() {
       // Get token
       const token = await consultationService.getJoinToken(parseInt(appointmentId));
       
-      // Connect to Twilio room
+      // Check if we're in dev mode (mock token)
+      if (token.token.startsWith('dev_token_')) {
+        console.log('Dev mode: Simulating room connection');
+        setConnectionState('connected');
+        
+        // In dev mode, keep using the preview stream as local video
+        if (previewStream && localVideoRef.current) {
+          localVideoRef.current.srcObject = previewStream;
+        }
+        
+        // Fetch updated status
+        await fetchStatus();
+        return;
+      }
+      
+      // Connect to Twilio room (production mode)
       const twilioRoom = await connect(token.token, {
         name: token.room_name,
         audio: true,
@@ -314,14 +388,10 @@ export default function ConsultationRoomPage() {
       // Fetch updated status
       await fetchStatus();
       
-      // Stop preview tracks when entering room
-      if (localPreviewTrack) {
-        localPreviewTrack.stop();
-        setLocalPreviewTrack(null);
-      }
-      if (localAudioTrack) {
-        localAudioTrack.stop();
-        setLocalAudioTrack(null);
+      // Stop preview stream when entering room (camera is now managed by Twilio)
+      if (previewStream) {
+        previewStream.getTracks().forEach(track => track.stop());
+        setPreviewStream(null);
       }
       
     } catch (err: unknown) {
@@ -331,7 +401,7 @@ export default function ConsultationRoomPage() {
       setError(message);
       setErrorType(type);
     }
-  }, [appointmentId, handleParticipantConnected, handleParticipantDisconnected, fetchStatus, localPreviewTrack, localAudioTrack]);
+  }, [appointmentId, handleParticipantConnected, handleParticipantDisconnected, fetchStatus, previewStream]);
 
   // Toggle video
   const toggleVideo = useCallback(() => {
@@ -435,13 +505,19 @@ export default function ConsultationRoomPage() {
     if (room) {
       room.disconnect();
     }
+    if (previewStream) {
+      previewStream.getTracks().forEach(track => track.stop());
+    }
     setRoom(null);
     setConnectionState('disconnected');
     
-    if (!isDoctor) {
-      navigate('/patient/appointments');
+    // Navigate based on role
+    if (isDoctor) {
+      navigate('/doctor/dashboard');
+    } else {
+      navigate('/appointments');
     }
-  }, [room, isDoctor, navigate]);
+  }, [room, previewStream, isDoctor, navigate]);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -449,11 +525,14 @@ export default function ConsultationRoomPage() {
       if (room) {
         room.disconnect();
       }
+      if (previewStream) {
+        previewStream.getTracks().forEach(track => track.stop());
+      }
       if (timerRef.current) {
         clearInterval(timerRef.current);
       }
     };
-  }, [room]);
+  }, [room, previewStream]);
 
   // Error state with proper handling
   if (error && errorType && !consultationStatus) {
@@ -548,15 +627,15 @@ export default function ConsultationRoomPage() {
 
           {/* Device Preview */}
           <div className="bg-slate-800 rounded-xl overflow-hidden mb-6 aspect-video relative">
-            {deviceStatus.camera === 'granted' ? (
-              <video
-                ref={previewVideoRef}
-                autoPlay
-                playsInline
-                muted
-                className="w-full h-full object-cover mirror"
-              />
-            ) : (
+            <video
+              ref={previewVideoRef}
+              autoPlay
+              playsInline
+              muted
+              className={`w-full h-full object-cover ${deviceStatus.camera === 'granted' ? 'block' : 'hidden'}`}
+              style={{ transform: 'scaleX(-1)' }}
+            />
+            {deviceStatus.camera !== 'granted' && (
               <div className="w-full h-full flex items-center justify-center">
                 <div className="text-center">
                   <VideoOff className="w-12 h-12 text-slate-500 mx-auto mb-2" />

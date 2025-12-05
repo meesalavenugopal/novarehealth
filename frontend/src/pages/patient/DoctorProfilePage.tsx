@@ -229,6 +229,9 @@ export default function DoctorProfilePage() {
 
     // User is logged in, proceed with booking
     try {
+      // Get user's browser timezone for proper scheduling
+      const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
+      
       const response = await authFetch('/api/v1/appointments/', {
         method: 'POST',
         body: JSON.stringify({
@@ -237,6 +240,7 @@ export default function DoctorProfilePage() {
           scheduled_time: selectedSlot.start_time,
           consultation_type: 'video',
           notes: '',
+          timezone: userTimezone,
         }),
       });
 
