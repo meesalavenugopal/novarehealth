@@ -7,10 +7,55 @@ import {
   ChevronDown,
   LogOut,
   Settings,
-  HelpCircle
+  HelpCircle,
+  LayoutDashboard
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
+
+// Define navigation items for each role
+const getNavItems = (role: string | undefined) => {
+  switch (role) {
+    case 'admin':
+    case 'super_admin':
+      return [
+        { to: '/admin/dashboard', label: 'Dashboard' },
+        { to: '/admin/patients', label: 'Patients' },
+        { to: '/admin/appointments', label: 'Appointments' },
+        { to: '/admin/specializations', label: 'Specializations' },
+      ];
+    case 'doctor':
+      return [
+        { to: '/doctor/dashboard', label: 'Dashboard' },
+        { to: '/doctor/appointments', label: 'Appointments' },
+        { to: '/doctor/availability', label: 'Availability' },
+        { to: '/prescriptions', label: 'Prescriptions' },
+      ];
+    case 'patient':
+    default:
+      return [
+        { to: '/find-doctors', label: 'Find Doctors' },
+        { to: '/appointments', label: 'Appointments' },
+        { to: '/prescriptions', label: 'Prescriptions' },
+        { to: '/health-records', label: 'Records' },
+      ];
+  }
+};
+
+// Get dashboard link based on role
+const getDashboardLink = (role: string | undefined) => {
+  switch (role) {
+    case 'admin':
+    case 'super_admin':
+      return '/admin/dashboard';
+    case 'doctor':
+      return '/doctor/dashboard';
+    case 'patient':
+      return '/patient/dashboard';
+    default:
+      return '/';
+  }
+};
 
 export default function Navbar() {
   const { user, logout } = useAuthStore();
@@ -39,6 +84,10 @@ export default function Navbar() {
   const isAuthPage = location.pathname === '/login' || location.pathname === '/register';
   if (isAuthPage) return null;
 
+  // Get role-specific navigation items
+  const navItems = getNavItems(user?.role);
+  const dashboardLink = getDashboardLink(user?.role);
+
   const notifications = [
     { id: 1, title: 'Appointment Reminder', message: 'Your appointment with Dr. Sarah is in 1 hour', time: '1h ago', unread: true },
     { id: 2, title: 'Prescription Ready', message: 'Your prescription has been uploaded', time: '3h ago', unread: true },
@@ -63,10 +112,9 @@ export default function Navbar() {
 
           {/* Desktop Navigation */}
           <div className="hidden md:flex items-center gap-1">
-            <NavLink to="/find-doctors" label="Find Doctors" />
-            <NavLink to="/appointments" label="Appointments" />
-            <NavLink to="/prescriptions" label="Prescriptions" />
-            <NavLink to="/health-records" label="Records" />
+            {navItems.map((item) => (
+              <NavLink key={item.to} to={item.to} label={item.label} />
+            ))}
           </div>
 
           {/* Right Section */}
@@ -144,6 +192,7 @@ export default function Navbar() {
                         <p className="text-sm text-slate-500">{user.email || user.phone}</p>
                       </div>
                       <div className="py-1">
+                        <DropdownLink to={dashboardLink} icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
                         <DropdownLink to="/profile" icon={<User className="w-4 h-4" />} label="My Profile" />
                         <DropdownLink to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" />
                         <DropdownLink to="/help" icon={<HelpCircle className="w-4 h-4" />} label="Help & Support" />
@@ -193,10 +242,14 @@ export default function Navbar() {
         {isMobileMenuOpen && (
           <div className="md:hidden py-4 border-t border-slate-200 animate-fadeIn">
             <div className="space-y-1">
-              <MobileNavLink to="/find-doctors" label="Find Doctors" onClick={() => setIsMobileMenuOpen(false)} />
-              <MobileNavLink to="/appointments" label="Appointments" onClick={() => setIsMobileMenuOpen(false)} />
-              <MobileNavLink to="/prescriptions" label="Prescriptions" onClick={() => setIsMobileMenuOpen(false)} />
-              <MobileNavLink to="/health-records" label="Health Records" onClick={() => setIsMobileMenuOpen(false)} />
+              {navItems.map((item) => (
+                <MobileNavLink 
+                  key={item.to} 
+                  to={item.to} 
+                  label={item.label} 
+                  onClick={() => setIsMobileMenuOpen(false)} 
+                />
+              ))}
             </div>
           </div>
         )}

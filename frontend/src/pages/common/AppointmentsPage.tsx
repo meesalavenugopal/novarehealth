@@ -10,7 +10,6 @@ import {
   AlertCircle,
   Loader2,
   Search,
-  MessageSquare,
   ChevronDown,
   ChevronUp,
   CreditCard,

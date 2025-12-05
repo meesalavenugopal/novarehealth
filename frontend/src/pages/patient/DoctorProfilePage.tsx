@@ -25,8 +25,8 @@ interface Doctor {
   user_id: number;
   first_name: string;
   last_name: string;
-  email: string;
-  phone_number: string;
+  email?: string;
+  phone_number?: string;
   specialization_id: number;
   specialization_name: string;
   experience_years: number;

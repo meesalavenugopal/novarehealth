@@ -12,7 +12,6 @@ import {
   Activity,
   Loader2,
   ChevronRight,
-  Users,
   Smile,
   Wind,
   Droplets,

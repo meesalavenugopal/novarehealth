@@ -19,7 +19,7 @@ import {
   AvailabilityPage,
   DoctorLandingPage
 } from './pages/doctor';
-import { AdminDashboard } from './pages/admin';
+import { AdminDashboard, PatientsPage as AdminPatientsPage, AppointmentsPage as AdminAppointmentsPage, SpecializationsPage as AdminSpecializationsPage } from './pages/admin';
 import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage } from './pages/legal';
 import ConsultationRoomPage from './pages/common/consultation/ConsultationRoomPage';
 import ConsultationSummaryPage from './pages/common/consultation/ConsultationSummaryPage';
@@ -185,6 +185,30 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
                 <AdminDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/patients"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                <AdminPatientsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/appointments"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                <AdminAppointmentsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/admin/specializations"
+            element={
+              <ProtectedRoute allowedRoles={['admin', 'super_admin']}>
+                <AdminSpecializationsPage />
               </ProtectedRoute>
             }
           />

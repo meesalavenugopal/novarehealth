@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useCallback } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { Button, Card } from '../../components/ui';
 import { Navbar } from '../../components/layout';
 import { authFetch } from '../../services/api';
@@ -28,6 +29,8 @@ import {
   Ban,
   RotateCcw,
   ShieldCheck,
+  ArrowRight,
+  Activity,
 } from 'lucide-react';
 
 interface Doctor {
@@ -79,6 +82,7 @@ interface Specialization {
 type TabType = 'all' | 'pending' | 'verified' | 'rejected';
 
 export const AdminDashboard: React.FC = () => {
+  const navigate = useNavigate();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
@@ -457,6 +461,63 @@ export const AdminDashboard: React.FC = () => {
               icon={<Calendar className="w-6 h-6 text-purple-600" />}
               color="bg-purple-100"
             />
+          </div>
+
+          {/* Quick Links */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-8">
+            <Card 
+              className="p-4 cursor-pointer hover:shadow-md transition-all hover:border-cyan-200 group"
+              onClick={() => navigate('/admin/patients')}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-blue-100 rounded-xl flex items-center justify-center">
+                    <Users className="w-5 h-5 text-blue-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Manage Patients</h3>
+                    <p className="text-sm text-gray-500">View and manage patient accounts</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all" />
+              </div>
+            </Card>
+            
+            <Card 
+              className="p-4 cursor-pointer hover:shadow-md transition-all hover:border-cyan-200 group"
+              onClick={() => navigate('/admin/appointments')}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-green-100 rounded-xl flex items-center justify-center">
+                    <Calendar className="w-5 h-5 text-green-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">All Appointments</h3>
+                    <p className="text-sm text-gray-500">Monitor all appointments</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all" />
+              </div>
+            </Card>
+            
+            <Card 
+              className="p-4 cursor-pointer hover:shadow-md transition-all hover:border-cyan-200 group"
+              onClick={() => navigate('/admin/specializations')}
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 bg-purple-100 rounded-xl flex items-center justify-center">
+                    <Activity className="w-5 h-5 text-purple-600" />
+                  </div>
+                  <div>
+                    <h3 className="font-semibold text-gray-900">Specializations</h3>
+                    <p className="text-sm text-gray-500">Manage doctor specializations</p>
+                  </div>
+                </div>
+                <ArrowRight className="w-5 h-5 text-gray-400 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all" />
+              </div>
+            </Card>
           </div>
 
           {/* Manage Doctors Section */}
