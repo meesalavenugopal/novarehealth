@@ -252,13 +252,15 @@ export default function AppointmentsPage() {
 
             {/* Search */}
             <div className="flex-1 relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-slate-400" />
+              <div className="absolute left-3 top-0 bottom-0 flex items-center pointer-events-none">
+                <Search className="w-4 h-4 text-slate-400" />
+              </div>
               <input
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search appointments..."
-                className="w-full pl-10 pr-4 py-2 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm"
+                className="w-full pl-10 pr-4 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent text-sm"
               />
             </div>
 
