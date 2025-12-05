@@ -1,5 +1,5 @@
 from datetime import datetime, date
-from typing import Optional, List
+from typing import Optional, List, Any
 from pydantic import BaseModel, EmailStr, Field, validator
 from enum import Enum
 
@@ -122,7 +122,7 @@ class DoctorResponse(BaseModel):
     specialization: Optional["SpecializationResponse"] = None
     license_number: Optional[str] = None
     experience_years: int
-    education: Optional[List[dict]] = None
+    education: Optional[List[Any]] = None  # Can be list of strings or dicts
     languages: Optional[List[str]] = None
     bio: Optional[str] = None
     consultation_fee: float
@@ -176,6 +176,7 @@ class SpecializationResponse(BaseModel):
     description: Optional[str] = None
     icon: Optional[str] = None
     is_active: bool
+    doctor_count: int = 0
 
     class Config:
         from_attributes = True

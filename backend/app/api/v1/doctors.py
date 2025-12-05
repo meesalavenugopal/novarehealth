@@ -448,9 +448,23 @@ async def delete_availability_slot(
 async def get_all_specializations(
     db: AsyncSession = Depends(get_db)
 ):
-    """Get all active specializations"""
+    """Get all active specializations with doctor counts"""
     specializations = await SpecializationService.get_all_specializations(db)
-    return specializations
+    
+    # Get doctor counts for each specialization
+    result = []
+    for spec in specializations:
+        doctor_count = await SpecializationService.get_doctor_count_by_specialization(db, spec.id)
+        result.append({
+            "id": spec.id,
+            "name": spec.name,
+            "description": spec.description,
+            "icon": spec.icon,
+            "is_active": spec.is_active,
+            "doctor_count": doctor_count
+        })
+    
+    return result
 
 
 @router.get("/specializations/{specialization_id}", response_model=SpecializationResponse)

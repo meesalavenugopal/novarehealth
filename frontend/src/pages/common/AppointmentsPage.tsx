@@ -10,11 +10,17 @@ import {
   AlertCircle,
   Loader2,
   Search,
-  MessageSquare
+  MessageSquare,
+  ChevronDown,
+  ChevronUp,
+  CreditCard,
+  FileText,
+  User
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import { useAuthStore } from '../../store/authStore';
+import { authFetch } from '../../services/api';
 
 interface Appointment {
   id: number;
@@ -30,88 +36,99 @@ interface Appointment {
   notes?: string;
 }
 
-const statusConfig = {
+const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
+  pending: { label: 'Pending', color: 'bg-amber-100 text-amber-700', icon: Clock },
   scheduled: { label: 'Scheduled', color: 'bg-blue-100 text-blue-700', icon: Clock },
   confirmed: { label: 'Confirmed', color: 'bg-green-100 text-green-700', icon: CheckCircle },
   completed: { label: 'Completed', color: 'bg-slate-100 text-slate-700', icon: CheckCircle },
   cancelled: { label: 'Cancelled', color: 'bg-red-100 text-red-700', icon: XCircle },
   no_show: { label: 'No Show', color: 'bg-amber-100 text-amber-700', icon: AlertCircle },
+  in_progress: { label: 'In Progress', color: 'bg-cyan-100 text-cyan-700', icon: Video },
 };
 
-const consultationTypeIcons = {
+const consultationTypeIcons: Record<string, any> = {
   video: Video,
   audio: Phone,
   in_person: MapPin,
+  in_clinic: MapPin,
 };
 
 export default function AppointmentsPage() {
   const { user } = useAuthStore();
+  const location = useLocation();
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
   const [searchQuery, setSearchQuery] = useState('');
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
 
-  // Mock data for now - replace with API call
+  // Check for success message from navigation state
+  useEffect(() => {
+    if (location.state?.success && location.state?.message) {
+      setSuccessMessage(location.state.message);
+      // Clear the state after showing the message
+      window.history.replaceState({}, document.title);
+      // Auto-hide after 5 seconds
+      setTimeout(() => setSuccessMessage(null), 5000);
+    }
+  }, [location.state]);
+
   useEffect(() => {
     fetchAppointments();
   }, []);
 
   const fetchAppointments = async () => {
     setLoading(true);
-    // Simulating API response with mock data
-    setTimeout(() => {
-      setAppointments([
-        {
-          id: 1,
-          doctor_name: 'Dr. Sarah Johnson',
-          doctor_specialization: 'General Medicine',
-          patient_name: 'John Doe',
-          scheduled_date: '2025-12-06',
-          scheduled_time: '10:00',
-          consultation_type: 'video',
-          status: 'confirmed',
-          payment_status: 'paid',
-          consultation_fee: 500,
-        },
-        {
-          id: 2,
-          doctor_name: 'Dr. Michael Chen',
-          doctor_specialization: 'Cardiology',
-          patient_name: 'John Doe',
-          scheduled_date: '2025-12-08',
-          scheduled_time: '14:30',
-          consultation_type: 'video',
-          status: 'scheduled',
-          payment_status: 'pending',
-          consultation_fee: 750,
-        },
-        {
-          id: 3,
-          doctor_name: 'Dr. Emily Brown',
-          doctor_specialization: 'Dermatology',
-          patient_name: 'John Doe',
-          scheduled_date: '2025-11-28',
-          scheduled_time: '09:00',
-          consultation_type: 'video',
-          status: 'completed',
-          payment_status: 'paid',
-          consultation_fee: 600,
-        },
-        {
-          id: 4,
-          doctor_name: 'Dr. James Wilson',
-          doctor_specialization: 'Pediatrics',
-          patient_name: 'John Doe',
-          scheduled_date: '2025-11-20',
-          scheduled_time: '11:00',
-          consultation_type: 'audio',
-          status: 'cancelled',
-          payment_status: 'refunded',
-          consultation_fee: 450,
-        },
-      ]);
+    try {
+      const response = await authFetch('/api/v1/appointments/');
+      if (response.ok) {
+        const data = await response.json();
+        // Transform API response to match component interface
+        const transformedAppointments = (data.appointments || []).map((apt: any) => ({
+          id: apt.id,
+          doctor_name: apt.doctor_name,
+          doctor_specialization: apt.specialization,
+          patient_name: apt.patient_name,
+          scheduled_date: apt.scheduled_date,
+          scheduled_time: apt.scheduled_time,
+          consultation_type: apt.appointment_type,
+          status: apt.status,
+          payment_status: 'pending', // TODO: Get from API when payment is implemented
+          consultation_fee: apt.consultation_fee,
+          notes: apt.patient_notes,
+        }));
+        setAppointments(transformedAppointments);
+      }
+    } catch (error) {
+      console.error('Error fetching appointments:', error);
+    } finally {
       setLoading(false);
-    }, 1000);
+    }
+  };
+
+  const handleCancelAppointment = async (appointmentId: number) => {
+    if (!confirm('Are you sure you want to cancel this appointment?')) {
+      return;
+    }
+    
+    try {
+      const response = await authFetch(`/api/v1/appointments/${appointmentId}/cancel`, {
+        method: 'POST',
+      });
+      
+      if (response.ok) {
+        // Refresh appointments list
+        fetchAppointments();
+        setSuccessMessage('Appointment cancelled successfully');
+        setTimeout(() => setSuccessMessage(null), 5000);
+      } else {
+        const error = await response.json();
+        alert(error.detail || 'Failed to cancel appointment');
+      }
+    } catch (error) {
+      console.error('Error cancelling appointment:', error);
+      alert('Failed to cancel appointment');
+    }
   };
 
   const today = new Date();
@@ -148,6 +165,20 @@ export default function AppointmentsPage() {
       <Navbar />
       
       <div className="max-w-5xl mx-auto px-4 py-8">
+        {/* Success Message */}
+        {successMessage && (
+          <div className="mb-6 p-4 bg-green-50 border border-green-200 rounded-xl flex items-center gap-3">
+            <CheckCircle className="w-5 h-5 text-green-600 flex-shrink-0" />
+            <p className="text-green-800 font-medium">{successMessage}</p>
+            <button 
+              onClick={() => setSuccessMessage(null)}
+              className="ml-auto text-green-600 hover:text-green-800"
+            >
+              <XCircle className="w-5 h-5" />
+            </button>
+          </div>
+        )}
+
         {/* Header */}
         <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4 mb-8">
           <div>
@@ -231,6 +262,7 @@ export default function AppointmentsPage() {
                 key={appointment.id} 
                 appointment={appointment} 
                 isDoctor={isDoctor}
+                onCancel={handleCancelAppointment}
               />
             ))}
           </div>
@@ -240,14 +272,16 @@ export default function AppointmentsPage() {
   );
 }
 
-function AppointmentCard({ appointment, isDoctor }: { appointment: Appointment; isDoctor: boolean }) {
-  const status = statusConfig[appointment.status];
+function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: Appointment; isDoctor: boolean; onCancel?: (id: number) => void }) {
+  const [expanded, setExpanded] = useState(false);
+  const status = statusConfig[appointment.status] || { label: appointment.status, color: 'bg-slate-100 text-slate-700', icon: Clock };
   const StatusIcon = status.icon;
-  const ConsultationIcon = consultationTypeIcons[appointment.consultation_type];
+  const ConsultationIcon = consultationTypeIcons[appointment.consultation_type] || Video;
 
   const appointmentDate = new Date(appointment.scheduled_date);
   const isUpcoming = appointmentDate >= new Date() && appointment.status !== 'completed' && appointment.status !== 'cancelled';
   const canJoin = appointment.status === 'confirmed' && isUpcoming;
+  const canCancel = ['pending', 'scheduled', 'confirmed'].includes(appointment.status) && isUpcoming;
 
   // Check if appointment is starting soon (within 15 minutes)
   const now = new Date();
@@ -259,7 +293,10 @@ function AppointmentCard({ appointment, isDoctor }: { appointment: Appointment; 
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
-      <div className="p-6">
+      <div 
+        className="p-6 cursor-pointer"
+        onClick={() => setExpanded(!expanded)}
+      >
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           {/* Doctor/Patient Info */}
           <div className="flex items-center gap-4 flex-1">
@@ -298,63 +335,136 @@ function AppointmentCard({ appointment, isDoctor }: { appointment: Appointment; 
             </div>
           </div>
 
-          {/* Status */}
-          <div className={`px-3 py-1 rounded-full text-sm font-medium ${status.color} flex items-center gap-1`}>
-            <StatusIcon className="w-3.5 h-3.5" />
-            {status.label}
+          {/* Status & Expand */}
+          <div className="flex items-center gap-3">
+            <div className={`px-3 py-1 rounded-full text-sm font-medium ${status.color} flex items-center gap-1`}>
+              <StatusIcon className="w-3.5 h-3.5" />
+              {status.label}
+            </div>
+            <button className="p-1 hover:bg-slate-100 rounded-lg transition-colors">
+              {expanded ? (
+                <ChevronUp className="w-5 h-5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-400" />
+              )}
+            </button>
           </div>
         </div>
 
-        {/* Actions */}
-        {isUpcoming && (
-          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-            <div className="text-sm text-slate-500">
-              Fee: <span className="font-medium text-slate-700">{appointment.consultation_fee} MZN</span>
-              {appointment.payment_status === 'pending' && (
-                <span className="ml-2 text-amber-600">(Payment pending)</span>
-              )}
-            </div>
-            <div className="flex items-center gap-2">
-              {canJoin && (
-                <button 
-                  className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${
-                    isStartingSoon
-                      ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
-                      : 'bg-cyan-600 text-white hover:bg-cyan-700'
-                  }`}
-                >
-                  <Video className="w-4 h-4" />
-                  {isStartingSoon ? 'Join Now' : 'Join Consultation'}
-                </button>
-              )}
-              {appointment.status === 'scheduled' && (
-                <>
-                  <button className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium">
-                    Reschedule
-                  </button>
-                  <button className="px-4 py-2 border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors font-medium">
-                    Cancel
-                  </button>
-                </>
-              )}
-            </div>
-          </div>
-        )}
+        {/* Expanded Details */}
+        {expanded && (
+          <div className="mt-6 pt-6 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {/* Left Column - Details */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <FileText className="w-4 h-4 text-cyan-600" />
+                  Appointment Details
+                </h4>
+                
+                <div className="space-y-3 text-sm">
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Appointment ID</span>
+                    <span className="font-medium text-slate-700">#{appointment.id}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Consultation Type</span>
+                    <span className="font-medium text-slate-700 capitalize">{appointment.consultation_type}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Duration</span>
+                    <span className="font-medium text-slate-700">30 minutes</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Consultation Fee</span>
+                    <span className="font-medium text-slate-700">{appointment.consultation_fee.toLocaleString()} MZN</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-slate-500">Payment Status</span>
+                    <span className={`font-medium ${appointment.payment_status === 'paid' ? 'text-green-600' : 'text-amber-600'} capitalize`}>
+                      {appointment.payment_status}
+                    </span>
+                  </div>
+                </div>
 
-        {/* Completed appointment actions */}
-        {appointment.status === 'completed' && (
-          <div className="mt-4 pt-4 border-t border-slate-100 flex items-center justify-between">
-            <div className="text-sm text-slate-500">
-              Consultation completed
-            </div>
-            <div className="flex items-center gap-2">
-              <button className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium flex items-center gap-2">
-                <MessageSquare className="w-4 h-4" />
-                View Prescription
-              </button>
-              <button className="px-4 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium">
-                Book Again
-              </button>
+                {appointment.notes && (
+                  <div className="mt-4">
+                    <p className="text-sm text-slate-500 mb-1">Notes:</p>
+                    <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg">{appointment.notes}</p>
+                  </div>
+                )}
+              </div>
+
+              {/* Right Column - Actions */}
+              <div className="space-y-4">
+                <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+                  <User className="w-4 h-4 text-cyan-600" />
+                  {isDoctor ? 'Patient' : 'Doctor'} Information
+                </h4>
+                
+                <div className="p-4 bg-slate-50 rounded-xl">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center">
+                      <span className="text-white font-bold">
+                        {(isDoctor ? appointment.patient_name : appointment.doctor_name).charAt(0)}
+                      </span>
+                    </div>
+                    <div>
+                      <p className="font-medium text-slate-900">
+                        {isDoctor ? appointment.patient_name : appointment.doctor_name}
+                      </p>
+                      <p className="text-sm text-slate-500">{appointment.doctor_specialization}</p>
+                    </div>
+                  </div>
+                </div>
+
+                {/* Action Buttons */}
+                <div className="flex flex-wrap gap-2 pt-2">
+                  {canJoin && (
+                    <button 
+                      className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${
+                        isStartingSoon
+                          ? 'bg-green-600 text-white hover:bg-green-700'
+                          : 'bg-cyan-600 text-white hover:bg-cyan-700'
+                      }`}
+                    >
+                      <Video className="w-4 h-4" />
+                      {isStartingSoon ? 'Join Now' : 'Join Consultation'}
+                    </button>
+                  )}
+                  
+                  {appointment.payment_status === 'pending' && isUpcoming && (
+                    <button className="px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium flex items-center gap-2">
+                      <CreditCard className="w-4 h-4" />
+                      Pay Now
+                    </button>
+                  )}
+                  
+                  {canCancel && (
+                    <button 
+                      onClick={() => onCancel?.(appointment.id)}
+                      className="px-4 py-2 border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors font-medium"
+                    >
+                      Cancel Appointment
+                    </button>
+                  )}
+                  
+                  {appointment.status === 'completed' && (
+                    <>
+                      <button className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium flex items-center gap-2">
+                        <MessageSquare className="w-4 h-4" />
+                        View Prescription
+                      </button>
+                      <Link 
+                        to={`/find-doctors`}
+                        className="px-4 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium"
+                      >
+                        Book Again
+                      </Link>
+                    </>
+                  )}
+                </div>
+              </div>
             </div>
           </div>
         )}

@@ -864,6 +864,21 @@ class SpecializationService:
         return specialization
     
     @staticmethod
+    async def get_doctor_count_by_specialization(
+        db: AsyncSession,
+        specialization_id: int
+    ) -> int:
+        """Get the count of verified doctors for a specialization"""
+        from sqlalchemy import func
+        result = await db.execute(
+            select(func.count(Doctor.id)).where(
+                Doctor.specialization_id == specialization_id,
+                Doctor.verification_status == VerificationStatus.VERIFIED
+            )
+        )
+        return result.scalar() or 0
+    
+    @staticmethod
     async def get_all_specializations(
         db: AsyncSession,
         active_only: bool = True

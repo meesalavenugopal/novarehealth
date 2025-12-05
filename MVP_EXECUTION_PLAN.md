@@ -14,14 +14,14 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 |-------|--------|------------|----------|----------|
 | Phase 1: Foundation | ✅ Completed | Dec 3, 2025 | Dec 3, 2025 | 100% |
 | Phase 2: Doctor Ecosystem | ✅ Completed | Dec 3, 2025 | Dec 3, 2025 | 100% |
-| Phase 3: Appointment Booking | 🔵 In Progress | Dec 5, 2025 | - | 50% |
+| Phase 3: Appointment Booking | ✅ Completed | Dec 5, 2025 | Dec 5, 2025 | 100% |
 | Phase 4: Payments | ⚪ Not Started | - | - | 0% |
 | Phase 5: Video Consultation | ✅ Completed | Dec 5, 2025 | Dec 5, 2025 | 100% |
 | Phase 6: Prescription & EHR | ⚪ Not Started | - | - | 0% |
 | Phase 7: Admin Panel | 🔵 In Progress | Dec 4, 2025 | - | 60% |
 | Phase 8: Polish & Launch | ⚪ Not Started | - | - | 0% |
 
-**Overall Progress:** 55% Complete (Phase 1-2, 5 done, Phase 3 at 50%, Phase 7 at 60%)
+**Overall Progress:** 65% Complete (Phase 1-3, 5 done, Phase 7 at 60%)
 
 ### Additional Enhancements (Beyond MVP Scope) ✨
 - [x] AI Writing Assistant - Bio generation with OpenAI GPT-4o
@@ -187,23 +187,27 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 
 ### Technical Tasks
 - [x] Build search API with Elasticsearch or PostgreSQL full-text
-- [ ] Create doctor listing page with filters
+- [x] Create doctor listing page with filters
 - [x] Implement availability checking algorithm (GET /api/v1/doctors/{doctor_id}/bookable-slots)
-- [ ] Design booking confirmation flow
+- [x] Design booking confirmation flow
 - [ ] Integrate Twilio SMS for notifications
 - [ ] Set up email templates (booking, reminder, cancellation)
-- [ ] Build appointment management for both patient and doctor
+- [x] Build appointment management for both patient and doctor
 - [ ] Create appointment reminders (1 hour before)
 
-### Phase 3 In Progress Tasks 🔵
+### Phase 3 Completed Tasks ✅
 - [x] Bookable Slots API - GET /api/v1/doctors/{doctor_id}/bookable-slots endpoint
 - [x] Availability Conflict Detection API - POST /api/v1/doctors/me/availability/check-conflicts
 - [x] Slot Modification Conflict Handling - Returns 409 with affected appointments when bookings exist
 - [x] Slot Deletion Conflict Handling - Prevents deletion of slots with booked appointments
 - [x] Find Doctors Page - Search and filter doctors by specialization
-- [x] Appointments Page - View upcoming, past, and cancelled appointments
-- [ ] Patient Booking Page - UI for selecting doctor and booking slots
-- [ ] Appointment Confirmation - Booking confirmation and notifications
+- [x] Appointments Page - View upcoming, past, and cancelled appointments with cancel functionality
+- [x] Doctor Profile Page - View doctor details, availability, and booking widget
+- [x] Patient Booking Flow - Select time slot and book appointment
+- [x] Appointments API - POST /api/v1/appointments/ for creating appointments
+- [x] Cancel Appointment - Patients can cancel pending/confirmed appointments
+- [x] Success State - Banner shown after successful booking
+- [x] Expandable Appointment Cards - View full appointment details
 
 ---
 

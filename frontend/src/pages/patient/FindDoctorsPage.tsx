@@ -76,7 +76,24 @@ export default function FindDoctorsPage() {
       const response = await guestFetch('/api/v1/doctors/');
       if (response.ok) {
         const data = await response.json();
-        setDoctors(data);
+        // Transform nested API response to flat structure expected by UI
+        const transformedDoctors = data.map((doc: any) => ({
+          id: doc.id,
+          user_id: doc.user?.id,
+          first_name: doc.user?.first_name || '',
+          last_name: doc.user?.last_name || '',
+          avatar_url: doc.user?.avatar_url,
+          specialization_name: doc.specialization?.name || '',
+          experience_years: doc.experience_years,
+          consultation_fee: doc.consultation_fee,
+          bio: doc.bio || '',
+          languages: doc.languages || [],
+          education: doc.education || [],
+          rating: doc.rating || 0,
+          total_reviews: doc.total_reviews || 0,
+          is_available: doc.is_available,
+        }));
+        setDoctors(transformedDoctors);
       }
     } catch (error) {
       console.error('Error fetching doctors:', error);

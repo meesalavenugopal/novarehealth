@@ -82,7 +82,28 @@ export default function DoctorProfilePage() {
       const response = await guestFetch(`/api/v1/doctors/${id}`);
       if (response.ok) {
         const data = await response.json();
-        setDoctor(data);
+        // Transform nested API response to flat structure
+        const transformedDoctor: Doctor = {
+          id: data.id,
+          user_id: data.user_id,
+          first_name: data.user?.first_name || '',
+          last_name: data.user?.last_name || '',
+          avatar_url: data.user?.avatar_url,
+          specialization_id: data.specialization_id,
+          specialization_name: data.specialization?.name || '',
+          experience_years: data.experience_years,
+          consultation_fee: data.consultation_fee,
+          bio: data.bio || '',
+          languages: data.languages || [],
+          education: data.education || [],
+          certifications: data.certifications || [],
+          hospital_affiliations: data.hospital_affiliations || [],
+          rating: data.rating || 0,
+          total_reviews: data.total_reviews || 0,
+          is_available: data.is_available,
+          is_verified: data.verification_status === 'verified',
+        };
+        setDoctor(transformedDoctor);
       } else if (response.status === 404) {
         setError('Doctor not found');
       } else {
@@ -122,10 +143,17 @@ export default function DoctorProfilePage() {
           
           if (response.ok) {
             const data = await response.json();
+            // Transform API response to match TimeSlot interface
+            const transformedSlots = (data.slots || []).map((slot: any, index: number) => ({
+              id: index,
+              start_time: slot.time,
+              end_time: '', // API doesn't return end_time, we could calculate it
+              is_available: slot.is_available,
+            }));
             days.push({
               date: dateStr,
               day_name: dayNames[currentDate.getDay()],
-              slots: data.slots || [],
+              slots: transformedSlots,
             });
           } else {
             days.push({
@@ -205,7 +233,8 @@ export default function DoctorProfilePage() {
         method: 'POST',
         body: JSON.stringify({
           doctor_id: doctor.id,
-          slot_id: selectedSlot.id,
+          scheduled_date: selectedDate,
+          scheduled_time: selectedSlot.start_time,
           consultation_type: 'video',
           notes: '',
         }),
@@ -213,8 +242,12 @@ export default function DoctorProfilePage() {
 
       if (response.ok) {
         const appointment = await response.json();
-        navigate(`/appointments/${appointment.id}`, {
-          state: { success: true, message: 'Appointment booked successfully!' }
+        // Navigate to appointments list with success message
+        navigate('/appointments', {
+          state: { 
+            success: true, 
+            message: `Appointment booked successfully with ${appointment.doctor_name} on ${appointment.scheduled_date} at ${appointment.scheduled_time}` 
+          }
         });
       } else {
         const error = await response.json();
