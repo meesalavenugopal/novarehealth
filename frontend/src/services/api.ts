@@ -128,4 +128,66 @@ export const authFetch = async (url: string, options: RequestInit = {}): Promise
   return response;
 };
 
+/**
+ * Guest-friendly fetch for public endpoints
+ * Works without authentication, but will include token if available
+ * Does NOT force logout on 401 - allows guest browsing
+ */
+export const guestFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+  const token = localStorage.getItem('access_token');
+  
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(options.headers as Record<string, string> || {}),
+  };
+  
+  // Include token if available, but don't require it
+  if (token) {
+    headers.Authorization = `Bearer ${token}`;
+  }
+
+  return fetch(url, { ...options, headers });
+};
+
+/**
+ * Booking context management for guest-to-user flow
+ * Preserves booking intent when guest needs to login
+ */
+const BOOKING_CONTEXT_KEY = 'pending_booking_context';
+
+export interface BookingContext {
+  doctorId: number;
+  doctorName: string;
+  specializationName: string;
+  selectedDate?: string;
+  selectedSlotId?: number;
+  selectedSlotTime?: string;
+  consultationFee?: number;
+  returnUrl?: string;
+}
+
+export const saveBookingContext = (context: BookingContext): void => {
+  localStorage.setItem(BOOKING_CONTEXT_KEY, JSON.stringify(context));
+};
+
+export const getBookingContext = (): BookingContext | null => {
+  const stored = localStorage.getItem(BOOKING_CONTEXT_KEY);
+  if (stored) {
+    try {
+      return JSON.parse(stored);
+    } catch {
+      return null;
+    }
+  }
+  return null;
+};
+
+export const clearBookingContext = (): void => {
+  localStorage.removeItem(BOOKING_CONTEXT_KEY);
+};
+
+export const hasBookingContext = (): boolean => {
+  return localStorage.getItem(BOOKING_CONTEXT_KEY) !== null;
+};
+
 export default api;

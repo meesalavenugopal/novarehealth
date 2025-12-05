@@ -113,7 +113,7 @@ export default function HomePage() {
             <div className="hidden md:flex items-center gap-8">
               <a href="#features" className="text-white/80 hover:text-white transition">Features</a>
               <a href="#how-it-works" className="text-white/80 hover:text-white transition">How it Works</a>
-              <a href="#specializations" className="text-white/80 hover:text-white transition">Specializations</a>
+              <a href="#specializations" className="text-white/80 hover:text-white transition">Find a Doctor</a>
               <Link to="/for-doctors" className="text-white/80 hover:text-white transition font-medium flex items-center gap-1">
                 <Stethoscope className="w-4 h-4" />
                 For Doctors
@@ -406,7 +406,7 @@ export default function HomePage() {
             {specializations.map((spec, index) => (
               <Link
                 key={index}
-                to={`/doctors?specialization=${spec.name.toLowerCase()}`}
+                to={`/find-doctors?specialization=${encodeURIComponent(spec.name)}`}
                 className="flex items-center gap-4 p-6 bg-white rounded-2xl border border-slate-200 hover:border-cyan-300 hover:shadow-lg transition-all group"
               >
                 <div className="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center text-cyan-600 group-hover:bg-cyan-100 transition-colors">

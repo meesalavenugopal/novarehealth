@@ -20,6 +20,7 @@ import {
 import { authService } from '../../services/auth';
 import { useAuthStore } from '../../store/authStore';
 import Button from '../../components/ui/Button';
+import { getBookingContext, clearBookingContext } from '../../services/api';
 
 const phoneSchema = z.object({
   phone: z.string().min(10, 'Please enter a valid phone number'),
@@ -46,6 +47,10 @@ export default function LoginPage() {
   // Get redirect info from state
   const redirectFrom = location.state?.from;
   const redirectMessage = location.state?.message;
+  const returnUrl = location.state?.returnUrl;
+  
+  // Check for pending booking context
+  const pendingBooking = getBookingContext();
 
   const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
@@ -110,6 +115,20 @@ export default function LoginPage() {
         otp_code: data.otp,
       });
       setAuth(response.user, response.access_token, response.refresh_token);
+      
+      // Check for pending booking context first (guest mode)
+      if (pendingBooking?.returnUrl) {
+        const bookingReturnUrl = pendingBooking.returnUrl;
+        clearBookingContext();
+        navigate(bookingReturnUrl);
+        return;
+      }
+      
+      // Then check for returnUrl from state (passed from login prompt)
+      if (returnUrl) {
+        navigate(returnUrl);
+        return;
+      }
       
       // Redirect to original destination if coming from protected route
       if (redirectFrom) {

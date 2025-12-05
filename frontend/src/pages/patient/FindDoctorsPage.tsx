@@ -10,9 +10,9 @@ import {
   GraduationCap,
   Languages
 } from 'lucide-react';
-import { Link } from 'react-router-dom';
+import { Link, useSearchParams } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
-import { authFetch } from '../../services/api';
+import { guestFetch } from '../../services/api';
 
 interface Doctor {
   id: number;
@@ -37,21 +37,33 @@ interface Specialization {
 }
 
 export default function FindDoctorsPage() {
+  const [searchParams] = useSearchParams();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
   const [showFilters, setShowFilters] = useState(false);
   
+  // Get specialization from URL if present
+  const urlSpecialization = searchParams.get('specialization') || '';
+  
   // Filters
   const [filters, setFilters] = useState({
-    specialization: '',
+    specialization: urlSpecialization,
     minFee: '',
     maxFee: '',
     minRating: '',
     availableNow: false,
     sortBy: 'rating',
   });
+
+  // Update filter when URL changes
+  useEffect(() => {
+    if (urlSpecialization) {
+      setFilters(prev => ({ ...prev, specialization: urlSpecialization }));
+      setShowFilters(true); // Show filters panel when filtering by specialization
+    }
+  }, [urlSpecialization]);
 
   useEffect(() => {
     fetchDoctors();
@@ -61,7 +73,7 @@ export default function FindDoctorsPage() {
   const fetchDoctors = async () => {
     setLoading(true);
     try {
-      const response = await authFetch('/api/v1/doctors/');
+      const response = await guestFetch('/api/v1/doctors/');
       if (response.ok) {
         const data = await response.json();
         setDoctors(data);
@@ -75,7 +87,7 @@ export default function FindDoctorsPage() {
 
   const fetchSpecializations = async () => {
     try {
-      const response = await authFetch('/api/v1/doctors/specializations/all');
+      const response = await guestFetch('/api/v1/doctors/specializations/all');
       if (response.ok) {
         const data = await response.json();
         setSpecializations(data);

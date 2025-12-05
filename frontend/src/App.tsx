@@ -10,6 +10,8 @@ import PrescriptionsPage from './pages/common/PrescriptionsPage';
 import HealthRecordsPage from './pages/common/HealthRecordsPage';
 import PatientDashboard from './pages/patient/Dashboard';
 import FindDoctorsPage from './pages/patient/FindDoctorsPage';
+import DoctorProfilePage from './pages/patient/DoctorProfilePage';
+import SpecializationsPage from './pages/patient/SpecializationsPage';
 import { 
   DoctorDashboard, 
   DoctorRegisterPage, 
@@ -93,14 +95,11 @@ function App() {
               </ProtectedRoute>
             }
           />
-          <Route
-            path="/find-doctors"
-            element={
-              <ProtectedRoute allowedRoles={['patient']}>
-                <FindDoctorsPage />
-              </ProtectedRoute>
-            }
-          />
+          
+          {/* Public doctor browsing - supports guest mode */}
+          <Route path="/specializations" element={<SpecializationsPage />} />
+          <Route path="/find-doctors" element={<FindDoctorsPage />} />
+          <Route path="/doctor/:id" element={<DoctorProfilePage />} />
           
           {/* Patient Routes */}
           <Route
