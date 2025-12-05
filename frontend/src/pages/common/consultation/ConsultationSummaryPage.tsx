@@ -13,12 +13,18 @@ import {
   AlertCircle,
   Shield,
   X,
-  RefreshCw
+  RefreshCw,
+  ChevronDown,
+  ChevronUp,
+  Edit3,
+  Download
 } from 'lucide-react';
 import consultationService from '../../../services/consultation';
 import type { ConsultationStatusResponse } from '../../../services/consultation';
+import { getPrescriptionByAppointment, getPrescriptionPdfUrl, type PrescriptionDetail } from '../../../services/prescription';
 import { useAuthStore } from '../../../store/authStore';
 import Button from '../../../components/ui/Button';
+import PrescriptionEditor from '../../../components/doctor/PrescriptionEditor';
 
 type ErrorType = 'unauthorized' | 'not_found' | 'forbidden' | 'network' | 'general' | null;
 
@@ -34,6 +40,10 @@ export default function ConsultationSummaryPage() {
   const [rating, setRating] = useState(0);
   const [feedback, setFeedback] = useState('');
   const [submitted, setSubmitted] = useState(false);
+  const [showPrescriptionEditor, setShowPrescriptionEditor] = useState(false);
+  const [prescriptionSaved, setPrescriptionSaved] = useState(false);
+  const [existingPrescription, setExistingPrescription] = useState<PrescriptionDetail | null>(null);
+  const [loadingPrescription, setLoadingPrescription] = useState(false);
 
   const isDoctor = user?.role === 'doctor';
 
@@ -90,12 +100,47 @@ export default function ConsultationSummaryPage() {
     fetchStatus();
   }, [appointmentId]);
 
+  // Check for existing prescription
+  useEffect(() => {
+    const fetchExistingPrescription = async () => {
+      if (!appointmentId || !isDoctor) return;
+      
+      setLoadingPrescription(true);
+      try {
+        const prescription = await getPrescriptionByAppointment(parseInt(appointmentId));
+        setExistingPrescription(prescription);
+        setPrescriptionSaved(true);
+      } catch (err) {
+        // 404 means no prescription exists yet - this is fine
+        const error = err as { response?: { status?: number } };
+        if (error.response?.status !== 404) {
+          console.error('Failed to fetch prescription:', err);
+        }
+      } finally {
+        setLoadingPrescription(false);
+      }
+    };
+
+    fetchExistingPrescription();
+  }, [appointmentId, isDoctor]);
+
   const formatDuration = (seconds: number): string => {
     const mins = Math.floor(seconds / 60);
     const secs = seconds % 60;
     if (mins === 0) return `${secs} seconds`;
     if (secs === 0) return `${mins} minutes`;
     return `${mins} min ${secs} sec`;
+  };
+
+  const handlePrescriptionSuccess = () => {
+    setPrescriptionSaved(true);
+    setShowPrescriptionEditor(false);
+    // Refresh prescription data
+    if (appointmentId) {
+      getPrescriptionByAppointment(parseInt(appointmentId))
+        .then(setExistingPrescription)
+        .catch(console.error);
+    }
   };
 
   const handleSubmitFeedback = async () => {
@@ -315,6 +360,132 @@ export default function ConsultationSummaryPage() {
           </div>
         )}
 
+        {/* Prescription Editor for Doctors */}
+        {isDoctor && (
+          <div className="bg-white rounded-2xl shadow-sm border border-slate-100 overflow-hidden mb-6">
+            <button
+              onClick={() => setShowPrescriptionEditor(!showPrescriptionEditor)}
+              className="w-full flex items-center justify-between p-6 hover:bg-slate-50 transition-colors"
+            >
+              <div className="flex items-center gap-3">
+                <div className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                  prescriptionSaved ? 'bg-green-100' : 'bg-cyan-100'
+                }`}>
+                  <FileText className={`w-5 h-5 ${
+                    prescriptionSaved ? 'text-green-600' : 'text-cyan-600'
+                  }`} />
+                </div>
+                <div className="text-left">
+                  <h2 className="text-lg font-semibold text-slate-900">
+                    {prescriptionSaved ? 'Prescription Created' : 'Write Prescription'}
+                  </h2>
+                  <p className="text-sm text-slate-500">
+                    {prescriptionSaved 
+                      ? 'Prescription has been saved and sent to patient' 
+                      : 'Create a prescription for this consultation'}
+                  </p>
+                </div>
+              </div>
+              {showPrescriptionEditor ? (
+                <ChevronUp className="w-5 h-5 text-slate-400" />
+              ) : (
+                <ChevronDown className="w-5 h-5 text-slate-400" />
+              )}
+            </button>
+
+            {/* Show existing prescription details */}
+            {existingPrescription && !showPrescriptionEditor && (
+              <div className="border-t border-slate-100 p-6">
+                <div className="space-y-4">
+                  {/* Diagnosis */}
+                  {existingPrescription.diagnosis && (
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-500 mb-1">Diagnosis</h4>
+                      <p className="text-slate-900">{existingPrescription.diagnosis}</p>
+                    </div>
+                  )}
+
+                  {/* Medications */}
+                  <div>
+                    <h4 className="text-sm font-medium text-slate-500 mb-2">Medications ({existingPrescription.medications.length})</h4>
+                    <div className="space-y-2">
+                      {existingPrescription.medications.map((med, idx) => (
+                        <div key={idx} className="bg-slate-50 rounded-lg p-3">
+                          <p className="font-medium text-slate-900">{med.name}</p>
+                          <p className="text-sm text-slate-600">
+                            {med.dosage} • {med.frequency} • {med.duration}
+                          </p>
+                          {med.instructions && (
+                            <p className="text-sm text-slate-500 mt-1">{med.instructions}</p>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* Advice */}
+                  {existingPrescription.advice && (
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-500 mb-1">Advice</h4>
+                      <p className="text-slate-900">{existingPrescription.advice}</p>
+                    </div>
+                  )}
+
+                  {/* Follow-up Date */}
+                  {existingPrescription.follow_up_date && (
+                    <div>
+                      <h4 className="text-sm font-medium text-slate-500 mb-1">Follow-up Date</h4>
+                      <p className="text-slate-900">
+                        {new Date(existingPrescription.follow_up_date).toLocaleDateString('en-US', {
+                          weekday: 'long',
+                          year: 'numeric',
+                          month: 'long',
+                          day: 'numeric'
+                        })}
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Actions */}
+                  <div className="flex gap-3 pt-2">
+                    <Button
+                      variant="outline"
+                      onClick={() => setShowPrescriptionEditor(true)}
+                      className="flex-1"
+                    >
+                      <Edit3 className="w-4 h-4 mr-2" />
+                      Edit Prescription
+                    </Button>
+                    {existingPrescription.pdf_url && (
+                      <a
+                        href={getPrescriptionPdfUrl(existingPrescription) || '#'}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="flex-1 inline-flex items-center justify-center px-4 py-2 border border-slate-200 rounded-lg text-slate-700 hover:bg-slate-50 transition-colors"
+                      >
+                        <Download className="w-4 h-4 mr-2" />
+                        Download PDF
+                      </a>
+                    )}
+                  </div>
+                </div>
+              </div>
+            )}
+            
+            {showPrescriptionEditor && (
+              <div className="border-t border-slate-100 p-6">
+                <PrescriptionEditor
+                  appointmentId={parseInt(appointmentId || '0')}
+                  patientName={status?.patient?.name || 'Patient'}
+                  existingPrescription={existingPrescription || undefined}
+                  onClose={() => setShowPrescriptionEditor(false)}
+                  onSuccess={handlePrescriptionSuccess}
+                />
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Next Steps */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
           <h2 className="text-lg font-semibold text-slate-900 mb-4">Next Steps</h2>
@@ -322,16 +493,36 @@ export default function ConsultationSummaryPage() {
           <div className="space-y-3">
             {isDoctor ? (
               <>
-                <Link
-                  to={`/doctor/prescriptions/new?appointment=${appointmentId}`}
-                  className="flex items-center justify-between p-4 bg-cyan-50 rounded-xl hover:bg-cyan-100 transition-colors"
-                >
-                  <div className="flex items-center gap-3">
-                    <FileText className="w-5 h-5 text-cyan-600" />
-                    <span className="font-medium text-cyan-900">Write Prescription</span>
+                {loadingPrescription ? (
+                  <div className="flex items-center justify-center p-4 bg-slate-50 rounded-xl">
+                    <RefreshCw className="w-5 h-5 text-slate-400 animate-spin mr-2" />
+                    <span className="text-slate-500">Checking for prescription...</span>
                   </div>
-                  <ArrowRight className="w-5 h-5 text-cyan-600" />
-                </Link>
+                ) : !prescriptionSaved && !showPrescriptionEditor ? (
+                  <button
+                    onClick={() => setShowPrescriptionEditor(true)}
+                    className="w-full flex items-center justify-between p-4 bg-cyan-50 rounded-xl hover:bg-cyan-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <FileText className="w-5 h-5 text-cyan-600" />
+                      <span className="font-medium text-cyan-900">Write Prescription</span>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-cyan-600" />
+                  </button>
+                ) : null}
+                
+                {prescriptionSaved && (
+                  <Link
+                    to="/prescriptions"
+                    className="flex items-center justify-between p-4 bg-green-50 rounded-xl hover:bg-green-100 transition-colors"
+                  >
+                    <div className="flex items-center gap-3">
+                      <CheckCircle2 className="w-5 h-5 text-green-600" />
+                      <span className="font-medium text-green-900">View Created Prescription</span>
+                    </div>
+                    <ArrowRight className="w-5 h-5 text-green-600" />
+                  </Link>
+                )}
                 
                 <Link
                   to="/doctor/appointments"

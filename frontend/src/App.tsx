@@ -110,6 +110,14 @@ function App() {
               </ProtectedRoute>
             }
           />
+          <Route
+            path="/patient/appointments"
+            element={
+              <ProtectedRoute allowedRoles={['patient']}>
+                <AppointmentsPage />
+              </ProtectedRoute>
+            }
+          />
           
           {/* Doctor Routes */}
           <Route
@@ -133,6 +141,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['doctor']}>
                 <DoctorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/doctor/appointments"
+            element={
+              <ProtectedRoute allowedRoles={['doctor']}>
+                <AppointmentsPage />
               </ProtectedRoute>
             }
           />

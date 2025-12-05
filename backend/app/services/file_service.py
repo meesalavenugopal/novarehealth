@@ -155,3 +155,51 @@ class FileUploadService:
         
         base_url = settings.API_BASE_URL if hasattr(settings, 'API_BASE_URL') else "http://localhost:8000"
         return f"{base_url}/uploads/{file_path}"
+
+    @classmethod
+    async def save_bytes(
+        cls,
+        content: bytes,
+        filename: str,
+        category: str
+    ) -> str:
+        """Save raw bytes to a file (e.g., for PDF generation)."""
+        upload_dir = cls.get_upload_dir(category)
+        file_path = upload_dir / filename
+        
+        async with aiofiles.open(file_path, 'wb') as out_file:
+            await out_file.write(content)
+        
+        # Return relative path for storage in database
+        return f"{category}/{filename}"
+
+
+class FileService:
+    """Wrapper service for file operations with simpler interface."""
+    
+    async def upload_file(
+        self,
+        file_content: bytes,
+        filename: str,
+        content_type: str,
+        folder: str
+    ) -> str:
+        """
+        Upload file content and return the URL.
+        
+        Args:
+            file_content: Raw bytes of the file
+            filename: Name for the file
+            content_type: MIME type of the file
+            folder: Subfolder for organization
+        
+        Returns:
+            URL to access the file
+        """
+        relative_path = await FileUploadService.save_bytes(
+            content=file_content,
+            filename=filename,
+            category=folder
+        )
+        
+        return FileUploadService.get_file_url(relative_path)

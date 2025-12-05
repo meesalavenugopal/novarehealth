@@ -15,6 +15,7 @@ from app.models.models import (
     Review,
     OTPVerification,
     VerificationStatus,
+    Medicine,
 )
 
 __all__ = [
@@ -34,4 +35,5 @@ __all__ = [
     "Review",
     "OTPVerification",
     "VerificationStatus",
+    "Medicine",
 ]

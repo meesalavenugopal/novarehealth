@@ -526,6 +526,33 @@ class PaymentResponse(BaseModel):
         from_attributes = True
 
 
+# ============== Medicine Schemas ==============
+
+class MedicineBase(BaseModel):
+    name: str
+    generic_name: Optional[str] = None
+    category: Optional[str] = None
+    form: Optional[str] = None
+    strength: Optional[str] = None
+
+
+class MedicineResponse(MedicineBase):
+    id: int
+    manufacturer: Optional[str] = None
+    description: Optional[str] = None
+    common_dosages: Optional[List[str]] = None
+    is_active: bool = True
+
+    class Config:
+        from_attributes = True
+
+
+class MedicineSearchResponse(BaseModel):
+    medicines: List[MedicineResponse]
+    total: int
+    query: str
+
+
 # ============== Prescription Schemas ==============
 
 class MedicationItem(BaseModel):
@@ -533,6 +560,8 @@ class MedicationItem(BaseModel):
     dosage: str
     frequency: str
     duration: str
+    quantity: Optional[str] = None
+    instructions: Optional[str] = None
     notes: Optional[str] = None
 
 
@@ -541,6 +570,16 @@ class PrescriptionCreate(BaseModel):
     medications: List[MedicationItem]
     diagnosis: Optional[str] = None
     notes: Optional[str] = None
+    follow_up_date: Optional[date] = None
+    advice: Optional[str] = None
+
+
+class PrescriptionUpdate(BaseModel):
+    medications: Optional[List[MedicationItem]] = None
+    diagnosis: Optional[str] = None
+    notes: Optional[str] = None
+    follow_up_date: Optional[date] = None
+    advice: Optional[str] = None
 
 
 class PrescriptionResponse(BaseModel):
@@ -551,11 +590,22 @@ class PrescriptionResponse(BaseModel):
     medications: List[dict]
     diagnosis: Optional[str] = None
     notes: Optional[str] = None
+    advice: Optional[str] = None
+    follow_up_date: Optional[date] = None
     pdf_url: Optional[str] = None
     created_at: datetime
 
     class Config:
         from_attributes = True
+
+
+class PrescriptionDetailResponse(PrescriptionResponse):
+    """Prescription with doctor and patient details"""
+    doctor_name: Optional[str] = None
+    doctor_specialization: Optional[str] = None
+    patient_name: Optional[str] = None
+    patient_age: Optional[int] = None
+    patient_gender: Optional[str] = None
 
 
 # ============== Health Record Schemas ==============

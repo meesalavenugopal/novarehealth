@@ -573,10 +573,13 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
                   
                   {appointment.status === 'completed' && (
                     <>
-                      <button className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium flex items-center gap-2">
-                        <MessageSquare className="w-4 h-4" />
-                        View Prescription
-                      </button>
+                      <Link 
+                        to={`/consultation/${appointment.id}/summary`}
+                        className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium flex items-center gap-2"
+                      >
+                        <FileText className="w-4 h-4" />
+                        {isDoctor ? 'View/Write Prescription' : 'View Prescription'}
+                      </Link>
                       <Link 
                         to={`/find-doctors`}
                         className="px-4 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium"

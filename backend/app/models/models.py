@@ -73,6 +73,7 @@ class User(Base):
     patient_appointments = relationship("Appointment", back_populates="patient", foreign_keys="Appointment.patient_id")
     health_records = relationship("HealthRecord", back_populates="patient")
     reviews_given = relationship("Review", back_populates="patient")
+    prescriptions = relationship("Prescription", back_populates="patient")
 
 
 class Specialization(Base):
@@ -243,16 +244,20 @@ class Prescription(Base):
     medications = Column(JSON, nullable=False)  # List of medications with dosage
     diagnosis = Column(Text, nullable=True)
     notes = Column(Text, nullable=True)
+    advice = Column(Text, nullable=True)  # General advice/instructions
+    follow_up_date = Column(Date, nullable=True)
     
     # PDF
     pdf_url = Column(String(500), nullable=True)
     
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
     
     # Relationships
     appointment = relationship("Appointment", back_populates="prescription")
     doctor = relationship("Doctor", back_populates="prescriptions")
+    patient = relationship("User", back_populates="prescriptions")
 
 
 class HealthRecord(Base):
@@ -337,4 +342,23 @@ class OTPVerification(Base):
     attempts = Column(Integer, default=0)
     
     expires_at = Column(DateTime, nullable=False)
+    created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Medicine(Base):
+    """Database of common medicines for prescription autocomplete"""
+    __tablename__ = "medicines"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    name = Column(String(200), nullable=False, index=True)
+    generic_name = Column(String(200), nullable=True)
+    category = Column(String(100), nullable=True)  # Antibiotic, Analgesic, etc.
+    form = Column(String(50), nullable=True)  # Tablet, Capsule, Syrup, Injection, etc.
+    strength = Column(String(100), nullable=True)  # 500mg, 250mg/5ml, etc.
+    manufacturer = Column(String(200), nullable=True)
+    description = Column(Text, nullable=True)
+    common_dosages = Column(JSON, nullable=True)  # ["1 tablet twice daily", "2 tablets every 6 hours"]
+    side_effects = Column(Text, nullable=True)
+    contraindications = Column(Text, nullable=True)
+    is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
