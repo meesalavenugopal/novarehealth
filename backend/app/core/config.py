@@ -25,13 +25,24 @@ class Settings(BaseSettings):
     UPLOAD_DIR: str = "uploads"
     MAX_UPLOAD_SIZE: int = 10 * 1024 * 1024  # 10 MB
     
-    # Twilio
+    # Twilio (for OTP/SMS only)
     TWILIO_ACCOUNT_SID: Optional[str] = None
     TWILIO_AUTH_TOKEN: Optional[str] = None
     TWILIO_VERIFY_SERVICE_SID: Optional[str] = None
     TWILIO_PHONE_NUMBER: Optional[str] = None
-    TWILIO_API_KEY_SID: Optional[str] = None
-    TWILIO_API_KEY_SECRET: Optional[str] = None
+    
+    # Zoom (for video consultations)
+    ZOOM_ACCOUNT_ID: Optional[str] = None
+    ZOOM_CLIENT_ID: Optional[str] = None
+    ZOOM_CLIENT_SECRET: Optional[str] = None
+    
+    # Email (for sending meeting details)
+    SMTP_HOST: str = "smtp.gmail.com"
+    SMTP_PORT: int = 587
+    SMTP_USER: Optional[str] = None
+    SMTP_PASSWORD: Optional[str] = None
+    EMAIL_FROM: str = "noreply@novarehealth.co.mz"
+    EMAIL_FROM_NAME: str = "NovareHealth"
     
     # AWS S3
     AWS_ACCESS_KEY_ID: Optional[str] = None

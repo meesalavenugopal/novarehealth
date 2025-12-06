@@ -173,9 +173,11 @@ class Appointment(Base):
     appointment_type = Column(Enum(AppointmentType, values_callable=lambda x: [e.value for e in x]), default=AppointmentType.VIDEO)
     status = Column(Enum(AppointmentStatus, values_callable=lambda x: [e.value for e in x]), default=AppointmentStatus.PENDING)
     
-    # Video Call
-    meeting_room_id = Column(String(100), nullable=True)
-    meeting_token = Column(String(500), nullable=True)
+    # Zoom Meeting Details
+    zoom_meeting_id = Column(String(100), nullable=True)
+    zoom_join_url = Column(String(500), nullable=True)
+    zoom_start_url = Column(Text, nullable=True)  # Host URL (for doctor)
+    zoom_password = Column(String(50), nullable=True)
     
     # Notes
     patient_notes = Column(Text, nullable=True)

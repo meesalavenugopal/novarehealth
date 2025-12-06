@@ -22,6 +22,8 @@ import {
   XCircle,
   AlertCircle,
   Play,
+  Copy,
+  ExternalLink,
 } from 'lucide-react';
 import { Link, useSearchParams } from 'react-router-dom';
 
@@ -41,6 +43,9 @@ interface Appointment {
   consultation_fee: number;
   patient_notes?: string;
   created_at: string;
+  zoom_join_url?: string;
+  zoom_meeting_id?: string;
+  zoom_password?: string;
 }
 
 interface AppointmentListResponse {
@@ -419,9 +424,72 @@ export const AppointmentsPage: React.FC = () => {
                         </div>
                       )}
 
+                      {/* Zoom Meeting Details for Video Consultations */}
+                      {apt.appointment_type === 'video' && apt.zoom_join_url && (
+                        <div className="mb-4 p-4 bg-blue-50 rounded-lg border border-blue-100">
+                          <p className="text-sm font-medium text-blue-700 mb-3 flex items-center gap-2">
+                            <Video className="w-4 h-4" />
+                            Zoom Meeting Details
+                          </p>
+                          <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 mb-4">
+                            <div className="flex items-center justify-between bg-white rounded px-3 py-2 shadow-sm">
+                              <span className="text-xs text-slate-500 uppercase">Meeting ID</span>
+                              <span className="font-mono text-sm font-medium text-slate-800">{apt.zoom_meeting_id}</span>
+                            </div>
+                            <div className="flex items-center justify-between bg-white rounded px-3 py-2 shadow-sm">
+                              <span className="text-xs text-slate-500 uppercase">Password</span>
+                              <div className="flex items-center gap-2">
+                                <span className="font-mono text-sm font-medium text-slate-800">{apt.zoom_password}</span>
+                                <button
+                                  onClick={() => {
+                                    navigator.clipboard.writeText(apt.zoom_password || '');
+                                  }}
+                                  className="text-slate-400 hover:text-blue-600"
+                                  title="Copy password"
+                                >
+                                  <Copy className="w-3 h-3" />
+                                </button>
+                              </div>
+                            </div>
+                            <a
+                              href={apt.zoom_join_url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="flex items-center justify-center gap-2 bg-blue-600 text-white rounded px-3 py-2 hover:bg-blue-700 transition text-sm font-medium"
+                            >
+                              <ExternalLink className="w-4 h-4" />
+                              Join Meeting
+                            </a>
+                          </div>
+                          
+                          {/* How to Join Instructions */}
+                          <div className="bg-white rounded-lg p-3 border border-blue-100">
+                            <p className="text-xs font-semibold text-slate-700 mb-2">How to join:</p>
+                            <div className="space-y-1.5 text-xs text-slate-600">
+                              <div className="flex gap-2">
+                                <span className="flex-shrink-0 w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-bold">1</span>
+                                <span>Click the "Join Meeting" button above to open Zoom</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <span className="flex-shrink-0 w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-bold">2</span>
+                                <span>If prompted, enter your name and the Meeting Password shown above</span>
+                              </div>
+                              <div className="flex gap-2">
+                                <span className="flex-shrink-0 w-4 h-4 bg-blue-100 text-blue-700 rounded-full flex items-center justify-center text-[10px] font-bold">3</span>
+                                <span>Wait in the waiting room until the doctor admits you</span>
+                              </div>
+                            </div>
+                            <div className="mt-2 pt-2 border-t border-blue-50 flex items-start gap-1.5 text-xs text-amber-600">
+                              <span>💡</span>
+                              <span className="font-medium">Tip: Join 5 minutes before your scheduled time to ensure a smooth connection</span>
+                            </div>
+                          </div>
+                        </div>
+                      )}
+
                       {/* Status Update Actions */}
-                      <div className="flex flex-wrap gap-2">
-                        <p className="text-sm font-medium text-slate-700 mr-2">Update Status:</p>
+                      <div className="flex flex-wrap items-center gap-2">
+                        <p className="text-sm font-medium text-slate-700">Update Status:</p>
                         {['confirmed', 'completed', 'cancelled', 'no_show'].map((status) => (
                           <Button
                             key={status}

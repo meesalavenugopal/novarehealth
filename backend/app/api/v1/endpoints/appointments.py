@@ -5,10 +5,11 @@ Provides endpoints for:
 - Booking appointments
 - Listing patient appointments
 - Cancelling appointments
+- Managing Zoom meeting details
 """
-from datetime import datetime, date, time
+from datetime import datetime, date, time, timedelta
 from typing import List, Optional
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, and_
 from sqlalchemy.orm import selectinload
@@ -17,6 +18,8 @@ from pydantic import BaseModel
 from app.db.database import get_db
 from app.api.deps import get_current_user
 from app.models import User, Doctor, Appointment, AppointmentStatus, AppointmentType, UserRole
+from app.services.zoom_service import get_zoom_service
+from app.services.email_service import get_email_service
 
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
@@ -48,6 +51,9 @@ class AppointmentResponse(BaseModel):
     consultation_fee: float
     payment_status: str = "pending"  # pending, paid, refunded
     patient_notes: Optional[str] = None
+    zoom_join_url: Optional[str] = None
+    zoom_meeting_id: Optional[str] = None
+    zoom_password: Optional[str] = None
     created_at: str
 
     class Config:
@@ -64,6 +70,7 @@ class AppointmentListResponse(BaseModel):
 @router.post("/", response_model=AppointmentResponse, status_code=status.HTTP_201_CREATED)
 async def book_appointment(
     request: AppointmentBookRequest,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -152,6 +159,80 @@ async def book_appointment(
     await db.commit()
     await db.refresh(appointment)
     
+    # Create Zoom meeting for video consultations
+    zoom_join_url = None
+    zoom_meeting_id = None
+    zoom_password = None
+    
+    if appointment.appointment_type == AppointmentType.VIDEO:
+        try:
+            zoom_service = get_zoom_service()
+            email_service = get_email_service()
+            
+            # Create Zoom meeting
+            meeting_datetime = datetime.combine(scheduled_date, scheduled_time)
+            meeting_topic = f"Consultation: {current_user.first_name} {current_user.last_name} with Dr. {doctor.user.first_name} {doctor.user.last_name}"
+            
+            meeting_data = await zoom_service.create_meeting(
+                topic=meeting_topic,
+                start_time=meeting_datetime,
+                duration_minutes=appointment.duration,
+                timezone=appointment.timezone or "Africa/Maputo"
+            )
+            
+            if meeting_data:
+                # Update appointment with Zoom details
+                appointment.zoom_meeting_id = str(meeting_data.get("meeting_id") or meeting_data.get("id"))
+                appointment.zoom_join_url = meeting_data.get("join_url")
+                appointment.zoom_start_url = meeting_data.get("start_url")
+                appointment.zoom_password = meeting_data.get("password")
+                
+                await db.commit()
+                await db.refresh(appointment)
+                
+                zoom_join_url = appointment.zoom_join_url
+                zoom_meeting_id = appointment.zoom_meeting_id
+                zoom_password = appointment.zoom_password
+                
+                # Send email notifications in background
+                doctor_name_full = f"Dr. {doctor.user.first_name} {doctor.user.last_name}"
+                patient_name_full = f"{current_user.first_name} {current_user.last_name}"
+                specialization_name = doctor.specialization.name if doctor.specialization else ""
+                
+                # Send to patient
+                background_tasks.add_task(
+                    email_service.send_appointment_confirmation,
+                    to_email=current_user.email,
+                    patient_name=patient_name_full,
+                    doctor_name=doctor.user.first_name + " " + doctor.user.last_name,
+                    specialization=specialization_name,
+                    appointment_date=str(scheduled_date),
+                    appointment_time=scheduled_time.strftime("%H:%M"),
+                    zoom_join_url=zoom_join_url,
+                    zoom_password=zoom_password or "",
+                    zoom_meeting_id=zoom_meeting_id or "",
+                    is_doctor=False
+                )
+                
+                # Send to doctor
+                background_tasks.add_task(
+                    email_service.send_appointment_confirmation,
+                    to_email=doctor.user.email,
+                    patient_name=patient_name_full,
+                    doctor_name=doctor.user.first_name + " " + doctor.user.last_name,
+                    specialization=specialization_name,
+                    appointment_date=str(scheduled_date),
+                    appointment_time=scheduled_time.strftime("%H:%M"),
+                    zoom_join_url=meeting_data.get("start_url"),  # Doctor gets host link
+                    zoom_password=zoom_password or "",
+                    zoom_meeting_id=zoom_meeting_id or "",
+                    is_doctor=True
+                )
+        except Exception as e:
+            # Log error but don't fail the appointment booking
+            import logging
+            logging.error(f"Failed to create Zoom meeting or send emails: {e}")
+    
     # For dev testing: confirmed = paid, otherwise pending
     payment_status = "paid" if appointment.status == AppointmentStatus.CONFIRMED else "pending"
     
@@ -170,6 +251,9 @@ async def book_appointment(
         consultation_fee=float(doctor.consultation_fee),
         payment_status=payment_status,
         patient_notes=appointment.patient_notes,
+        zoom_join_url=zoom_join_url,
+        zoom_meeting_id=zoom_meeting_id,
+        zoom_password=zoom_password,
         created_at=appointment.created_at.isoformat(),
     )
 
@@ -222,6 +306,13 @@ async def list_my_appointments(
         # For dev testing: confirmed = paid, otherwise pending
         payment_status = "paid" if apt.status == AppointmentStatus.CONFIRMED else "pending"
         
+        # Determine zoom URL based on user role (doctor gets start_url, patient gets join_url)
+        zoom_url = None
+        if current_user.role == UserRole.DOCTOR and apt.zoom_start_url:
+            zoom_url = apt.zoom_start_url
+        elif apt.zoom_join_url:
+            zoom_url = apt.zoom_join_url
+        
         response_list.append(AppointmentResponse(
             id=apt.id,
             doctor_id=apt.doctor_id,
@@ -237,6 +328,9 @@ async def list_my_appointments(
             consultation_fee=float(apt.doctor.consultation_fee),
             payment_status=payment_status,
             patient_notes=apt.patient_notes,
+            zoom_join_url=zoom_url,
+            zoom_meeting_id=apt.zoom_meeting_id,
+            zoom_password=apt.zoom_password,
             created_at=apt.created_at.isoformat(),
         ))
     
@@ -296,6 +390,15 @@ async def cancel_appointment(
     appointment.status = AppointmentStatus.CANCELLED
     appointment.cancelled_at = datetime.utcnow()
     appointment.cancellation_reason = reason
+    
+    # Delete Zoom meeting if exists
+    if appointment.zoom_meeting_id:
+        try:
+            zoom_service = get_zoom_service()
+            await zoom_service.delete_meeting(appointment.zoom_meeting_id)
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to delete Zoom meeting: {e}")
     
     await db.commit()
     

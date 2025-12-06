@@ -51,6 +51,9 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Doctor Landing Page - /for-doctors with benefits, testimonials, FAQ, earnings potential
 - [x] Admin Doctor List API - /api/v1/admin/doctors with status filtering
 - [x] Admin Manage Doctors UI - Tabs for All/Pending/Verified/Rejected with search
+- [x] Zoom Integration - Replaced Twilio Video with Zoom meeting links (no video maintenance)
+- [x] Zoom Meeting Details UI - Meeting ID, Password, Join button for all user roles
+- [x] Zoom Join Instructions - Step-by-step guide with tips for patients/doctors/admin
 
 ### Phase 1 Completed Tasks ✅
 - [x] Project Setup - React + TypeScript + TailwindCSS frontend
@@ -78,20 +81,16 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Homepage "Become a Doctor" CTA - Multiple entry points for doctor registration
 
 ### Phase 5 Completed Tasks ✅
-- [x] Twilio Video Setup - Twilio Programmable Video with API Key authentication
-- [x] Video Service Backend - Room creation, token generation, consultation lifecycle
-- [x] Consultation API Endpoints - GET /token, POST /start, POST /end, GET /status
-- [x] Consultation Room UI - Full video interface with local/remote video display
-- [x] Room Security - Token-based room access with user validation
-- [x] Join/Leave Handling - Participant connection/disconnection handling
-- [x] Connection Recovery - Reconnecting/Reconnected state handling
-- [x] Session Timer - Elapsed time and remaining time display
-- [x] Media Controls - Mic toggle, camera toggle, speaker toggle
-- [x] Fullscreen Mode - Toggle fullscreen video display
-- [x] Waiting Room - Pre-join room with appointment info and device preview
-- [x] Device Checks - Camera/microphone permission status indicators
-- [x] Doctor Controls - Start/End consultation buttons (doctor only)
-- [x] Consultation Summary Page - Post-call rating, feedback, and next steps
+- [x] ~~Twilio Video Setup~~ **Replaced with Zoom Integration**
+- [x] Zoom Meeting Integration - Server-to-Server OAuth with Zoom API
+- [x] Zoom Service Backend - Meeting creation with auto-generated credentials
+- [x] Email Notifications - SMTP email service for meeting details
+- [x] Zoom Meeting Details - Meeting ID, Password, Join URL stored in database
+- [x] Patient Appointments UI - Zoom meeting details with join button and instructions
+- [x] Doctor Appointments UI - Zoom meeting details (via common page)
+- [x] Admin Appointments UI - Zoom meeting details with instructions
+- [x] Meeting Instructions - Step-by-step "How to join" guide for all users
+- [x] Copy Password - One-click copy password functionality
 - [x] Frontend Routes - /consultation/:id and /consultation/:id/summary
 - [x] Error Handling - 401/403/404 errors with proper UI and redirects
 - [x] Unauthorized Handling - Session expired redirect to login

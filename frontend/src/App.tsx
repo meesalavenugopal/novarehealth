@@ -21,7 +21,6 @@ import {
 } from './pages/doctor';
 import { AdminDashboard, PatientsPage as AdminPatientsPage, AppointmentsPage as AdminAppointmentsPage, SpecializationsPage as AdminSpecializationsPage } from './pages/admin';
 import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage } from './pages/legal';
-import ConsultationRoomPage from './pages/common/consultation/ConsultationRoomPage';
 import ConsultationSummaryPage from './pages/common/consultation/ConsultationSummaryPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
 
@@ -161,15 +160,7 @@ function App() {
             }
           />
           
-          {/* Video Consultation Routes (Protected - Patient and Doctor) */}
-          <Route
-            path="/consultation/:appointmentId"
-            element={
-              <ProtectedRoute allowedRoles={['patient', 'doctor']}>
-                <ConsultationRoomPage />
-              </ProtectedRoute>
-            }
-          />
+          {/* Consultation Summary Route (Zoom meetings handled externally) */}
           <Route
             path="/consultation/:appointmentId/summary"
             element={

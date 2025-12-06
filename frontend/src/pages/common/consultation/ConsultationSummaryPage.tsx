@@ -19,13 +19,34 @@ import {
   Edit3,
   Download
 } from 'lucide-react';
-import consultationService from '../../../services/consultation';
-import type { ConsultationStatusResponse } from '../../../services/consultation';
+import { authFetch } from '../../../services/api';
 import { getPrescriptionByAppointment, getPrescriptionPdfUrl, type PrescriptionDetail } from '../../../services/prescription';
 import { submitReview, getAppointmentReview } from '../../../services/reviews';
 import { useAuthStore } from '../../../store/authStore';
 import Button from '../../../components/ui/Button';
 import PrescriptionEditor from '../../../components/doctor/PrescriptionEditor';
+
+// Appointment response type (matches backend)
+interface AppointmentData {
+  id: number;
+  doctor_id: number;
+  doctor_name: string;
+  specialization: string;
+  patient_id: number;
+  patient_name: string;
+  scheduled_date: string;
+  scheduled_time: string;
+  duration: number;
+  appointment_type: string;
+  status: string;
+  consultation_fee: number;
+  payment_status: string;
+  patient_notes?: string;
+  zoom_join_url?: string;
+  zoom_meeting_id?: string;
+  zoom_password?: string;
+  created_at: string;
+}
 
 type ErrorType = 'unauthorized' | 'not_found' | 'forbidden' | 'network' | 'general' | null;
 
@@ -34,7 +55,7 @@ export default function ConsultationSummaryPage() {
   const navigate = useNavigate();
   const { user, logout } = useAuthStore();
   
-  const [status, setStatus] = useState<ConsultationStatusResponse | null>(null);
+  const [appointment, setAppointment] = useState<AppointmentData | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [errorType, setErrorType] = useState<ErrorType>(null);
@@ -50,24 +71,6 @@ export default function ConsultationSummaryPage() {
 
   const isDoctor = user?.role === 'doctor';
 
-  // Helper to classify error type
-  const classifyError = (err: unknown): { message: string; type: ErrorType } => {
-    const error = err as { response?: { status?: number; data?: { detail?: string } }; message?: string };
-    const status = error.response?.status;
-    const detail = error.response?.data?.detail || error.message || 'An error occurred';
-    
-    if (status === 401) {
-      return { message: 'Your session has expired. Please login again.', type: 'unauthorized' };
-    } else if (status === 403) {
-      return { message: 'You do not have permission to access this consultation.', type: 'forbidden' };
-    } else if (status === 404) {
-      return { message: 'Consultation not found.', type: 'not_found' };
-    } else if (!navigator.onLine || error.message?.includes('Network')) {
-      return { message: 'Network error. Please check your connection.', type: 'network' };
-    }
-    return { message: detail, type: 'general' };
-  };
-
   const handleLoginRedirect = () => {
     logout();
     navigate('/login');
@@ -82,25 +85,54 @@ export default function ConsultationSummaryPage() {
   };
 
   useEffect(() => {
-    const fetchStatus = async () => {
+    const fetchAppointment = async () => {
       if (!appointmentId) return;
       
       try {
-        const data = await consultationService.getConsultationStatus(parseInt(appointmentId));
-        setStatus(data);
+        // Fetch all appointments and find the one we need
+        const response = await authFetch('/api/v1/appointments/');
+        if (!response.ok) {
+          const status = response.status;
+          if (status === 401) {
+            setError('Your session has expired. Please login again.');
+            setErrorType('unauthorized');
+          } else if (status === 403) {
+            setError('You do not have permission to access this appointment.');
+            setErrorType('forbidden');
+          } else {
+            setError('Failed to fetch appointment');
+            setErrorType('general');
+          }
+          return;
+        }
+        
+        const data = await response.json();
+        const apt = data.appointments?.find((a: AppointmentData) => a.id === parseInt(appointmentId));
+        
+        if (!apt) {
+          setError('Appointment not found.');
+          setErrorType('not_found');
+          return;
+        }
+        
+        setAppointment(apt);
         setError(null);
         setErrorType(null);
       } catch (err) {
-        console.error('Failed to fetch status:', err);
-        const { message, type } = classifyError(err);
-        setError(message);
-        setErrorType(type);
+        console.error('Failed to fetch appointment:', err);
+        if (!navigator.onLine) {
+          setError('Network error. Please check your connection.');
+          setErrorType('network');
+        } else {
+          setError('An error occurred');
+          setErrorType('general');
+        }
       } finally {
         setLoading(false);
       }
     };
 
-    fetchStatus();
+    fetchAppointment();
   }, [appointmentId]);
 
   // Check for existing prescription
@@ -146,14 +178,6 @@ export default function ConsultationSummaryPage() {
 
     checkExistingReview();
   }, [appointmentId, isDoctor]);
-
-  const formatDuration = (seconds: number): string => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    if (mins === 0) return `${secs} seconds`;
-    if (secs === 0) return `${mins} minutes`;
-    return `${mins} min ${secs} sec`;
-  };
 
   const handlePrescriptionSuccess = () => {
     setPrescriptionSaved(true);
@@ -258,11 +282,11 @@ export default function ConsultationSummaryPage() {
     );
   }
 
-  if (!status) {
+  if (!appointment) {
     return (
       <div className="min-h-screen bg-linear-to-br from-slate-50 to-cyan-50 flex items-center justify-center p-4">
         <div className="text-center">
-          <h2 className="text-xl font-semibold text-slate-900">Consultation not found</h2>
+          <h2 className="text-xl font-semibold text-slate-900">Appointment not found</h2>
           <Button onClick={handleGoBack} className="mt-4">Go Back</Button>
         </div>
       </div>
@@ -277,15 +301,20 @@ export default function ConsultationSummaryPage() {
           <div className="w-20 h-20 bg-linear-to-br from-green-500 to-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/20">
             <CheckCircle2 className="w-10 h-10 text-white" />
           </div>
-          <h1 className="text-2xl font-bold text-slate-900">Consultation Complete!</h1>
+          <h1 className="text-2xl font-bold text-slate-900">
+            {appointment.status === 'completed' ? 'Consultation Complete!' : 'Appointment Details'}
+          </h1>
           <p className="text-slate-600 mt-2">
-            Your video consultation has ended successfully
+            {appointment.status === 'completed' 
+              ? 'Your video consultation has ended successfully'
+              : `Status: ${appointment.status.charAt(0).toUpperCase() + appointment.status.slice(1)}`
+            }
           </p>
         </div>
 
         {/* Summary Card */}
         <div className="bg-white rounded-2xl shadow-sm border border-slate-100 p-6 mb-6">
-          <h2 className="text-lg font-semibold text-slate-900 mb-4">Consultation Summary</h2>
+          <h2 className="text-lg font-semibold text-slate-900 mb-4">Appointment Summary</h2>
           
           <div className="space-y-4">
             {/* Participant */}
@@ -298,8 +327,11 @@ export default function ConsultationSummaryPage() {
                   {isDoctor ? 'Patient' : 'Doctor'}
                 </p>
                 <p className="font-medium text-slate-900">
-                  {isDoctor ? status.patient.name : status.doctor.name}
+                  {isDoctor ? appointment.patient_name : appointment.doctor_name}
                 </p>
+                {!isDoctor && appointment.specialization && (
+                  <p className="text-sm text-slate-500">{appointment.specialization}</p>
+                )}
               </div>
             </div>
 
@@ -311,12 +343,12 @@ export default function ConsultationSummaryPage() {
               <div>
                 <p className="text-sm text-slate-500">Date & Time</p>
                 <p className="font-medium text-slate-900">
-                  {new Date(status.scheduled_date).toLocaleDateString('en-US', {
+                  {new Date(appointment.scheduled_date).toLocaleDateString('en-US', {
                     weekday: 'long',
                     year: 'numeric',
                     month: 'long',
                     day: 'numeric'
-                  })} at {status.scheduled_time}
+                  })} at {appointment.scheduled_time}
                 </p>
               </div>
             </div>
@@ -329,7 +361,7 @@ export default function ConsultationSummaryPage() {
               <div>
                 <p className="text-sm text-slate-500">Duration</p>
                 <p className="font-medium text-slate-900">
-                  {formatDuration(status.elapsed_seconds)}
+                  {appointment.duration} minutes
                 </p>
               </div>
             </div>
@@ -342,7 +374,7 @@ export default function ConsultationSummaryPage() {
               <div>
                 <p className="text-sm text-slate-500">Type</p>
                 <p className="font-medium text-slate-900 capitalize">
-                  {status.appointment_type} Consultation
+                  {appointment.appointment_type} Consultation
                 </p>
               </div>
             </div>
@@ -533,7 +565,7 @@ export default function ConsultationSummaryPage() {
               <div className="border-t border-slate-100 p-6">
                 <PrescriptionEditor
                   appointmentId={parseInt(appointmentId || '0')}
-                  patientName={status?.patient?.name || 'Patient'}
+                  patientName={appointment?.patient_name || 'Patient'}
                   existingPrescription={existingPrescription || undefined}
                   onClose={() => setShowPrescriptionEditor(false)}
                   onSuccess={handlePrescriptionSuccess}

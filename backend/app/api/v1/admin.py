@@ -73,6 +73,9 @@ class AdminAppointmentResponse(BaseModel):
     consultation_fee: float
     patient_notes: Optional[str] = None
     created_at: str
+    zoom_join_url: Optional[str] = None
+    zoom_meeting_id: Optional[str] = None
+    zoom_password: Optional[str] = None
     
     class Config:
         from_attributes = True
@@ -532,7 +535,10 @@ async def get_all_appointments(
             status=apt.status.value,
             consultation_fee=float(apt.doctor.consultation_fee),
             patient_notes=apt.patient_notes,
-            created_at=apt.created_at.isoformat()
+            created_at=apt.created_at.isoformat(),
+            zoom_join_url=apt.zoom_join_url,
+            zoom_meeting_id=apt.zoom_meeting_id,
+            zoom_password=apt.zoom_password
         ))
     
     return AppointmentListResponse(appointments=apt_responses, total=total)

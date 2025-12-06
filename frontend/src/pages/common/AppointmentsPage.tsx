@@ -16,9 +16,11 @@ import {
   FileText,
   User,
   Filter,
-  X
+  X,
+  ExternalLink,
+  Copy
 } from 'lucide-react';
-import { Link, useLocation, useNavigate } from 'react-router-dom';
+import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import { useAuthStore } from '../../store/authStore';
 import { authFetch } from '../../services/api';
@@ -35,6 +37,9 @@ interface Appointment {
   payment_status: 'pending' | 'paid' | 'refunded';
   consultation_fee: number;
   notes?: string;
+  zoom_join_url?: string;
+  zoom_meeting_id?: string;
+  zoom_password?: string;
 }
 
 const statusConfig: Record<string, { label: string; color: string; icon: any }> = {
@@ -111,6 +116,9 @@ export default function AppointmentsPage() {
           payment_status: apt.payment_status || 'pending',
           consultation_fee: apt.consultation_fee,
           notes: apt.patient_notes,
+          zoom_join_url: apt.zoom_join_url,
+          zoom_meeting_id: apt.zoom_meeting_id,
+          zoom_password: apt.zoom_password,
         }));
         setAppointments(transformedAppointments);
       }
@@ -389,15 +397,15 @@ export default function AppointmentsPage() {
 }
 
 function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: Appointment; isDoctor: boolean; onCancel?: (id: number) => void }) {
-  const navigate = useNavigate();
   const [expanded, setExpanded] = useState(false);
+  const [copiedPassword, setCopiedPassword] = useState(false);
   const status = statusConfig[appointment.status] || { label: appointment.status, color: 'bg-slate-100 text-slate-700', icon: Clock };
   const StatusIcon = status.icon;
   const ConsultationIcon = consultationTypeIcons[appointment.consultation_type] || Video;
 
   const appointmentDate = new Date(appointment.scheduled_date);
   const isUpcoming = appointmentDate >= new Date() && appointment.status !== 'completed' && appointment.status !== 'cancelled';
-  const canJoin = ['confirmed', 'in_progress'].includes(appointment.status) && (isUpcoming || appointment.status === 'in_progress');
+  const canJoin = ['confirmed', 'in_progress'].includes(appointment.status) && (isUpcoming || appointment.status === 'in_progress') && appointment.zoom_join_url;
   const canCancel = ['pending', 'scheduled', 'confirmed'].includes(appointment.status) && isUpcoming;
   const isInProgress = appointment.status === 'in_progress';
 
@@ -408,6 +416,14 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
   aptDateTime.setHours(hours, minutes, 0, 0);
   const timeDiff = aptDateTime.getTime() - now.getTime();
   const isStartingSoon = timeDiff > 0 && timeDiff <= 15 * 60 * 1000;
+
+  const copyPassword = async () => {
+    if (appointment.zoom_password) {
+      await navigator.clipboard.writeText(appointment.zoom_password);
+      setCopiedPassword(true);
+      setTimeout(() => setCopiedPassword(false), 2000);
+    }
+  };
 
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-md transition-shadow">
@@ -472,101 +488,161 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
         {/* Expanded Details */}
         {expanded && (
           <div className="mt-6 pt-6 border-t border-slate-100" onClick={(e) => e.stopPropagation()}>
+            {/* Video Consultation Section - Full Width at Top */}
+            {canJoin && appointment.zoom_join_url && (
+              <div className="bg-gradient-to-r from-cyan-50 via-blue-50 to-indigo-50 border border-cyan-200 rounded-2xl p-6 mb-6">
+                <h4 className="font-semibold text-slate-900 flex items-center gap-2 mb-5">
+                  <Video className="w-5 h-5 text-cyan-600" />
+                  Video Consultation
+                </h4>
+                
+                <div className="grid grid-cols-1 lg:grid-cols-12 gap-4 items-stretch">
+                  {/* Meeting Details - Left Side */}
+                  <div className="lg:col-span-7 grid grid-cols-2 gap-3">
+                    {appointment.zoom_meeting_id && appointment.zoom_meeting_id !== 'None' && (
+                      <div className="bg-white rounded-lg px-4 py-3 shadow-sm border border-slate-100 flex items-center justify-between">
+                        <span className="text-sm text-slate-500">Meeting ID</span>
+                        <span className="font-mono font-semibold text-slate-800">{appointment.zoom_meeting_id}</span>
+                      </div>
+                    )}
+                    {appointment.zoom_password && (
+                      <div className="bg-white rounded-lg px-4 py-3 shadow-sm border border-slate-100 flex items-center justify-between">
+                        <span className="text-sm text-slate-500">Password</span>
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono font-semibold text-slate-800">{appointment.zoom_password}</span>
+                          <button 
+                            onClick={copyPassword}
+                            className="text-cyan-600 hover:text-cyan-700 p-1 hover:bg-cyan-100 rounded transition-colors"
+                            title="Copy password"
+                          >
+                            <Copy className="w-4 h-4" />
+                          </button>
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                  
+                  {/* Join Button - Right Side */}
+                  <div className="lg:col-span-5 flex items-stretch">
+                    <a 
+                      href={appointment.zoom_join_url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className={`w-full px-5 py-3 rounded-lg font-semibold flex items-center justify-center gap-2 transition-all shadow-md hover:shadow-lg hover:scale-[1.02] ${
+                        isInProgress || isStartingSoon
+                          ? 'bg-gradient-to-r from-green-500 to-emerald-600 text-white animate-pulse'
+                          : 'bg-gradient-to-r from-cyan-500 to-blue-600 text-white'
+                      }`}
+                    >
+                      <Video className="w-5 h-5" />
+                      <span>{isInProgress ? 'Rejoin Meeting' : isStartingSoon ? 'Join Now!' : 'Join Meeting'}</span>
+                      <ExternalLink className="w-4 h-4" />
+                    </a>
+                  </div>
+                </div>
+
+                {/* Instructions */}
+                <div className="mt-5 pt-5 border-t border-cyan-200/50">
+                  <p className="text-sm font-medium text-slate-700 mb-3">How to join:</p>
+                  <ol className="text-sm text-slate-600 space-y-2">
+                    <li className="flex items-start gap-2">
+                      <span className="bg-cyan-100 text-cyan-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">1</span>
+                      <span>Click the <strong>"Join Meeting"</strong> button above to open Zoom</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="bg-cyan-100 text-cyan-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">2</span>
+                      <span>If prompted, enter your name and the <strong>Meeting Password</strong> shown above</span>
+                    </li>
+                    <li className="flex items-start gap-2">
+                      <span className="bg-cyan-100 text-cyan-700 rounded-full w-5 h-5 flex items-center justify-center text-xs font-bold flex-shrink-0 mt-0.5">3</span>
+                      <span>Wait in the waiting room until the doctor admits you</span>
+                    </li>
+                  </ol>
+                  <p className="text-xs text-slate-500 mt-3 flex items-center gap-1">
+                    <span>💡</span> Tip: Join 5 minutes before your scheduled time to ensure a smooth connection
+                  </p>
+                </div>
+              </div>
+            )}
+
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Left Column - Details */}
-              <div className="space-y-4">
-                <h4 className="font-semibold text-slate-900 flex items-center gap-2">
+              {/* Left Column - Appointment Details */}
+              <div className="bg-slate-50 rounded-xl p-5">
+                <h4 className="font-semibold text-slate-900 flex items-center gap-2 mb-4">
                   <FileText className="w-4 h-4 text-cyan-600" />
                   Appointment Details
                 </h4>
                 
                 <div className="space-y-3 text-sm">
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center py-2 border-b border-slate-200">
                     <span className="text-slate-500">Appointment ID</span>
-                    <span className="font-medium text-slate-700">#{appointment.id}</span>
+                    <span className="font-semibold text-slate-700">#{appointment.id}</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center py-2 border-b border-slate-200">
                     <span className="text-slate-500">Consultation Type</span>
-                    <span className="font-medium text-slate-700 capitalize">{appointment.consultation_type}</span>
+                    <span className="font-semibold text-slate-700 capitalize flex items-center gap-2">
+                      <ConsultationIcon className="w-4 h-4 text-cyan-600" />
+                      {appointment.consultation_type}
+                    </span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center py-2 border-b border-slate-200">
                     <span className="text-slate-500">Duration</span>
-                    <span className="font-medium text-slate-700">30 minutes</span>
+                    <span className="font-semibold text-slate-700">30 minutes</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center py-2 border-b border-slate-200">
                     <span className="text-slate-500">Consultation Fee</span>
-                    <span className="font-medium text-slate-700">{appointment.consultation_fee.toLocaleString()} MZN</span>
+                    <span className="font-semibold text-slate-700">{appointment.consultation_fee.toLocaleString()} MZN</span>
                   </div>
-                  <div className="flex justify-between">
+                  <div className="flex justify-between items-center py-2">
                     <span className="text-slate-500">Payment Status</span>
-                    <span className={`font-medium ${appointment.payment_status === 'paid' ? 'text-green-600' : 'text-amber-600'} capitalize`}>
+                    <span className={`font-semibold px-3 py-1 rounded-full text-xs ${
+                      appointment.payment_status === 'paid' 
+                        ? 'bg-green-100 text-green-700' 
+                        : 'bg-amber-100 text-amber-700'
+                    } capitalize`}>
                       {appointment.payment_status}
                     </span>
                   </div>
                 </div>
 
                 {appointment.notes && (
-                  <div className="mt-4">
-                    <p className="text-sm text-slate-500 mb-1">Notes:</p>
-                    <p className="text-sm text-slate-700 bg-slate-50 p-3 rounded-lg">{appointment.notes}</p>
+                  <div className="mt-4 pt-4 border-t border-slate-200">
+                    <p className="text-xs text-slate-500 uppercase tracking-wide mb-2">Notes</p>
+                    <p className="text-sm text-slate-700 bg-white p-3 rounded-lg border border-slate-200">{appointment.notes}</p>
                   </div>
                 )}
               </div>
 
-              {/* Right Column - Actions */}
+              {/* Right Column - Doctor/Patient Info & Actions */}
               <div className="space-y-4">
-                <h4 className="font-semibold text-slate-900 flex items-center gap-2">
-                  <User className="w-4 h-4 text-cyan-600" />
-                  {isDoctor ? 'Patient' : 'Doctor'} Information
-                </h4>
-                
-                <div className="p-4 bg-slate-50 rounded-xl">
-                  <div className="flex items-center gap-3 mb-3">
-                    <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center">
-                      <span className="text-white font-bold">
+                {/* Doctor/Patient Info Card */}
+                <div className="bg-slate-50 rounded-xl p-5">
+                  <h4 className="font-semibold text-slate-900 flex items-center gap-2 mb-4">
+                    <User className="w-4 h-4 text-cyan-600" />
+                    {isDoctor ? 'Patient' : 'Doctor'} Information
+                  </h4>
+                  
+                  <div className="flex items-center gap-4">
+                    <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
+                      <span className="text-white text-xl font-bold">
                         {(isDoctor ? appointment.patient_name : appointment.doctor_name).charAt(0)}
                       </span>
                     </div>
                     <div>
-                      <p className="font-medium text-slate-900">
+                      <p className="font-semibold text-slate-900 text-lg">
                         {isDoctor ? appointment.patient_name : appointment.doctor_name}
                       </p>
-                      <p className="text-sm text-slate-500">{appointment.doctor_specialization}</p>
+                      <p className="text-slate-500">{appointment.doctor_specialization}</p>
                     </div>
                   </div>
                 </div>
 
                 {/* Action Buttons */}
-                <div className="flex flex-wrap gap-2 pt-2">
-                  {canJoin && (
-                    <button 
-                      onClick={() => navigate(`/consultation/${appointment.id}`)}
-                      className={`px-4 py-2 rounded-xl font-medium flex items-center gap-2 transition-colors ${
-                        isInProgress
-                          ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
-                          : isStartingSoon
-                          ? 'bg-green-600 text-white hover:bg-green-700 animate-pulse'
-                          : 'bg-cyan-600 text-white hover:bg-cyan-700'
-                      }`}
-                    >
-                      <Video className="w-4 h-4" />
-                      {isInProgress ? 'Rejoin Call' : isStartingSoon ? 'Join Now' : 'Join Consultation'}
-                    </button>
-                  )}
-                  
+                <div className="flex flex-col gap-3">
                   {appointment.payment_status === 'pending' && isUpcoming && (
-                    <button className="px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium flex items-center gap-2">
+                    <button className="w-full px-4 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium flex items-center justify-center gap-2">
                       <CreditCard className="w-4 h-4" />
                       Pay Now
-                    </button>
-                  )}
-                  
-                  {canCancel && (
-                    <button 
-                      onClick={() => onCancel?.(appointment.id)}
-                      className="px-4 py-2 border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors font-medium"
-                    >
-                      Cancel Appointment
                     </button>
                   )}
                   
@@ -574,18 +650,27 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
                     <>
                       <Link 
                         to={`/consultation/${appointment.id}/summary`}
-                        className="px-4 py-2 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium flex items-center gap-2"
+                        className="w-full px-4 py-3 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium flex items-center justify-center gap-2"
                       >
                         <FileText className="w-4 h-4" />
                         {isDoctor ? 'View/Write Prescription' : 'View Prescription'}
                       </Link>
                       <Link 
                         to={`/find-doctors`}
-                        className="px-4 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium"
+                        className="w-full px-4 py-3 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium text-center"
                       >
                         Book Again
                       </Link>
                     </>
+                  )}
+
+                  {canCancel && (
+                    <button 
+                      onClick={() => onCancel?.(appointment.id)}
+                      className="w-full px-4 py-3 border border-red-200 text-red-600 rounded-xl hover:bg-red-50 transition-colors font-medium"
+                    >
+                      Cancel Appointment
+                    </button>
                   )}
                 </div>
               </div>
