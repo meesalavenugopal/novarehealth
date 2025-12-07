@@ -1,5 +1,6 @@
 import { Shield, Lock, Eye, Database, UserCheck, Globe, Mail } from 'lucide-react';
 import { Navbar, Footer } from '../../components/layout';
+import { config } from '../../config';
 
 export default function PrivacyPolicyPage() {
   return (
@@ -137,7 +138,7 @@ export default function PrivacyPolicyPage() {
               <p className="text-slate-700 font-medium">NovareHealth Privacy Team</p>
               <p className="text-slate-600">Email: privacy@novarehealth.co.mz</p>
               <p className="text-slate-600">Phone: +258 84 123 4567</p>
-              <p className="text-slate-600">Address: Rua da Resistência 1095, Maputo, Mozambique</p>
+              <p className="text-slate-600">Address: Rua da Resistência 1095, {config.country.capital}, {config.country.name}</p>
             </div>
           </Section>
         </div>

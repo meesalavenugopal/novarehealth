@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button, Card } from '../../components/ui';
 import { Navbar } from '../../components/layout';
 import { authFetch } from '../../services/api';
+import { config } from '../../config';
 import {
   Users,
   UserX,
@@ -111,7 +112,7 @@ export const AdminDashboard: React.FC = () => {
 
   const fetchStats = useCallback(async () => {
     try {
-      const response = await authFetch('http://localhost:8000/api/v1/admin/stats');
+      const response = await authFetch(`${config.apiUrl}/admin/stats`);
       if (response.ok) {
         const data = await response.json();
         setStats(data);
@@ -123,7 +124,7 @@ export const AdminDashboard: React.FC = () => {
 
   const fetchSpecializations = useCallback(async () => {
     try {
-      const response = await fetch('http://localhost:8000/api/v1/doctors/specializations/all');
+      const response = await fetch(`${config.apiUrl}/doctors/specializations/all`);
       if (response.ok) {
         const data = await response.json();
         setSpecializations(data);
@@ -150,7 +151,7 @@ export const AdminDashboard: React.FC = () => {
       }
       params.append('limit', '100');
 
-      const url = 'http://localhost:8000/api/v1/admin/doctors?' + params.toString();
+      const url = `${config.apiUrl}/admin/doctors?` + params.toString();
       const response = await authFetch(url);
 
       if (!response.ok) {
@@ -202,7 +203,7 @@ export const AdminDashboard: React.FC = () => {
   const handleApprove = async (doctorId: number) => {
     try {
       setActionLoading(doctorId);
-      const url = 'http://localhost:8000/api/v1/admin/doctors/' + doctorId + '/verify?approved=true';
+      const url = `${config.apiUrl}/admin/doctors/` + doctorId + '/verify?approved=true';
       const response = await authFetch(url, { method: 'POST' });
 
       if (!response.ok) {
@@ -229,7 +230,7 @@ export const AdminDashboard: React.FC = () => {
         params.append('rejection_reason', rejectionReason);
       }
 
-      const url = 'http://localhost:8000/api/v1/admin/doctors/' + selectedDoctor.id + '/verify?' + params.toString();
+      const url = `${config.apiUrl}/admin/doctors/` + selectedDoctor.id + '/verify?' + params.toString();
       const response = await authFetch(url, { method: 'POST' });
 
       if (!response.ok) {
@@ -269,7 +270,7 @@ export const AdminDashboard: React.FC = () => {
         params.append('reason', suspendReason);
       }
 
-      const url = 'http://localhost:8000/api/v1/admin/doctors/' + selectedDoctor.id + '/suspend?' + params.toString();
+      const url = `${config.apiUrl}/admin/doctors/` + selectedDoctor.id + '/suspend?' + params.toString();
       const response = await authFetch(url, { method: 'POST' });
 
       if (!response.ok) {
@@ -292,7 +293,7 @@ export const AdminDashboard: React.FC = () => {
   const handleUnsuspend = async (doctorId: number) => {
     try {
       setActionLoading(doctorId);
-      const url = 'http://localhost:8000/api/v1/admin/doctors/' + doctorId + '/unsuspend';
+      const url = `${config.apiUrl}/admin/doctors/` + doctorId + '/unsuspend';
       const response = await authFetch(url, { method: 'POST' });
 
       if (!response.ok) {
@@ -312,7 +313,7 @@ export const AdminDashboard: React.FC = () => {
   const handleReApprove = async (doctorId: number) => {
     try {
       setActionLoading(doctorId);
-      const url = 'http://localhost:8000/api/v1/admin/doctors/' + doctorId + '/verify?approved=true';
+      const url = `${config.apiUrl}/admin/doctors/` + doctorId + '/verify?approved=true';
       const response = await authFetch(url, { method: 'POST' });
 
       if (!response.ok) {

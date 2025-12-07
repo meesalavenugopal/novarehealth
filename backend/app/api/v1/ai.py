@@ -31,7 +31,7 @@ class FeeSuggestionRequest(BaseModel):
     specialization: str
     experience_years: int
     education: List[Dict[str, str]] = []
-    country: str = "Mozambique"
+    country: str = None  # Uses settings.DEFAULT_COUNTRY_NAME if None
 
 
 class EnhanceTextRequest(BaseModel):

@@ -2,6 +2,15 @@ import { create } from 'zustand';
 import { persist } from 'zustand/middleware';
 import type { User } from '../types';
 
+// Utility to clear doctor registration data from localStorage
+// Exported so it can be reused (e.g., after successful registration)
+export const clearDoctorRegistrationData = () => {
+  localStorage.removeItem('doctorRegister_formData');
+  localStorage.removeItem('doctorRegister_step');
+  localStorage.removeItem('doctorRegister_govIdMeta');
+  localStorage.removeItem('doctorRegister_medCertMeta');
+};
+
 interface AuthState {
   user: User | null;
   accessToken: string | null;
@@ -46,6 +55,10 @@ export const useAuthStore = create<AuthState>()(
       logout: () => {
         localStorage.removeItem('access_token');
         localStorage.removeItem('refresh_token');
+        
+        // Clear any in-progress doctor registration data
+        clearDoctorRegistrationData();
+        
         set({
           user: null,
           accessToken: null,

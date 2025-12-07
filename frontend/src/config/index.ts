@@ -97,6 +97,62 @@ export const config = {
   // API Configuration
   apiUrl: import.meta.env.VITE_API_URL || 'http://localhost:8000/api/v1',
   
+  // Country/Market Configuration
+  country: {
+    // Country code (without +) - used for phone validation and market identification
+    code: import.meta.env.VITE_DEFAULT_COUNTRY_CODE || '258',
+    
+    // Get country name from phone rules
+    get name(): string {
+      return getCountryRules(this.code).name;
+    },
+    
+    // Capital city
+    get capital(): string {
+      const capitals: Record<string, string> = {
+        '258': 'Maputo',
+        '27': 'Pretoria',
+        '254': 'Nairobi',
+        '234': 'Abuja',
+        '255': 'Dodoma',
+        '263': 'Harare',
+        '91': 'New Delhi',
+        '55': 'Brasília',
+      };
+      return capitals[this.code] || 'Capital';
+    },
+    
+    // Currency
+    get currency(): string {
+      const currencies: Record<string, string> = {
+        '258': 'MZN',
+        '27': 'ZAR',
+        '254': 'KES',
+        '234': 'NGN',
+        '255': 'TZS',
+        '263': 'ZWL',
+        '91': 'INR',
+        '55': 'BRL',
+      };
+      return currencies[this.code] || 'USD';
+    },
+    
+    // Currency name
+    get currencyName(): string {
+      const names: Record<string, string> = {
+        '258': 'Mozambican Metical',
+        '27': 'South African Rand',
+        '254': 'Kenyan Shilling',
+        '234': 'Nigerian Naira',
+        '255': 'Tanzanian Shilling',
+        '263': 'Zimbabwean Dollar',
+        '91': 'Indian Rupee',
+        '55': 'Brazilian Real',
+      };
+      return names[this.code] || 'US Dollar';
+    },
+  },
+  
   // Phone Number Configuration
   phone: {
     // Default country code (without +)

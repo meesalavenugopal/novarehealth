@@ -3,6 +3,7 @@ import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { z } from 'zod';
+import config from '../../config';
 import { 
   Phone, 
   ArrowRight, 
@@ -21,7 +22,6 @@ import { authService } from '../../services/auth';
 import { useAuthStore } from '../../store/authStore';
 import Button from '../../components/ui/Button';
 import { getBookingContext, clearBookingContext } from '../../services/api';
-import config from '../../config';
 
 // Get country rules for validation messages
 const countryRules = config.phone.rules;
@@ -196,7 +196,7 @@ export default function LoginPage() {
       if (response.user.role === 'doctor') {
         // For doctors, check verification status
         try {
-          const doctorResponse = await fetch('http://localhost:8000/api/v1/doctors/me', {
+          const doctorResponse = await fetch(`${config.apiUrl}/doctors/me`, {
             headers: {
               'Authorization': `Bearer ${response.access_token}`,
             },
@@ -211,12 +211,12 @@ export default function LoginPage() {
               navigate('/doctor/verification-pending');
             }
           } else {
-            // No doctor profile yet, go to dashboard
-            navigate('/doctor/dashboard');
+            // No doctor profile yet, redirect to complete registration
+            navigate('/register/doctor');
           }
         } catch {
-          // If check fails, default to dashboard
-          navigate('/doctor/dashboard');
+          // If check fails, default to registration to be safe
+          navigate('/register/doctor');
         }
       } else if (response.user.role === 'admin' || response.user.role === 'super_admin') {
         navigate('/admin/dashboard');

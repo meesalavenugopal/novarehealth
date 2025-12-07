@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Bot, X, Sparkles, Send, MessageCircle } from 'lucide-react';
+import { config as appConfig } from '../../config';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -37,7 +38,9 @@ const contextConfig = {
     title: 'NovareHealth AI',
     subtitle: 'Ask me anything',
     quickActions: ['What is telemedicine?', 'How to get started', 'Available specialties'],
-    systemPrompt: 'You are a welcoming assistant for NovareHealth, a telemedicine platform in Mozambique. Help visitors understand the platform, explain telemedicine benefits, guide them on getting started, and answer questions about available services.'
+    get systemPrompt() {
+      return `You are a welcoming assistant for NovareHealth, a telemedicine platform in ${appConfig.country.name}. Help visitors understand the platform, explain telemedicine benefits, guide them on getting started, and answer questions about available services.`;
+    }
   }
 };
 
@@ -75,7 +78,7 @@ export default function AIChatWidget({
     setIsLoading(true);
 
     try {
-      const response = await fetch(`${import.meta.env.VITE_API_URL || 'http://localhost:8000'}/api/v1/ai/chat`, {
+      const response = await fetch(`${appConfig.apiUrl}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

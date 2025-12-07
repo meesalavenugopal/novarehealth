@@ -16,6 +16,7 @@ import {
   HeartPulse
 } from 'lucide-react';
 import Footer from '../../components/layout/Footer';
+import { config } from '../../config';
 
 export default function DoctorLandingPage() {
   const benefits = [
@@ -32,7 +33,7 @@ export default function DoctorLandingPage() {
     {
       icon: Video,
       title: 'Video Consultations',
-      description: 'Conduct secure HD video consultations with patients across Mozambique.'
+      description: `Conduct secure HD video consultations with patients across ${config.country.name}.`
     },
     {
       icon: Shield,
@@ -150,7 +151,7 @@ export default function DoctorLandingPage() {
               </h1>
               
               <p className="text-lg text-white/80 mb-8 max-w-lg">
-                Join Mozambique's leading telemedicine platform. Consult patients via video, 
+                Join {config.country.name}'s leading telemedicine platform. Consult patients via video, 
                 set your own schedule and fees, and get paid instantly via M-Pesa.
               </p>
               
@@ -361,7 +362,7 @@ export default function DoctorLandingPage() {
                   { icon: Smartphone, text: 'Mobile-friendly for on-the-go consultations' },
                   { icon: DollarSign, text: 'Instant M-Pesa payments to your account' },
                   { icon: Shield, text: 'HIPAA-compliant patient data security' },
-                  { icon: Globe, text: 'Reach patients across all of Mozambique' },
+                  { icon: Globe, text: `Reach patients across all of ${config.country.name}` },
                   { icon: TrendingUp, text: 'Analytics dashboard to track your growth' }
                 ].map((feature, index) => (
                   <div key={index} className="flex items-center gap-3">
@@ -462,7 +463,7 @@ export default function DoctorLandingPage() {
             {[
               {
                 q: 'What are the requirements to join?',
-                a: 'You must be a licensed medical practitioner in Mozambique with a valid medical certificate and government-issued ID. We verify all credentials before approval.'
+                a: `You must be a licensed medical practitioner in ${config.country.name} with a valid medical certificate and government-issued ID. We verify all credentials before approval.`
               },
               {
                 q: 'How much does it cost to join?',

@@ -6,6 +6,7 @@ import { Navbar } from '../../components/layout';
 import { AIChatWidget } from '../../components/chat';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { authFetch } from '../../services/api';
+import { config } from '../../config';
 
 interface Appointment {
   id: number;
@@ -46,7 +47,7 @@ export const DoctorDashboard: React.FC = () => {
   useEffect(() => {
     const checkVerificationStatus = async () => {
       try {
-        const response = await authFetch('http://localhost:8000/api/v1/doctors/me');
+        const response = await authFetch(`${config.apiUrl}/doctors/me`);
 
         if (response.ok) {
           const doctorData = await response.json();
@@ -81,7 +82,7 @@ export const DoctorDashboard: React.FC = () => {
     const fetchAppointments = async () => {
       try {
         // Fetch today's appointments
-        const response = await authFetch('http://localhost:8000/api/v1/appointments?upcoming_only=true');
+        const response = await authFetch(`${config.apiUrl}/appointments?upcoming_only=true`);
         
         if (response.ok) {
           const data = await response.json();
@@ -133,7 +134,7 @@ export const DoctorDashboard: React.FC = () => {
     setAvailabilityMessage(null);
     
     try {
-      const response = await authFetch('http://localhost:8000/api/v1/doctors/me/availability-status', {
+      const response = await authFetch(`${config.apiUrl}/doctors/me/availability-status`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',

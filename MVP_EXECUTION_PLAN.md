@@ -54,6 +54,9 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Zoom Integration - Replaced Twilio Video with Zoom meeting links (no video maintenance)
 - [x] Zoom Meeting Details UI - Meeting ID, Password, Join button for all user roles
 - [x] Zoom Join Instructions - Step-by-step guide with tips for patients/doctors/admin
+- [x] Country Configuration - Configurable country name, capital, currency across frontend and backend
+- [x] Doctor Registration Cleanup - Clear localStorage data on logout to prevent stale data
+- [x] Login Redirect Fix - Doctors without profile redirected to registration instead of broken dashboard
 
 ### Phase 1 Completed Tasks ✅
 - [x] Project Setup - React + TypeScript + TailwindCSS frontend

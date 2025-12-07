@@ -22,6 +22,7 @@ import { Footer } from '../../components/layout';
 import { AIChatWidget } from '../../components/chat';
 import Button from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
+import { config } from '../../config';
 
 export default function HomePage() {
   const { user } = useAuthStore();
@@ -93,7 +94,7 @@ export default function HomePage() {
     {
       name: 'Dr. João Fernandes',
       role: 'Cardiologist',
-      content: 'As a doctor, this platform allows me to reach patients across Mozambique. The video quality is excellent and payments are seamless.',
+      content: `As a doctor, this platform allows me to reach patients across ${config.country.name}. The video quality is excellent and payments are seamless.`,
       rating: 5,
       avatar: 'JF'
     },
@@ -168,7 +169,7 @@ export default function HomePage() {
             <div className="text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur rounded-full text-white/90 text-sm mb-6">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                Now serving all of Mozambique
+                Now serving all of {config.country.name}
               </div>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">

@@ -14,6 +14,7 @@ import { Link } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import { useAuthStore } from '../../store/authStore';
 import { authFetch } from '../../services/api';
+import { config } from '../../config';
 
 interface ProfileData {
   first_name: string;
@@ -45,7 +46,7 @@ export default function ProfilePage() {
     gender: '',
     address: '',
     city: '',
-    country: 'Mozambique',
+    country: config.country.name,
     emergency_contact_name: '',
     emergency_contact_phone: '',
   });
@@ -69,7 +70,7 @@ export default function ProfilePage() {
           gender: data.gender || '',
           address: data.address || '',
           city: data.city || '',
-          country: data.country || 'Mozambique',
+          country: data.country || config.country.name,
           emergency_contact_name: data.emergency_contact_name || '',
           emergency_contact_phone: data.emergency_contact_phone || '',
         });

@@ -1,8 +1,9 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
-import { useAuthStore } from '../../store/authStore';
+import { useAuthStore, clearDoctorRegistrationData } from '../../store/authStore';
 import { Button, Input, Card } from '../../components/ui';
 import { Navbar } from '../../components/layout';
+import { config } from '../../config';
 import {
   Stethoscope,
   Heart,
@@ -109,6 +110,14 @@ const steps = [
   { id: 3, name: 'Education', icon: GraduationCap },
   { id: 4, name: 'Documents', icon: FileText },
   { id: 5, name: 'Review', icon: Eye },
+];
+
+// Default specializations fallback when API is unavailable
+const DEFAULT_SPECIALIZATIONS: Specialization[] = [
+  { id: 1, name: 'General Medicine', description: 'Primary healthcare', icon: 'stethoscope' },
+  { id: 2, name: 'Cardiology', description: 'Heart specialist', icon: 'heart' },
+  { id: 3, name: 'Dermatology', description: 'Skin specialist', icon: 'skin' },
+  { id: 4, name: 'Pediatrics', description: 'Child healthcare', icon: 'baby' },
 ];
 
 export const DoctorRegisterPage: React.FC = () => {
@@ -228,19 +237,14 @@ export const DoctorRegisterPage: React.FC = () => {
     const fetchSpecializations = async () => {
       setFetchingSpecs(true);
       try {
-        const response = await fetch('http://localhost:8000/api/v1/doctors/specializations/all');
+        const response = await fetch(`${config.apiUrl}/doctors/specializations/all`);
         if (response.ok) {
           const data = await response.json();
           setSpecializations(data);
         }
       } catch (error) {
         console.error('Failed to fetch specializations:', error);
-        setSpecializations([
-          { id: 1, name: 'General Medicine', description: 'Primary healthcare', icon: 'stethoscope' },
-          { id: 2, name: 'Cardiology', description: 'Heart specialist', icon: 'heart' },
-          { id: 3, name: 'Dermatology', description: 'Skin specialist', icon: 'skin' },
-          { id: 4, name: 'Pediatrics', description: 'Child healthcare', icon: 'baby' },
-        ]);
+        setSpecializations(DEFAULT_SPECIALIZATIONS);
       } finally {
         setFetchingSpecs(false);
       }
@@ -254,7 +258,7 @@ export const DoctorRegisterPage: React.FC = () => {
       if (!formData.specialization_id) return;
       
       try {
-        const response = await fetch('http://localhost:8000/api/v1/ai/registration-tips', {
+        const response = await fetch(`${config.apiUrl}/ai/registration-tips`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
@@ -285,7 +289,7 @@ export const DoctorRegisterPage: React.FC = () => {
   const generateBio = async () => {
     setGeneratingBio(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/generate-bio', {
+      const response = await fetch(`${config.apiUrl}/ai/generate-bio`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -314,7 +318,7 @@ export const DoctorRegisterPage: React.FC = () => {
     
     setRephrasing(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/rephrase-bio', {
+      const response = await fetch(`${config.apiUrl}/ai/rephrase-bio`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -340,7 +344,7 @@ export const DoctorRegisterPage: React.FC = () => {
     
     setGeneratingCustomBio(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/generate-bio-custom', {
+      const response = await fetch(`${config.apiUrl}/ai/generate-bio-custom`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -369,14 +373,14 @@ export const DoctorRegisterPage: React.FC = () => {
   const suggestFee = async () => {
     setSuggestingFee(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/suggest-fee', {
+      const response = await fetch(`${config.apiUrl}/ai/suggest-fee`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           specialization: getSelectedSpecName(),
           experience_years: parseInt(formData.experience_years) || 0,
           education: formData.education,
-          country: 'Mozambique'
+          country: config.country.name
         })
       });
       
@@ -404,7 +408,7 @@ export const DoctorRegisterPage: React.FC = () => {
     setChatLoading(true);
     
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/chat', {
+      const response = await fetch(`${config.apiUrl}/ai/chat`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -476,7 +480,7 @@ export const DoctorRegisterPage: React.FC = () => {
     setError('');
     
     try {
-      const registerResponse = await fetch('http://localhost:8000/api/v1/doctors/register', {
+      const registerResponse = await fetch(`${config.apiUrl}/doctors/register`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -514,7 +518,7 @@ export const DoctorRegisterPage: React.FC = () => {
       if (governmentId) {
         const govIdFormData = new FormData();
         govIdFormData.append('file', governmentId);
-        await fetch('http://localhost:8000/api/v1/uploads/kyc/government-id', {
+        await fetch(`${config.apiUrl}/uploads/kyc/government-id`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}` },
           body: govIdFormData,
@@ -524,7 +528,7 @@ export const DoctorRegisterPage: React.FC = () => {
       if (medicalCertificate) {
         const certFormData = new FormData();
         certFormData.append('file', medicalCertificate);
-        await fetch('http://localhost:8000/api/v1/uploads/kyc/medical-certificate', {
+        await fetch(`${config.apiUrl}/uploads/kyc/medical-certificate`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}` },
           body: certFormData,
@@ -535,10 +539,7 @@ export const DoctorRegisterPage: React.FC = () => {
       updateUser({ role: 'doctor' });
 
       // Clear saved form data after successful registration
-      localStorage.removeItem('doctorRegister_formData');
-      localStorage.removeItem('doctorRegister_step');
-      localStorage.removeItem('doctorRegister_govIdMeta');
-      localStorage.removeItem('doctorRegister_medCertMeta');
+      clearDoctorRegistrationData();
 
       navigate('/doctor/verification-pending');
     } catch (err: any) {

@@ -6,6 +6,7 @@ from sqlalchemy import (
 )
 from sqlalchemy.orm import relationship
 from app.db.database import Base
+from app.core.config import settings
 
 
 class UserRole(str, enum.Enum):
@@ -207,7 +208,7 @@ class Payment(Base):
     
     # Amount
     amount = Column(Numeric(10, 2), nullable=False)
-    currency = Column(String(3), default="MZN")  # Mozambique Metical
+    currency = Column(String(3), default=settings.DEFAULT_CURRENCY)  # Currency from config
     
     # Payment Details
     payment_method = Column(String(50), default="mpesa")

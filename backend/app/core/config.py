@@ -66,10 +66,15 @@ class Settings(BaseSettings):
     # Redis
     REDIS_URL: str = "redis://localhost:6379/0"
     
-    # Phone Number Configuration
-    DEFAULT_COUNTRY_CODE: str = "258"  # Mozambique (can be changed per market)
-    PHONE_MIN_LENGTH: int = 9  # Minimum local number length (Mozambique: 9 digits)
-    PHONE_MAX_LENGTH: int = 9  # Maximum local number length (Mozambique: 9 digits)
+    # Country/Market Configuration
+    DEFAULT_COUNTRY_CODE: str = "258"  # Country code (can be changed per market: 258=Mozambique, 254=Kenya, 27=South Africa)
+    DEFAULT_COUNTRY_NAME: str = "Mozambique"  # Country name for display
+    DEFAULT_COUNTRY_CAPITAL: str = "Maputo"  # Capital city
+    DEFAULT_CURRENCY: str = "MZN"  # Currency code
+    
+    # Phone Number Configuration (based on country)
+    PHONE_MIN_LENGTH: int = 9  # Minimum local number length
+    PHONE_MAX_LENGTH: int = 9  # Maximum local number length
     
     # CORS
     CORS_ORIGINS: list = ["http://localhost:3000", "http://localhost:3001", "http://localhost:5173"]

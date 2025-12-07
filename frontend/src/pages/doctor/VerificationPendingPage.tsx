@@ -4,6 +4,7 @@ import { useAuthStore } from '../../store/authStore';
 import { Button, Card, Input } from '../../components/ui';
 import { Navbar, Footer } from '../../components/layout';
 import { authFetch } from '../../services/api';
+import { config } from '../../config';
 import {
   Clock,
   CheckCircle,
@@ -225,7 +226,7 @@ export const VerificationPendingPage: React.FC = () => {
   const fetchSpecializations = async () => {
     setFetchingSpecs(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/doctors/specializations/all');
+      const response = await fetch(`${config.apiUrl}/doctors/specializations/all`);
       if (response.ok) {
         const data = await response.json();
         setSpecializations(data);
@@ -240,7 +241,7 @@ export const VerificationPendingPage: React.FC = () => {
   const fetchApplicationHistory = async () => {
     setHistoryLoading(true);
     try {
-      const response = await authFetch('http://localhost:8000/api/v1/doctors/me/history');
+      const response = await authFetch(`${config.apiUrl}/doctors/me/history`);
       if (response.ok) {
         const data = await response.json();
         setApplicationHistory(data);
@@ -254,7 +255,7 @@ export const VerificationPendingPage: React.FC = () => {
 
   const fetchStatus = async () => {
     try {
-      const response = await authFetch('http://localhost:8000/api/v1/doctors/me');
+      const response = await authFetch(`${config.apiUrl}/doctors/me`);
 
       if (response.ok) {
         const data = await response.json();
@@ -281,7 +282,7 @@ export const VerificationPendingPage: React.FC = () => {
   const generateBio = async () => {
     setGeneratingBio(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/generate-bio', {
+      const response = await fetch(`${config.apiUrl}/ai/generate-bio`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -310,7 +311,7 @@ export const VerificationPendingPage: React.FC = () => {
 
     setRephrasing(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/rephrase-bio', {
+      const response = await fetch(`${config.apiUrl}/ai/rephrase-bio`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -336,7 +337,7 @@ export const VerificationPendingPage: React.FC = () => {
 
     setGeneratingCustomBio(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/generate-bio-custom', {
+      const response = await fetch(`${config.apiUrl}/ai/generate-bio-custom`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -365,14 +366,14 @@ export const VerificationPendingPage: React.FC = () => {
   const suggestFee = async () => {
     setSuggestingFee(true);
     try {
-      const response = await fetch('http://localhost:8000/api/v1/ai/suggest-fee', {
+      const response = await fetch(`${config.apiUrl}/ai/suggest-fee`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           specialization: getSelectedSpecName(),
           experience_years: parseInt(editForm.experience_years) || 0,
           education: editForm.education,
-          country: 'Mozambique'
+          country: config.country.name
         })
       });
 
@@ -450,7 +451,7 @@ export const VerificationPendingPage: React.FC = () => {
 
     try {
       // Update profile
-      const response = await authFetch('http://localhost:8000/api/v1/doctors/me', {
+      const response = await authFetch(`${config.apiUrl}/doctors/me`, {
         method: 'PUT',
         body: JSON.stringify({
           specialization_id: editForm.specialization_id ? parseInt(editForm.specialization_id) : undefined,
@@ -474,7 +475,7 @@ export const VerificationPendingPage: React.FC = () => {
         const govIdFormData = new FormData();
         govIdFormData.append('file', governmentId);
         const token = localStorage.getItem('access_token');
-        await fetch('http://localhost:8000/api/v1/uploads/kyc/government-id', {
+        await fetch(`${config.apiUrl}/uploads/kyc/government-id`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: govIdFormData,
@@ -485,7 +486,7 @@ export const VerificationPendingPage: React.FC = () => {
         const certFormData = new FormData();
         certFormData.append('file', medicalCertificate);
         const token = localStorage.getItem('access_token');
-        await fetch('http://localhost:8000/api/v1/uploads/kyc/medical-certificate', {
+        await fetch(`${config.apiUrl}/uploads/kyc/medical-certificate`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${token}` },
           body: certFormData,

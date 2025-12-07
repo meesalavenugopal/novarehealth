@@ -3,6 +3,7 @@ import { Link } from 'react-router-dom';
 import { Button, Card } from '../../components/ui';
 import { Navbar } from '../../components/layout';
 import { authFetch } from '../../services/api';
+import { config } from '../../config';
 import {
   Sparkles,
   Check,
@@ -265,7 +266,7 @@ export const AvailabilityPage: React.FC = () => {
     const fetchAvailability = async () => {
       setLoading(true);
       try {
-        const response = await authFetch('http://localhost:8000/api/v1/doctors/me/availability');
+        const response = await authFetch(`${config.apiUrl}/doctors/me/availability`);
         if (response.ok) {
           const data = await response.json();
           setSlots(data);
@@ -437,7 +438,7 @@ export const AvailabilityPage: React.FC = () => {
     setMessage(null);
     
     try {
-      const response = await authFetch('http://localhost:8000/api/v1/doctors/me/availability', {
+      const response = await authFetch(`${config.apiUrl}/doctors/me/availability`, {
         method: 'POST',
         body: JSON.stringify(slots.filter(s => s.is_active)),
       });

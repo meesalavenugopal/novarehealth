@@ -75,12 +75,18 @@ Generate only the bio text, no additional commentary."""
         specialization: str,
         experience_years: int,
         education: List[Dict[str, str]],
-        country: str = "Mozambique"
+        country: str = None
     ) -> Dict[str, Any]:
         """
         Suggest appropriate consultation fees based on doctor's profile and market rates.
         """
-        prompt = f"""Based on the following doctor profile and the healthcare market in {country}, suggest appropriate consultation fees in MZN (Mozambican Metical):
+        # Use configured country if not provided
+        if country is None:
+            country = settings.DEFAULT_COUNTRY_NAME
+        
+        currency = settings.DEFAULT_CURRENCY
+        
+        prompt = f"""Based on the following doctor profile and the healthcare market in {country}, suggest appropriate consultation fees in {currency}:
 
 Specialization: {specialization}
 Years of Experience: {experience_years} years
@@ -97,7 +103,7 @@ Respond in JSON format only:
     "suggested_fee": <number>,
     "min_fee": <number>,
     "max_fee": <number>,
-    "currency": "MZN",
+    "currency": "{currency}",
     "reasoning": "<brief explanation>"
 }}"""
 

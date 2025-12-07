@@ -8,6 +8,7 @@ import {
   Instagram, 
   Linkedin
 } from 'lucide-react';
+import { config } from '../../config';
 
 export default function Footer() {
   const currentYear = new Date().getFullYear();
@@ -69,7 +70,7 @@ export default function Footer() {
                 <MapPin className="w-5 h-5 text-cyan-500 flex-shrink-0 mt-0.5" />
                 <span className="text-sm">
                   Rua da Resistência 1095<br />
-                  Maputo, Mozambique
+                  {config.country.capital}, {config.country.name}
                 </span>
               </li>
               <li className="flex items-center gap-3">

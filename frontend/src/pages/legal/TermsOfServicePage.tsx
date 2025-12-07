@@ -1,5 +1,6 @@
 import { FileText, Users, CreditCard, AlertTriangle, Scale, Clock, CheckCircle } from 'lucide-react';
 import { Navbar, Footer } from '../../components/layout';
+import { config } from '../../config';
 
 export default function TermsOfServicePage() {
   return (
@@ -55,7 +56,7 @@ export default function TermsOfServicePage() {
 
             <h4 className="font-semibold text-slate-800 mt-6 mb-2">For Doctors</h4>
             <ul className="list-disc list-inside text-slate-600 space-y-2">
-              <li>You must hold valid medical licenses in Mozambique</li>
+              <li>You must hold valid medical licenses in {config.country.name}</li>
               <li>You must provide accurate credential information for verification</li>
               <li>You agree to maintain professional standards of care</li>
               <li>You must keep your availability and profile information current</li>
@@ -154,9 +155,9 @@ export default function TermsOfServicePage() {
             title="8. Governing Law"
           >
             <p className="text-slate-600">
-              These Terms of Service are governed by the laws of Mozambique. Any disputes arising from the use of 
-              NovareHealth shall be resolved through arbitration in Maputo, Mozambique, in accordance with local 
-              arbitration rules. You agree to submit to the exclusive jurisdiction of the courts of Mozambique.
+              These Terms of Service are governed by the laws of {config.country.name}. Any disputes arising from the use of 
+              NovareHealth shall be resolved through arbitration in {config.country.capital}, {config.country.name}, in accordance with local 
+              arbitration rules. You agree to submit to the exclusive jurisdiction of the courts of {config.country.name}.
             </p>
           </Section>
 
@@ -169,7 +170,7 @@ export default function TermsOfServicePage() {
               <p className="text-slate-700 font-medium">NovareHealth Legal Team</p>
               <p className="text-slate-600">Email: legal@novarehealth.co.mz</p>
               <p className="text-slate-600">Phone: +258 84 123 4567</p>
-              <p className="text-slate-600">Address: Rua da Resistência 1095, Maputo, Mozambique</p>
+              <p className="text-slate-600">Address: Rua da Resistência 1095, {config.country.capital}, {config.country.name}</p>
             </div>
           </div>
         </div>
