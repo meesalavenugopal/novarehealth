@@ -11,6 +11,7 @@ from app.api.deps import get_current_admin
 from app.models.models import User, UserRole, Appointment, AppointmentStatus, Doctor
 from app.services.doctor_service import DoctorService, SpecializationService
 from app.services.notification_service import notification_service
+from app.services.email_service import get_email_service
 from app.schemas.schemas import (
     DoctorResponse, SpecializationCreate, SpecializationResponse
 )
@@ -151,9 +152,12 @@ async def verify_doctor(
             db, doctor_id, approved, rejection_reason
         )
         
-        # Send notification to doctor
+        # Get doctor name for notifications
+        doctor_name = f"Dr. {doctor.user.first_name}" if doctor.user and doctor.user.first_name else "Doctor"
+        email_service = get_email_service()
+        
+        # Send SMS notification to doctor
         if doctor.user and doctor.user.phone:
-            doctor_name = f"Dr. {doctor.user.first_name}" if doctor.user.first_name else None
             if approved:
                 background_tasks.add_task(
                     notification_service.notify_application_approved,
@@ -166,6 +170,22 @@ async def verify_doctor(
                     doctor.user.phone,
                     rejection_reason,
                     doctor_name
+                )
+        
+        # Send email notification to doctor
+        if doctor.user and doctor.user.email:
+            if approved:
+                background_tasks.add_task(
+                    email_service.send_doctor_approval_email,
+                    doctor.user.email,
+                    doctor.user.first_name or "Doctor"
+                )
+            else:
+                background_tasks.add_task(
+                    email_service.send_doctor_rejection_email,
+                    doctor.user.email,
+                    doctor.user.first_name or "Doctor",
+                    rejection_reason
                 )
         
         return {

@@ -8,6 +8,7 @@ from app.api.deps import get_current_user, require_role
 from app.models.models import User, UserRole
 from app.services.doctor_service import DoctorService, SpecializationService
 from app.services.notification_service import notification_service
+from app.services.email_service import get_email_service
 from app.schemas.schemas import (
     DoctorCreate, DoctorUpdate, DoctorResponse, DoctorListResponse,
     AvailabilitySlotCreate, AvailabilitySlotResponse,
@@ -39,13 +40,30 @@ async def register_as_doctor(
             db, current_user.id, doctor_data
         )
         
-        # Send notification in background
+        # Get doctor name for notifications - prefer newly submitted data over existing
+        doctor_name = doctor_data.first_name or current_user.first_name or "Doctor"
+        doctor_email = doctor_data.email or current_user.email
+        
+        # Send SMS notification in background
         if current_user.phone:
-            doctor_name = f"Dr. {current_user.first_name}" if current_user.first_name else None
             background_tasks.add_task(
                 notification_service.notify_application_received,
                 current_user.phone,
-                doctor_name
+                f"Dr. {doctor_name}"
+            )
+        
+        # Send email notification in background
+        if doctor_email:
+            email_service = get_email_service()
+            # Get specialization name if available
+            specialization_name = "Healthcare Professional"
+            if doctor.specialization:
+                specialization_name = doctor.specialization.name
+            background_tasks.add_task(
+                email_service.send_doctor_registration_confirmation,
+                doctor_email,
+                doctor_name,
+                specialization_name
             )
         
         return doctor

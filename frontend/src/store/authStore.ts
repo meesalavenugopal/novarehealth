@@ -7,6 +7,7 @@ import type { User } from '../types';
 export const clearDoctorRegistrationData = () => {
   localStorage.removeItem('doctorRegister_formData');
   localStorage.removeItem('doctorRegister_step');
+  localStorage.removeItem('doctorRegister_userId');
   localStorage.removeItem('doctorRegister_govIdMeta');
   localStorage.removeItem('doctorRegister_medCertMeta');
 };

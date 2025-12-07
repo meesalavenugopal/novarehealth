@@ -14,7 +14,15 @@ import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
 
 // Define navigation items for each role
-const getNavItems = (role: string | undefined) => {
+const getNavItems = (role: string | undefined, isAuthenticated: boolean) => {
+  // For unauthenticated users, show only public pages
+  if (!isAuthenticated) {
+    return [
+      { to: '/specializations', label: 'Specializations' },
+      { to: '/find-doctors', label: 'Find Doctors' },
+    ];
+  }
+  
   switch (role) {
     case 'admin':
     case 'super_admin':
@@ -85,7 +93,8 @@ export default function Navbar() {
   if (isAuthPage) return null;
 
   // Get role-specific navigation items
-  const navItems = getNavItems(user?.role);
+  const isAuthenticated = !!user;
+  const navItems = getNavItems(user?.role, isAuthenticated);
   const dashboardLink = getDashboardLink(user?.role);
 
   const notifications = [

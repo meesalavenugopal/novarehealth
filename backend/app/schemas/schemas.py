@@ -306,6 +306,11 @@ class DoctorBase(BaseModel):
 
 
 class DoctorCreate(DoctorBase):
+    # User profile fields (will be saved to User model)
+    first_name: Optional[str] = None
+    last_name: Optional[str] = None
+    email: Optional[str] = None
+    # Doctor-specific fields
     government_id_url: Optional[str] = None
     medical_certificate_url: Optional[str] = None
 

@@ -4,21 +4,27 @@ Email Service for sending notifications.
 This service handles:
 - Sending appointment confirmation emails
 - Sending Zoom meeting details to patients and doctors
+- Doctor registration lifecycle emails
 """
 import smtplib
 from email.mime.text import MIMEText
 from email.mime.multipart import MIMEMultipart
-from datetime import datetime
+from pathlib import Path
 from typing import Optional
 import logging
+
+from jinja2 import Environment, FileSystemLoader, select_autoescape
 
 from app.core.config import settings
 
 logger = logging.getLogger(__name__)
 
+# Template directory
+TEMPLATE_DIR = Path(__file__).parent.parent / "templates" / "email"
+
 
 class EmailService:
-    """Service for sending emails."""
+    """Service for sending emails using HTML templates."""
     
     def __init__(self):
         self.smtp_host = settings.SMTP_HOST
@@ -27,10 +33,25 @@ class EmailService:
         self.smtp_password = settings.SMTP_PASSWORD
         self.from_email = settings.EMAIL_FROM
         self.from_name = settings.EMAIL_FROM_NAME
+        
+        # Initialize Jinja2 template environment
+        self.jinja_env = Environment(
+            loader=FileSystemLoader(TEMPLATE_DIR),
+            autoescape=select_autoescape(['html', 'xml'])
+        )
     
     def _is_configured(self) -> bool:
         """Check if email is configured."""
         return bool(self.smtp_user and self.smtp_password)
+    
+    def _render_template(self, template_name: str, **context) -> str:
+        """Render an HTML template with the given context."""
+        try:
+            template = self.jinja_env.get_template(template_name)
+            return template.render(**context)
+        except Exception as e:
+            logger.error(f"Failed to render template {template_name}: {e}")
+            raise
     
     def send_email(
         self,
@@ -86,6 +107,8 @@ class EmailService:
             logger.error(f"Failed to send email to {to_email}: {e}")
             return False
     
+    # ============== Appointment Emails ==============
+    
     def send_appointment_confirmation(
         self,
         to_email: str,
@@ -116,76 +139,22 @@ class EmailService:
         """
         recipient_name = doctor_name if is_doctor else patient_name
         other_party = patient_name if is_doctor else f"Dr. {doctor_name}"
+        party_label = "Patient" if is_doctor else "Doctor"
         
         subject = f"Appointment Confirmed - {appointment_date} at {appointment_time}"
         
-        html_content = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, 'Helvetica Neue', Arial, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #06b6d4, #14b8a6); padding: 30px; border-radius: 16px 16px 0 0; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 28px;">NovareHealth</h1>
-        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0;">Your Appointment is Confirmed</p>
-    </div>
-    
-    <div style="background: #ffffff; padding: 30px; border: 1px solid #e2e8f0; border-top: none;">
-        <p style="font-size: 16px; margin-bottom: 20px;">Hello {recipient_name},</p>
-        
-        <p style="font-size: 16px;">Your video consultation has been scheduled:</p>
-        
-        <div style="background: #f8fafc; border-radius: 12px; padding: 20px; margin: 20px 0;">
-            <table style="width: 100%; border-collapse: collapse;">
-                <tr>
-                    <td style="padding: 8px 0; color: #64748b;">Date:</td>
-                    <td style="padding: 8px 0; font-weight: 600;">{appointment_date}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #64748b;">Time:</td>
-                    <td style="padding: 8px 0; font-weight: 600;">{appointment_time}</td>
-                </tr>
-                <tr>
-                    <td style="padding: 8px 0; color: #64748b;">{"Patient" if is_doctor else "Doctor"}:</td>
-                    <td style="padding: 8px 0; font-weight: 600;">{other_party}</td>
-                </tr>
-                {"" if is_doctor else f'<tr><td style="padding: 8px 0; color: #64748b;">Specialization:</td><td style="padding: 8px 0; font-weight: 600;">{specialization}</td></tr>'}
-            </table>
-        </div>
-        
-        <div style="background: linear-gradient(135deg, #06b6d4, #14b8a6); border-radius: 12px; padding: 25px; margin: 25px 0; text-align: center;">
-            <h3 style="color: white; margin: 0 0 15px 0;">Join Your Video Consultation</h3>
-            <a href="{zoom_join_url}" style="display: inline-block; background: white; color: #0891b2; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600; font-size: 16px;">
-                Join Zoom Meeting
-            </a>
-            <div style="margin-top: 20px; color: rgba(255,255,255,0.9); font-size: 14px;">
-                <p style="margin: 5px 0;">Meeting ID: <strong>{zoom_meeting_id}</strong></p>
-                <p style="margin: 5px 0;">Password: <strong>{zoom_password}</strong></p>
-            </div>
-        </div>
-        
-        <div style="background: #fef3c7; border-left: 4px solid #f59e0b; padding: 15px; border-radius: 0 8px 8px 0; margin: 20px 0;">
-            <p style="margin: 0; color: #92400e; font-size: 14px;">
-                <strong>Important:</strong> Please join the meeting 5 minutes before your scheduled time. Make sure you have a stable internet connection and your camera/microphone are working.
-            </p>
-        </div>
-        
-        <p style="font-size: 14px; color: #64748b; margin-top: 30px;">
-            If you need to reschedule or cancel, please do so at least 2 hours before your appointment.
-        </p>
-    </div>
-    
-    <div style="background: #f8fafc; padding: 20px; border-radius: 0 0 16px 16px; text-align: center; border: 1px solid #e2e8f0; border-top: none;">
-        <p style="margin: 0; color: #64748b; font-size: 12px;">
-            © 2025 NovareHealth. All rights reserved.<br>
-            Quality Healthcare, Anytime, Anywhere.
-        </p>
-    </div>
-</body>
-</html>
-"""
+        html_content = self._render_template(
+            "appointment_confirmation.html",
+            recipient_name=recipient_name,
+            other_party=other_party,
+            party_label=party_label,
+            appointment_date=appointment_date,
+            appointment_time=appointment_time,
+            specialization=specialization if not is_doctor else None,
+            zoom_join_url=zoom_join_url,
+            zoom_meeting_id=zoom_meeting_id,
+            zoom_password=zoom_password
+        )
         
         text_content = f"""
 Hello {recipient_name},
@@ -194,7 +163,7 @@ Your video consultation has been scheduled:
 
 Date: {appointment_date}
 Time: {appointment_time}
-{"Patient" if is_doctor else "Doctor"}: {other_party}
+{party_label}: {other_party}
 
 JOIN YOUR VIDEO CONSULTATION
 -----------------------------
@@ -224,35 +193,136 @@ NovareHealth - Quality Healthcare, Anytime, Anywhere.
         """Send appointment reminder email."""
         subject = f"Reminder: Your Consultation is in 1 hour - {appointment_time}"
         
-        html_content = f"""
-<!DOCTYPE html>
-<html>
-<head>
-    <meta charset="utf-8">
-</head>
-<body style="font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; line-height: 1.6; color: #334155; max-width: 600px; margin: 0 auto; padding: 20px;">
-    <div style="background: linear-gradient(135deg, #06b6d4, #14b8a6); padding: 25px; border-radius: 16px; text-align: center;">
-        <h1 style="color: white; margin: 0; font-size: 24px;">Appointment Reminder</h1>
-        <p style="color: rgba(255,255,255,0.9); margin: 10px 0 0 0; font-size: 18px;">Your consultation is in 1 hour!</p>
-    </div>
-    
-    <div style="background: #ffffff; padding: 25px; margin-top: 20px; border-radius: 12px; border: 1px solid #e2e8f0;">
-        <p>Hello {recipient_name},</p>
-        <p>This is a reminder that your consultation with <strong>{other_party_name}</strong> is scheduled for:</p>
-        <p style="font-size: 20px; text-align: center; color: #0891b2; font-weight: 600;">
-            {appointment_date} at {appointment_time}
-        </p>
-        <div style="text-align: center; margin: 25px 0;">
-            <a href="{zoom_join_url}" style="display: inline-block; background: linear-gradient(135deg, #06b6d4, #14b8a6); color: white; padding: 14px 28px; border-radius: 8px; text-decoration: none; font-weight: 600;">
-                Join Zoom Meeting
-            </a>
-        </div>
-    </div>
-</body>
-</html>
+        html_content = self._render_template(
+            "appointment_reminder.html",
+            recipient_name=recipient_name,
+            other_party_name=other_party_name,
+            appointment_date=appointment_date,
+            appointment_time=appointment_time,
+            zoom_join_url=zoom_join_url
+        )
+        
+        text_content = f"""
+Hello {recipient_name},
+
+Reminder: Your consultation with {other_party_name} is in 1 hour!
+
+Date: {appointment_date}
+Time: {appointment_time}
+
+Join your meeting: {zoom_join_url}
+
+NovareHealth - Quality Healthcare, Anytime, Anywhere.
 """
         
-        return self.send_email(to_email, subject, html_content)
+        return self.send_email(to_email, subject, html_content, text_content)
+    
+    # ============== Doctor Registration Emails ==============
+    
+    def send_doctor_registration_confirmation(
+        self,
+        to_email: str,
+        doctor_name: str,
+        specialization: str = "Healthcare Professional"
+    ) -> bool:
+        """Send confirmation email after doctor registration."""
+        subject = "Welcome to NovareHealth - Application Received"
+        
+        html_content = self._render_template(
+            "doctor_registration.html",
+            doctor_name=doctor_name,
+            specialization=specialization
+        )
+        
+        text_content = f"""
+Welcome to NovareHealth, Dr. {doctor_name}!
+
+Your doctor application has been received successfully.
+
+Specialization: {specialization}
+
+What happens next?
+1. Our team will review your credentials and documents
+2. Verification typically takes 1-3 business days
+3. You'll receive an email once your account is approved
+4. Start accepting patients and earning!
+
+You can log in to check your application status at: https://novarehealth.co.mz/login
+
+If you have any questions, contact us at support@novarehealth.co.mz
+
+NovareHealth - Quality Healthcare, Anytime, Anywhere.
+"""
+        
+        return self.send_email(to_email, subject, html_content, text_content)
+    
+    def send_doctor_approval_email(
+        self,
+        to_email: str,
+        doctor_name: str
+    ) -> bool:
+        """Send email when doctor application is approved."""
+        subject = "Congratulations! Your NovareHealth Account is Approved"
+        
+        html_content = self._render_template(
+            "doctor_approved.html",
+            doctor_name=doctor_name
+        )
+        
+        text_content = f"""
+Congratulations, Dr. {doctor_name}!
+
+Great news! Your NovareHealth doctor account has been approved.
+
+You can now start accepting patients and conducting consultations.
+
+Get started:
+- Set up your availability schedule
+- Complete your profile with a photo
+- Set your consultation fees
+- Start accepting patient bookings!
+
+Go to your dashboard: https://novarehealth.co.mz/doctor/dashboard
+
+Welcome to the team!
+
+NovareHealth - Quality Healthcare, Anytime, Anywhere.
+"""
+        
+        return self.send_email(to_email, subject, html_content, text_content)
+    
+    def send_doctor_rejection_email(
+        self,
+        to_email: str,
+        doctor_name: str,
+        reason: str = None
+    ) -> bool:
+        """Send email when doctor application is rejected."""
+        subject = "NovareHealth Application Update"
+        
+        reason_text = reason if reason else "Your application did not meet our current requirements."
+        
+        html_content = self._render_template(
+            "doctor_rejected.html",
+            doctor_name=doctor_name,
+            reason=reason_text
+        )
+        
+        text_content = f"""
+Dear Dr. {doctor_name},
+
+Thank you for your interest in joining NovareHealth. After reviewing your application, we regret to inform you that we are unable to approve your account at this time.
+
+Reason: {reason_text}
+
+If you believe this decision was made in error or if you have additional documentation to provide, please contact our support team at support@novarehealth.co.mz
+
+We appreciate your understanding and wish you the best in your medical career.
+
+NovareHealth - Quality Healthcare, Anytime, Anywhere.
+"""
+        
+        return self.send_email(to_email, subject, html_content, text_content)
 
 
 # Singleton instance

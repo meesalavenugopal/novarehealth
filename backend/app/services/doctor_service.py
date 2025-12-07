@@ -38,6 +38,14 @@ class DoctorService:
         
         user.role = UserRole.DOCTOR
         
+        # Update user profile with provided details
+        if doctor_data.first_name:
+            user.first_name = doctor_data.first_name
+        if doctor_data.last_name:
+            user.last_name = doctor_data.last_name
+        if doctor_data.email:
+            user.email = doctor_data.email
+        
         # Create doctor profile
         doctor = Doctor(
             user_id=user_id,

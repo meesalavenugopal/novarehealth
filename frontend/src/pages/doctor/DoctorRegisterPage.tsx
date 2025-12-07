@@ -155,69 +155,95 @@ export const DoctorRegisterPage: React.FC = () => {
   const [chatMessages, setChatMessages] = useState<ChatMessage[]>([]);
   const [chatLoading, setChatLoading] = useState(false);
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);
+  const [showRecoveryPrompt, setShowRecoveryPrompt] = useState(false);
   
-  // Form data - restore from localStorage
-  const [formData, setFormData] = useState(() => {
+  // Default form data
+  const getDefaultFormData = () => ({
+    first_name: '',
+    last_name: '',
+    email: '',
+    specialization_id: '',
+    license_number: '',
+    experience_years: '',
+    bio: '',
+    consultation_fee: '',
+    consultation_duration: '30',
+    languages: [] as string[],
+    education: [] as Education[],
+  });
+  
+  // Form data - start fresh, check for recovery data on mount
+  const [formData, setFormData] = useState(getDefaultFormData);
+  
+  // Check for saved data on mount (only if same user)
+  useEffect(() => {
+    if (!user?.id) return;
+    
     const saved = localStorage.getItem('doctorRegister_formData');
+    const savedUserId = localStorage.getItem('doctorRegister_userId');
+    
+    // Only show recovery if data exists AND belongs to current user
+    if (saved && savedUserId === user.id.toString()) {
+      setShowRecoveryPrompt(true);
+    } else {
+      // Clear any stale data from different user
+      clearDoctorRegistrationData();
+    }
+  }, [user?.id]);
+  
+  // Handle recovery prompt actions
+  const handleRecoverData = () => {
+    const saved = localStorage.getItem('doctorRegister_formData');
+    const savedStep = localStorage.getItem('doctorRegister_step');
     if (saved) {
       try {
-        return JSON.parse(saved);
+        setFormData(JSON.parse(saved));
+        if (savedStep) setStep(parseInt(savedStep));
       } catch {
         // Ignore parse errors
       }
     }
-    return {
-      specialization_id: '',
-      license_number: '',
-      experience_years: '',
-      bio: '',
-      consultation_fee: '',
-      consultation_duration: '30',
-      languages: [] as string[],
-      education: [] as Education[],
-    };
-  });
+    // Restore file metadata
+    const govIdMeta = localStorage.getItem('doctorRegister_govIdMeta');
+    const medCertMeta = localStorage.getItem('doctorRegister_medCertMeta');
+    if (govIdMeta) setSavedGovIdMeta(JSON.parse(govIdMeta));
+    if (medCertMeta) setSavedMedCertMeta(JSON.parse(medCertMeta));
+    
+    setShowRecoveryPrompt(false);
+  };
   
-  // Save form data to localStorage whenever it changes
-  useEffect(() => {
+  const handleStartFresh = () => {
+    clearDoctorRegistrationData();
+    setFormData(getDefaultFormData());
+    setStep(1);
+    setSavedGovIdMeta(null);
+    setSavedMedCertMeta(null);
+    setShowRecoveryPrompt(false);
+  };
+  
+  // Save form data to localStorage (called only on submit attempt)
+  const saveFormDataToStorage = () => {
+    if (!user?.id) return;
     localStorage.setItem('doctorRegister_formData', JSON.stringify(formData));
-  }, [formData]);
-  
-  // Save step to localStorage whenever it changes
-  useEffect(() => {
     localStorage.setItem('doctorRegister_step', step.toString());
-  }, [step]);
+    localStorage.setItem('doctorRegister_userId', user.id.toString());
+    if (governmentId) {
+      const meta = { name: governmentId.name, size: governmentId.size, type: governmentId.type };
+      localStorage.setItem('doctorRegister_govIdMeta', JSON.stringify(meta));
+    }
+    if (medicalCertificate) {
+      const meta = { name: medicalCertificate.name, size: medicalCertificate.size, type: medicalCertificate.type };
+      localStorage.setItem('doctorRegister_medCertMeta', JSON.stringify(meta));
+    }
+  };
   
   // KYC files
   const [governmentId, setGovernmentId] = useState<File | null>(null);
   const [medicalCertificate, setMedicalCertificate] = useState<File | null>(null);
   
-  // Saved file metadata (for showing previously uploaded file info after page reload)
-  const [savedGovIdMeta, setSavedGovIdMeta] = useState<FileMetadata | null>(() => {
-    const saved = localStorage.getItem('doctorRegister_govIdMeta');
-    return saved ? JSON.parse(saved) : null;
-  });
-  const [savedMedCertMeta, setSavedMedCertMeta] = useState<FileMetadata | null>(() => {
-    const saved = localStorage.getItem('doctorRegister_medCertMeta');
-    return saved ? JSON.parse(saved) : null;
-  });
-  
-  // Save file metadata when files are selected
-  useEffect(() => {
-    if (governmentId) {
-      const meta = { name: governmentId.name, size: governmentId.size, type: governmentId.type };
-      localStorage.setItem('doctorRegister_govIdMeta', JSON.stringify(meta));
-      setSavedGovIdMeta(meta);
-    }
-  }, [governmentId]);
-  
-  useEffect(() => {
-    if (medicalCertificate) {
-      const meta = { name: medicalCertificate.name, size: medicalCertificate.size, type: medicalCertificate.type };
-      localStorage.setItem('doctorRegister_medCertMeta', JSON.stringify(meta));
-      setSavedMedCertMeta(meta);
-    }
-  }, [medicalCertificate]);
+  // Saved file metadata (for showing previously uploaded file info after recovery)
+  const [savedGovIdMeta, setSavedGovIdMeta] = useState<FileMetadata | null>(null);
+  const [savedMedCertMeta, setSavedMedCertMeta] = useState<FileMetadata | null>(null);
   
   const [newLanguage, setNewLanguage] = useState('');
   const [newEducation, setNewEducation] = useState<Education>({
@@ -479,6 +505,9 @@ export const DoctorRegisterPage: React.FC = () => {
     setLoading(true);
     setError('');
     
+    // Save form data before API call (for recovery if it fails)
+    saveFormDataToStorage();
+    
     try {
       const registerResponse = await fetch(`${config.apiUrl}/doctors/register`, {
         method: 'POST',
@@ -487,6 +516,9 @@ export const DoctorRegisterPage: React.FC = () => {
           'Authorization': `Bearer ${accessToken}`,
         },
         body: JSON.stringify({
+          first_name: formData.first_name,
+          last_name: formData.last_name,
+          email: formData.email,
           specialization_id: parseInt(formData.specialization_id),
           license_number: formData.license_number,
           experience_years: parseInt(formData.experience_years),
@@ -616,6 +648,69 @@ export const DoctorRegisterPage: React.FC = () => {
           <p className="text-xs text-slate-400 text-center mt-4">
             Your form data will be restored after you sign in
           </p>
+        </div>
+      </div>
+    );
+  };
+
+  // Recovery Prompt Modal - shown when user has incomplete registration data
+  const RecoveryPromptModal = () => {
+    if (!showRecoveryPrompt) return null;
+    
+    return (
+      <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+        {/* Backdrop */}
+        <div 
+          className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm"
+          onClick={() => setShowRecoveryPrompt(false)}
+        />
+        
+        {/* Modal */}
+        <div className="relative bg-white rounded-3xl shadow-2xl max-w-md w-full p-8 animate-in fade-in zoom-in duration-300">
+          {/* Close button */}
+          <button
+            onClick={() => setShowRecoveryPrompt(false)}
+            className="absolute top-4 right-4 p-2 rounded-full hover:bg-slate-100 transition-colors"
+          >
+            <X className="w-5 h-5 text-slate-400" />
+          </button>
+          
+          {/* Icon */}
+          <div className="flex justify-center mb-4">
+            <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+              <RefreshCw className="w-8 h-8 text-white" />
+            </div>
+          </div>
+          
+          {/* Content */}
+          <h2 className="text-2xl font-bold text-slate-900 text-center mb-2">
+            Welcome Back!
+          </h2>
+          <p className="text-slate-600 text-center mb-6">
+            You have an incomplete doctor registration from a previous session. Would you like to continue where you left off?
+          </p>
+          
+          {/* Saved data indicator */}
+          <div className="flex items-center gap-2 px-4 py-3 bg-amber-50 border border-amber-200 rounded-xl mb-6">
+            <AlertCircle className="w-5 h-5 text-amber-600" />
+            <span className="text-sm text-amber-700 font-medium">Your previous progress was saved</span>
+          </div>
+          
+          {/* Actions */}
+          <div className="space-y-3">
+            <Button onClick={handleRecoverData} size="lg" className="w-full">
+              Continue Where I Left Off
+              <ArrowRight className="w-5 h-5" />
+            </Button>
+            <Button 
+              onClick={handleStartFresh} 
+              variant="outline" 
+              size="lg" 
+              className="w-full"
+            >
+              Start Fresh
+            </Button>
+          </div>
         </div>
       </div>
     );
@@ -902,7 +997,62 @@ export const DoctorRegisterPage: React.FC = () => {
     <div className="space-y-6">
       <AITipsPanel />
       
+      {/* Personal Information Section */}
       <div>
+        <h3 className="text-lg font-semibold text-slate-900 mb-2">
+          Personal Information
+        </h3>
+        <p className="text-slate-500 text-sm mb-6">
+          Your basic contact details for communication
+        </p>
+      </div>
+      
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+            <User className="w-4 h-4 text-slate-400" />
+            First Name <span className="text-red-500">*</span>
+          </label>
+          <Input
+            value={formData.first_name}
+            onChange={(e) => setFormData({ ...formData, first_name: e.target.value })}
+            placeholder="e.g., John"
+          />
+        </div>
+        
+        <div>
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+            <User className="w-4 h-4 text-slate-400" />
+            Last Name <span className="text-red-500">*</span>
+          </label>
+          <Input
+            value={formData.last_name}
+            onChange={(e) => setFormData({ ...formData, last_name: e.target.value })}
+            placeholder="e.g., Smith"
+          />
+        </div>
+        
+        <div className="md:col-span-2">
+          <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
+            <svg className="w-4 h-4 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M3 8l7.89 5.26a2 2 0 002.22 0L21 8M5 19h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v10a2 2 0 002 2z" />
+            </svg>
+            Email Address <span className="text-red-500">*</span>
+          </label>
+          <Input
+            type="email"
+            value={formData.email}
+            onChange={(e) => setFormData({ ...formData, email: e.target.value })}
+            placeholder="e.g., doctor@example.com"
+          />
+          <p className="text-xs text-slate-400 mt-1.5">
+            We'll send application updates and notifications to this email
+          </p>
+        </div>
+      </div>
+      
+      {/* Professional Information Section */}
+      <div className="pt-4 border-t border-slate-200">
         <h3 className="text-lg font-semibold text-slate-900 mb-2">
           Professional Information
         </h3>
@@ -915,7 +1065,7 @@ export const DoctorRegisterPage: React.FC = () => {
         <div>
           <label className="flex items-center gap-2 text-sm font-medium text-slate-700 mb-2">
             <BadgeCheck className="w-4 h-4 text-slate-400" />
-            License Number
+            License Number <span className="text-red-500">*</span>
           </label>
           <Input
             value={formData.license_number}
@@ -1190,12 +1340,15 @@ export const DoctorRegisterPage: React.FC = () => {
       </div>
 
       {/* Validation message */}
-      {(!formData.license_number || !formData.experience_years || !formData.consultation_fee || formData.languages.length === 0) && (
+      {(!formData.first_name || !formData.last_name || !formData.email || !formData.license_number || !formData.experience_years || !formData.consultation_fee || formData.languages.length === 0) && (
         <div className="flex items-start gap-3 p-4 bg-amber-50 border border-amber-200 rounded-xl">
           <AlertCircle className="w-5 h-5 text-amber-600 flex-shrink-0 mt-0.5" />
           <div>
             <p className="text-sm font-medium text-amber-800">Complete Required Fields</p>
             <ul className="text-sm text-amber-700 mt-1 list-disc list-inside">
+              {!formData.first_name && <li>First name is required</li>}
+              {!formData.last_name && <li>Last name is required</li>}
+              {!formData.email && <li>Email address is required</li>}
               {!formData.license_number && <li>License number is required</li>}
               {!formData.experience_years && <li>Years of experience is required</li>}
               {!formData.consultation_fee && <li>Consultation fee is required</li>}
@@ -1212,7 +1365,7 @@ export const DoctorRegisterPage: React.FC = () => {
         </Button>
         <Button
           onClick={() => setStep(3)}
-          disabled={!formData.license_number || !formData.experience_years || !formData.consultation_fee || formData.languages.length === 0}
+          disabled={!formData.first_name || !formData.last_name || !formData.email || !formData.license_number || !formData.experience_years || !formData.consultation_fee || formData.languages.length === 0}
           className="flex-1"
         >
           Continue
@@ -1793,6 +1946,9 @@ export const DoctorRegisterPage: React.FC = () => {
       
       {/* Login Prompt Modal */}
       <LoginPromptModal />
+      
+      {/* Recovery Prompt Modal */}
+      <RecoveryPromptModal />
     </div>
   );
 };

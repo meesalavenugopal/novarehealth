@@ -57,6 +57,12 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Country Configuration - Configurable country name, capital, currency across frontend and backend
 - [x] Doctor Registration Cleanup - Clear localStorage data on logout to prevent stale data
 - [x] Login Redirect Fix - Doctors without profile redirected to registration instead of broken dashboard
+- [x] Email Templates - Jinja2-based HTML email templates for doctor registration lifecycle
+- [x] Doctor Registration Email - Confirmation email with next steps on registration
+- [x] Doctor Approval Email - Congratulations email when application approved
+- [x] Doctor Rejection Email - Notification email with reason when application rejected
+- [x] Email Template Styling - Consistent branding, borders, proper font sizes, no emojis
+- [x] Guest Navigation - Show only public pages (Specializations, Find Doctors) for unauthenticated users
 
 ### Phase 1 Completed Tasks ✅
 - [x] Project Setup - React + TypeScript + TailwindCSS frontend

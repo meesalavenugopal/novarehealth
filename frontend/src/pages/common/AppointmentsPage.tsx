@@ -18,7 +18,8 @@ import {
   Filter,
   X,
   ExternalLink,
-  Copy
+  Copy,
+  Check
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
@@ -512,10 +513,10 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
                           <span className="font-mono font-semibold text-slate-800">{appointment.zoom_password}</span>
                           <button 
                             onClick={copyPassword}
-                            className="text-cyan-600 hover:text-cyan-700 p-1 hover:bg-cyan-100 rounded transition-colors"
-                            title="Copy password"
+                            className={`p-1 rounded transition-colors ${copiedPassword ? 'text-green-600 bg-green-100' : 'text-cyan-600 hover:text-cyan-700 hover:bg-cyan-100'}`}
+                            title={copiedPassword ? 'Copied!' : 'Copy password'}
                           >
-                            <Copy className="w-4 h-4" />
+                            {copiedPassword ? <Check className="w-4 h-4" /> : <Copy className="w-4 h-4" />}
                           </button>
                         </div>
                       </div>
