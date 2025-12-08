@@ -182,15 +182,17 @@ class DoctorService:
                 event_title = "Profile Updated"
                 event_description = "Doctor profile has been updated"
             
-            await DoctorService.add_application_history(
-                db,
-                doctor_id,
+            # Add history entry (inline, no separate commit)
+            history_entry = DoctorApplicationHistory(
+                doctor_id=doctor_id,
                 event_type=event_type,
                 event_title=event_title,
                 event_description=event_description,
-                metadata={"changed_fields": changed_fields},
+                extra_data={"changed_fields": changed_fields},
                 performed_by="doctor"
             )
+            db.add(history_entry)
+            await db.commit()
         
         return doctor
     
@@ -392,45 +394,55 @@ class DoctorService:
         approved: bool,
         rejection_reason: Optional[str] = None
     ) -> Doctor:
-        """Verify or reject a doctor (admin action)"""
-        doctor = await DoctorService.get_doctor_by_id(db, doctor_id)
-        if not doctor:
-            raise ValueError("Doctor not found")
+        """Verify or reject a doctor (admin action).
         
-        if approved:
-            doctor.verification_status = VerificationStatus.VERIFIED
-            doctor.verified_at = datetime.utcnow()
-            doctor.rejection_reason = None
-        else:
-            doctor.verification_status = VerificationStatus.REJECTED
-            doctor.rejection_reason = rejection_reason
-        
-        await db.commit()
-        await db.refresh(doctor)
-        
-        # Log admin action in history
-        if approved:
-            await DoctorService.add_application_history(
-                db,
-                doctor_id,
-                event_type="status_changed",
-                event_title="Application Approved",
-                event_description="Your doctor application has been verified and approved. You can now start accepting patients.",
-                metadata={"new_status": "verified"},
-                performed_by="admin"
-            )
-        else:
-            await DoctorService.add_application_history(
-                db,
-                doctor_id,
-                event_type="status_changed",
-                event_title="Application Rejected",
-                event_description=rejection_reason or "Your application has been rejected.",
-                metadata={"new_status": "rejected", "reason": rejection_reason},
-                performed_by="admin"
-            )
-        
-        return doctor
+        This method is atomic - if any part fails, the entire transaction is rolled back.
+        """
+        try:
+            doctor = await DoctorService.get_doctor_by_id(db, doctor_id)
+            if not doctor:
+                raise ValueError("Doctor not found")
+            
+            if approved:
+                doctor.verification_status = VerificationStatus.VERIFIED
+                doctor.verified_at = datetime.utcnow()
+                doctor.rejection_reason = None
+                
+                # Add history entry in the same transaction
+                history_entry = DoctorApplicationHistory(
+                    doctor_id=doctor_id,
+                    event_type="status_changed",
+                    event_title="Application Approved",
+                    event_description="Your doctor application has been verified and approved. You can now start accepting patients.",
+                    extra_data={"new_status": "verified"},
+                    performed_by="admin"
+                )
+            else:
+                doctor.verification_status = VerificationStatus.REJECTED
+                doctor.rejection_reason = rejection_reason
+                
+                # Add history entry in the same transaction
+                history_entry = DoctorApplicationHistory(
+                    doctor_id=doctor_id,
+                    event_type="status_changed",
+                    event_title="Application Rejected",
+                    event_description=rejection_reason or "Your application has been rejected.",
+                    extra_data={"new_status": "rejected", "reason": rejection_reason},
+                    performed_by="admin"
+                )
+            
+            db.add(history_entry)
+            await db.commit()
+            await db.refresh(doctor)
+            
+            return doctor
+            
+        except ValueError:
+            await db.rollback()
+            raise
+        except Exception as e:
+            await db.rollback()
+            raise ValueError(f"Failed to verify doctor: {str(e)}")
     
     @staticmethod
     async def suspend_doctor(
@@ -438,69 +450,91 @@ class DoctorService:
         doctor_id: int,
         reason: Optional[str] = None
     ) -> Doctor:
-        """Suspend a verified doctor (admin action)"""
-        doctor = await DoctorService.get_doctor_by_id(db, doctor_id)
-        if not doctor:
-            raise ValueError("Doctor not found")
+        """Suspend a verified doctor (admin action).
         
-        if doctor.verification_status != VerificationStatus.VERIFIED:
-            raise ValueError("Only verified doctors can be suspended")
-        
-        # We'll use a new status or mark them as unavailable
-        # For now, let's set is_available to False and add a suspension flag
-        doctor.is_available = False
-        doctor.rejection_reason = f"[SUSPENDED] {reason}" if reason else "[SUSPENDED]"
-        doctor.updated_at = datetime.utcnow()
-        
-        await db.commit()
-        await db.refresh(doctor)
-        
-        # Log admin action
-        await DoctorService.add_application_history(
-            db,
-            doctor_id,
-            event_type="status_changed",
-            event_title="Account Suspended",
-            event_description=reason or "Your account has been temporarily suspended by admin.",
-            metadata={"action": "suspended", "reason": reason},
-            performed_by="admin"
-        )
-        
-        return doctor
+        This method is atomic - if any part fails, the entire transaction is rolled back.
+        """
+        try:
+            doctor = await DoctorService.get_doctor_by_id(db, doctor_id)
+            if not doctor:
+                raise ValueError("Doctor not found")
+            
+            if doctor.verification_status != VerificationStatus.VERIFIED:
+                raise ValueError("Only verified doctors can be suspended")
+            
+            # We'll use a new status or mark them as unavailable
+            # For now, let's set is_available to False and add a suspension flag
+            doctor.is_available = False
+            doctor.rejection_reason = f"[SUSPENDED] {reason}" if reason else "[SUSPENDED]"
+            doctor.updated_at = datetime.utcnow()
+            
+            # Add history entry in the same transaction
+            history_entry = DoctorApplicationHistory(
+                doctor_id=doctor_id,
+                event_type="status_changed",
+                event_title="Account Suspended",
+                event_description=reason or "Your account has been temporarily suspended by admin.",
+                extra_data={"action": "suspended", "reason": reason},
+                performed_by="admin"
+            )
+            db.add(history_entry)
+            
+            await db.commit()
+            await db.refresh(doctor)
+            
+            return doctor
+            
+        except ValueError:
+            await db.rollback()
+            raise
+        except Exception as e:
+            await db.rollback()
+            raise ValueError(f"Failed to suspend doctor: {str(e)}")
     
     @staticmethod
     async def unsuspend_doctor(
         db: AsyncSession,
         doctor_id: int
     ) -> Doctor:
-        """Unsuspend a suspended doctor (admin action)"""
-        doctor = await DoctorService.get_doctor_by_id(db, doctor_id)
-        if not doctor:
-            raise ValueError("Doctor not found")
+        """Unsuspend a suspended doctor (admin action).
         
-        if not doctor.rejection_reason or not doctor.rejection_reason.startswith("[SUSPENDED]"):
-            raise ValueError("Doctor is not suspended")
-        
-        # Remove suspension
-        doctor.is_available = True
-        doctor.rejection_reason = None
-        doctor.updated_at = datetime.utcnow()
-        
-        await db.commit()
-        await db.refresh(doctor)
-        
-        # Log admin action
-        await DoctorService.add_application_history(
-            db,
-            doctor_id,
-            event_type="status_changed",
-            event_title="Account Reinstated",
-            event_description="Your account suspension has been lifted. You can now accept patients again.",
-            metadata={"action": "unsuspended"},
-            performed_by="admin"
-        )
-        
-        return doctor
+        This method is atomic - if any part fails, the entire transaction is rolled back.
+        """
+        try:
+            doctor = await DoctorService.get_doctor_by_id(db, doctor_id)
+            if not doctor:
+                raise ValueError("Doctor not found")
+            
+            if not doctor.rejection_reason or not doctor.rejection_reason.startswith("[SUSPENDED]"):
+                raise ValueError("Doctor is not suspended")
+            
+            # Remove suspension
+            doctor.is_available = True
+            doctor.rejection_reason = None
+            doctor.updated_at = datetime.utcnow()
+            
+            # Add history entry in the same transaction
+            history_entry = DoctorApplicationHistory(
+                doctor_id=doctor_id,
+                event_type="status_changed",
+                event_title="Account Reinstated",
+                event_description="Your account suspension has been lifted. You can now accept patients again.",
+                extra_data={"action": "unsuspended"},
+                performed_by="admin"
+            )
+            db.add(history_entry)
+            
+            await db.commit()
+            await db.refresh(doctor)
+            
+            return doctor
+            
+        except ValueError:
+            await db.rollback()
+            raise
+        except Exception as e:
+            await db.rollback()
+            raise ValueError(f"Failed to unsuspend doctor: {str(e)}")
     
     # ============== Availability Management ==============
     

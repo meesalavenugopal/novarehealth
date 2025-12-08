@@ -15,6 +15,9 @@ interface Appointment {
   scheduled_time: string;
   appointment_type: string;
   status: string;
+  zoom_join_url?: string;
+  zoom_start_url?: string;
+  zoom_meeting_id?: string;
 }
 
 interface DoctorStats {
@@ -351,7 +354,18 @@ export const DoctorDashboard: React.FC = () => {
                           {(appointment.status === 'confirmed' || appointment.status === 'in_progress') && (
                             <Button 
                               size="sm"
-                              onClick={() => navigate(`/consultation/${appointment.id}`)}
+                              onClick={() => {
+                                // Use Zoom start URL for doctors (host URL)
+                                if (appointment.zoom_start_url) {
+                                  window.open(appointment.zoom_start_url, '_blank');
+                                } else if (appointment.zoom_join_url) {
+                                  window.open(appointment.zoom_join_url, '_blank');
+                                } else {
+                                  // No Zoom link - navigate to appointment details
+                                  navigate(`/doctor/appointments`);
+                                  alert('Zoom meeting not yet created for this appointment. Please check appointment details.');
+                                }
+                              }}
                             >
                               {appointment.status === 'in_progress' ? 'Rejoin Call' : 'Start Call'}
                             </Button>

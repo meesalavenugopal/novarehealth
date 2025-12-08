@@ -21,6 +21,12 @@ import { ReviewsList } from '../../components/reviews';
 import { guestFetch, authFetch } from '../../services/api';
 import type { BookingContext } from '../../services/api';
 
+interface Education {
+  degree: string;
+  institution: string;
+  year: string;
+}
+
 interface Doctor {
   id: number;
   user_id: number;
@@ -34,7 +40,7 @@ interface Doctor {
   consultation_fee: number;
   bio: string;
   languages: string[];
-  education: string[];
+  education: (string | Education)[];
   certifications: string[];
   hospital_affiliations: string[];
   rating: number;
@@ -405,12 +411,18 @@ export default function DoctorProfilePage() {
                   <div className="mb-6">
                     <h2 className="text-lg font-semibold text-slate-900 mb-3">Education</h2>
                     <div className="space-y-2">
-                      {doctor.education.map((edu, index) => (
-                        <div key={index} className="flex items-start gap-3">
-                          <GraduationCap className="w-5 h-5 text-cyan-600 mt-0.5" />
-                          <span className="text-slate-600">{edu}</span>
-                        </div>
-                      ))}
+                      {doctor.education.map((edu, index) => {
+                        // Handle both string and object formats
+                        const eduText = typeof edu === 'string' 
+                          ? edu 
+                          : `${edu.degree} - ${edu.institution} (${edu.year})`;
+                        return (
+                          <div key={index} className="flex items-start gap-3">
+                            <GraduationCap className="w-5 h-5 text-cyan-600 mt-0.5" />
+                            <span className="text-slate-600">{eduText}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                   </div>
                 )}

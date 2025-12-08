@@ -66,6 +66,11 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Doctor Registration Form Persistence - Save form data before login redirect, restore after login
 - [x] Atomic Doctor Registration - Transaction rollback on any error, no partial data saved
 - [x] Email Uniqueness Validation - Check for duplicate email before doctor registration
+- [x] Dynamic Specializations - Homepage fetches real specialization data with doctor counts from API
+- [x] Start Call Button - Opens Zoom meeting URL for doctors (start_url) and patients (join_url)
+- [x] Profile Update Fix - Handle empty date fields and validation error display
+- [x] Doctor Profile Education - Handle education as objects with degree/institution/year
+- [x] Atomic Admin Actions - verify_doctor, suspend_doctor, unsuspend_doctor with transaction rollback
 
 ### Phase 1 Completed Tasks ✅
 - [x] Project Setup - React + TypeScript + TailwindCSS frontend

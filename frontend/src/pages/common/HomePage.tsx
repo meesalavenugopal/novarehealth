@@ -1,4 +1,5 @@
 import { Link, Navigate } from 'react-router-dom';
+import { useState, useEffect } from 'react';
 import { 
   Video, 
   Shield, 
@@ -16,16 +17,61 @@ import {
   Brain,
   Eye,
   Baby,
-  Clock
+  Clock,
+  Activity
 } from 'lucide-react';
 import { Footer } from '../../components/layout';
 import { AIChatWidget } from '../../components/chat';
 import Button from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
 import { config } from '../../config';
+import api from '../../services/api';
+
+interface Specialization {
+  id: number;
+  name: string;
+  icon: string;
+  doctor_count: number;
+}
+
+// Icon mapping for specialization names
+const getSpecializationIcon = (name: string): React.ReactNode => {
+  const iconMap: Record<string, React.ReactNode> = {
+    'Cardiology': <Heart className="w-6 h-6" />,
+    'Neurology': <Brain className="w-6 h-6" />,
+    'Ophthalmology': <Eye className="w-6 h-6" />,
+    'Pediatrics': <Baby className="w-6 h-6" />,
+    'General Medicine': <Stethoscope className="w-6 h-6" />,
+    'Family Medicine': <Users className="w-6 h-6" />,
+  };
+  return iconMap[name] || <Activity className="w-6 h-6" />;
+};
 
 export default function HomePage() {
   const { user } = useAuthStore();
+  const [specializations, setSpecializations] = useState<Specialization[]>([]);
+  const [totalDoctors, setTotalDoctors] = useState<number>(0);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchData = async () => {
+      try {
+        // Fetch specializations with doctor counts
+        const response = await api.get('/doctors/specializations/all');
+        const specs = response.data || [];
+        setSpecializations(specs.slice(0, 6)); // Show top 6
+        
+        // Calculate total doctors
+        const total = specs.reduce((sum: number, s: Specialization) => sum + (s.doctor_count || 0), 0);
+        setTotalDoctors(total);
+      } catch (error) {
+        console.error('Failed to fetch specializations:', error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchData();
+  }, []);
 
   // Redirect logged-in users to their dashboard
   if (user) {
@@ -67,15 +113,6 @@ export default function HomePage() {
     },
   ];
 
-  const specializations = [
-    { icon: <Heart className="w-6 h-6" />, name: 'Cardiology', count: '45+ Doctors' },
-    { icon: <Brain className="w-6 h-6" />, name: 'Neurology', count: '32+ Doctors' },
-    { icon: <Eye className="w-6 h-6" />, name: 'Ophthalmology', count: '28+ Doctors' },
-    { icon: <Baby className="w-6 h-6" />, name: 'Pediatrics', count: '56+ Doctors' },
-    { icon: <Stethoscope className="w-6 h-6" />, name: 'General Medicine', count: '120+ Doctors' },
-    { icon: <Users className="w-6 h-6" />, name: 'Family Medicine', count: '48+ Doctors' },
-  ];
-
   const steps = [
     { step: '01', title: 'Search & Choose', description: 'Find doctors by specialty, rating, or availability' },
     { step: '02', title: 'Book & Pay', description: 'Select a time slot and pay securely with M-Pesa' },
@@ -108,7 +145,7 @@ export default function HomePage() {
   ];
 
   const stats = [
-    { value: '500+', label: 'Verified Doctors', icon: Users },
+    { value: totalDoctors > 0 ? `${totalDoctors}+` : '0', label: 'Verified Doctors', icon: Users },
     { value: '50K+', label: 'Consultations', icon: Video },
     { value: '4.9', label: 'User Rating', icon: Star },
     { value: '24/7', label: 'Available', icon: Clock },
@@ -415,27 +452,44 @@ export default function HomePage() {
               Find specialists across Africa
             </h2>
             <p className="text-lg text-slate-600">
-              Choose from 25+ specializations and connect with the right doctor for your needs
+              Choose from {specializations.length}+ specializations and connect with the right doctor for your needs
             </p>
           </div>
 
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            {specializations.map((spec, index) => (
-              <Link
-                key={index}
-                to={`/find-doctors?specialization=${encodeURIComponent(spec.name)}`}
-                className="flex items-center gap-4 p-6 bg-white rounded-2xl border border-slate-200 hover:border-cyan-300 hover:shadow-lg transition-all group"
-              >
-                <div className="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center text-cyan-600 group-hover:bg-cyan-100 transition-colors">
-                  {spec.icon}
+            {loading ? (
+              // Loading skeleton
+              [...Array(6)].map((_, index) => (
+                <div key={index} className="flex items-center gap-4 p-6 bg-white rounded-2xl border border-slate-200 animate-pulse">
+                  <div className="w-14 h-14 rounded-2xl bg-slate-200" />
+                  <div className="flex-1">
+                    <div className="h-4 bg-slate-200 rounded w-24 mb-2" />
+                    <div className="h-3 bg-slate-100 rounded w-16" />
+                  </div>
                 </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-slate-900">{spec.name}</h3>
-                  <p className="text-sm text-slate-500">{spec.count}</p>
-                </div>
-                <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all" />
-              </Link>
-            ))}
+              ))
+            ) : specializations.length > 0 ? (
+              specializations.map((spec, index) => (
+                <Link
+                  key={spec.id || index}
+                  to={`/find-doctors?specialization=${encodeURIComponent(spec.name)}`}
+                  className="flex items-center gap-4 p-6 bg-white rounded-2xl border border-slate-200 hover:border-cyan-300 hover:shadow-lg transition-all group"
+                >
+                  <div className="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center text-cyan-600 group-hover:bg-cyan-100 transition-colors">
+                    {getSpecializationIcon(spec.name)}
+                  </div>
+                  <div className="flex-1">
+                    <h3 className="font-semibold text-slate-900">{spec.name}</h3>
+                    <p className="text-sm text-slate-500">{spec.doctor_count || 0} Doctors</p>
+                  </div>
+                  <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all" />
+                </Link>
+              ))
+            ) : (
+              <div className="col-span-full text-center py-12 text-slate-500">
+                No specializations available yet
+              </div>
+            )}
           </div>
 
           <div className="text-center mt-12">

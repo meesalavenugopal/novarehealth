@@ -86,10 +86,16 @@ export default function ProfilePage() {
     setSaving(true);
     setMessage(null);
     try {
+      // Clean up empty date fields - send null instead of empty string
+      const cleanProfile = {
+        ...profile,
+        date_of_birth: profile.date_of_birth || null,
+      };
+      
       const response = await authFetch('/api/v1/users/me', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(profile),
+        body: JSON.stringify(cleanProfile),
       });
       
       if (response.ok) {
@@ -97,7 +103,16 @@ export default function ProfilePage() {
         setIsEditing(false);
       } else {
         const error = await response.json();
-        setMessage({ type: 'error', text: error.detail || 'Failed to update profile' });
+        // Handle validation errors (array of objects) or simple error message
+        let errorText = 'Failed to update profile';
+        if (typeof error.detail === 'string') {
+          errorText = error.detail;
+        } else if (Array.isArray(error.detail) && error.detail.length > 0) {
+          errorText = error.detail.map((e: { msg: string; loc?: string[] }) => 
+            e.loc ? `${e.loc.join('.')}: ${e.msg}` : e.msg
+          ).join(', ');
+        }
+        setMessage({ type: 'error', text: errorText });
       }
     } catch (error) {
       setMessage({ type: 'error', text: 'An error occurred while saving' });
