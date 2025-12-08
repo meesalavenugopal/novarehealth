@@ -891,9 +891,11 @@ class DoctorService:
                 is_available = slot_time_str not in booked_times
                 
                 # Also check if slot is in the past (for today's date)
+                # Allow bookings up to 1 hour before the slot time
                 if target_date == date.today():
                     now = datetime.now()
-                    if current_time <= now:
+                    # Slot must be at least 1 hour in the future
+                    if current_time <= now + timedelta(hours=1):
                         is_available = False
                 
                 all_slots.append({
