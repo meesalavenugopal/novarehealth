@@ -228,10 +228,14 @@ NovareHealth - Quality Healthcare, Anytime, Anywhere.
         """Send confirmation email after doctor registration."""
         subject = "Welcome to NovareHealth - Application Received"
         
+        from app.core.config import settings
+        login_url = f"{settings.FRONTEND_URL}/login"
+        
         html_content = self._render_template(
             "doctor_registration.html",
             doctor_name=doctor_name,
-            specialization=specialization
+            specialization=specialization,
+            login_url=login_url
         )
         
         text_content = f"""
@@ -247,7 +251,7 @@ What happens next?
 3. You'll receive an email once your account is approved
 4. Start accepting patients and earning!
 
-You can log in to check your application status at: https://novarehealth.co.mz/login
+You can log in to check your application status at: {login_url}
 
 If you have any questions, contact us at support@novarehealth.co.mz
 
