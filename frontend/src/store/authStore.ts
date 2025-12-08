@@ -10,6 +10,7 @@ export const clearDoctorRegistrationData = () => {
   localStorage.removeItem('doctorRegister_userId');
   localStorage.removeItem('doctorRegister_govIdMeta');
   localStorage.removeItem('doctorRegister_medCertMeta');
+  localStorage.removeItem('doctorRegister_pending');
 };
 
 interface AuthState {

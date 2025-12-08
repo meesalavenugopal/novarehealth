@@ -21,68 +21,96 @@ class DoctorService:
         user_id: int,
         doctor_data: DoctorCreate
     ) -> Doctor:
-        """Create a doctor profile for an existing user"""
-        # Check if doctor profile already exists
-        result = await db.execute(
-            select(Doctor).where(Doctor.user_id == user_id)
-        )
-        existing = result.scalar_one_or_none()
-        if existing:
-            raise ValueError("Doctor profile already exists for this user")
+        """Create a doctor profile for an existing user.
         
-        # Update user role to doctor
-        user_result = await db.execute(select(User).where(User.id == user_id))
-        user = user_result.scalar_one_or_none()
-        if not user:
-            raise ValueError("User not found")
-        
-        user.role = UserRole.DOCTOR
-        
-        # Update user profile with provided details
-        if doctor_data.first_name:
-            user.first_name = doctor_data.first_name
-        if doctor_data.last_name:
-            user.last_name = doctor_data.last_name
-        if doctor_data.email:
-            user.email = doctor_data.email
-        
-        # Create doctor profile
-        doctor = Doctor(
-            user_id=user_id,
-            specialization_id=doctor_data.specialization_id,
-            license_number=doctor_data.license_number,
-            experience_years=doctor_data.experience_years or 0,
-            education=doctor_data.education,
-            languages=doctor_data.languages,
-            bio=doctor_data.bio,
-            consultation_fee=doctor_data.consultation_fee or 0,
-            consultation_duration=doctor_data.consultation_duration or 30,
-            government_id_url=doctor_data.government_id_url,
-            medical_certificate_url=doctor_data.medical_certificate_url,
-            verification_status=VerificationStatus.PENDING
-        )
-        
-        db.add(doctor)
-        await db.commit()
-        await db.refresh(doctor)
-        
-        # Add application history entry
-        await DoctorService.add_application_history(
-            db,
-            doctor.id,
-            event_type="application_submitted",
-            event_title="Application Submitted",
-            event_description="Doctor registration application submitted for verification",
-            extra_data={
-                "specialization_id": doctor_data.specialization_id,
-                "has_government_id": bool(doctor_data.government_id_url),
-                "has_medical_certificate": bool(doctor_data.medical_certificate_url)
-            },
-            performed_by="doctor"
-        )
-        
-        # Load relationships for the response
-        return await DoctorService.get_doctor_by_id(db, doctor.id)
+        This method is atomic - if any part fails, the entire transaction is rolled back.
+        """
+        try:
+            # Check if doctor profile already exists
+            result = await db.execute(
+                select(Doctor).where(Doctor.user_id == user_id)
+            )
+            existing = result.scalar_one_or_none()
+            if existing:
+                raise ValueError("Doctor profile already exists for this user")
+            
+            # Update user role to doctor
+            user_result = await db.execute(select(User).where(User.id == user_id))
+            user = user_result.scalar_one_or_none()
+            if not user:
+                raise ValueError("User not found")
+            
+            user.role = UserRole.DOCTOR
+            
+            # Update user profile with provided details
+            if doctor_data.first_name:
+                user.first_name = doctor_data.first_name
+            if doctor_data.last_name:
+                user.last_name = doctor_data.last_name
+            if doctor_data.email:
+                # Check if email is already used by another user
+                existing_email_result = await db.execute(
+                    select(User).where(
+                        and_(User.email == doctor_data.email, User.id != user_id)
+                    )
+                )
+                existing_email_user = existing_email_result.scalar_one_or_none()
+                if existing_email_user:
+                    raise ValueError("This email address is already registered with another account")
+                user.email = doctor_data.email
+            
+            # Create doctor profile
+            doctor = Doctor(
+                user_id=user_id,
+                specialization_id=doctor_data.specialization_id,
+                license_number=doctor_data.license_number,
+                experience_years=doctor_data.experience_years or 0,
+                education=doctor_data.education,
+                languages=doctor_data.languages,
+                bio=doctor_data.bio,
+                consultation_fee=doctor_data.consultation_fee or 0,
+                consultation_duration=doctor_data.consultation_duration or 30,
+                government_id_url=doctor_data.government_id_url,
+                medical_certificate_url=doctor_data.medical_certificate_url,
+                verification_status=VerificationStatus.PENDING
+            )
+            
+            db.add(doctor)
+            
+            # Flush to get the doctor ID without committing
+            await db.flush()
+            
+            # Add application history entry in the same transaction
+            history_entry = DoctorApplicationHistory(
+                doctor_id=doctor.id,
+                event_type="application_submitted",
+                event_title="Application Submitted",
+                event_description="Doctor registration application submitted for verification",
+                extra_data={
+                    "specialization_id": doctor_data.specialization_id,
+                    "has_government_id": bool(doctor_data.government_id_url),
+                    "has_medical_certificate": bool(doctor_data.medical_certificate_url)
+                },
+                performed_by="doctor"
+            )
+            db.add(history_entry)
+            
+            # Now commit everything together (user update, doctor profile, history)
+            await db.commit()
+            await db.refresh(doctor)
+            
+            # Load relationships for the response
+            return await DoctorService.get_doctor_by_id(db, doctor.id)
+            
+        except ValueError:
+            # Re-raise ValueError (validation errors) without rollback attempt
+            # since no changes were made yet
+            await db.rollback()
+            raise
+        except Exception as e:
+            # Rollback on any other error
+            await db.rollback()
+            raise ValueError(f"Failed to create doctor profile: {str(e)}")
     
     @staticmethod
     async def get_doctor_by_id(db: AsyncSession, doctor_id: int) -> Optional[Doctor]:
@@ -848,6 +876,43 @@ class DoctorService:
             "slots": all_slots
         }
 
+    @staticmethod
+    async def add_application_history(
+        db: AsyncSession,
+        doctor_id: int,
+        event_type: str,
+        event_title: str,
+        event_description: Optional[str] = None,
+        extra_data: Optional[dict] = None,
+        performed_by: str = "doctor"
+    ) -> DoctorApplicationHistory:
+        """Add an event to the doctor's application history"""
+        history_entry = DoctorApplicationHistory(
+            doctor_id=doctor_id,
+            event_type=event_type,
+            event_title=event_title,
+            event_description=event_description,
+            extra_data=extra_data,
+            performed_by=performed_by
+        )
+        db.add(history_entry)
+        await db.commit()
+        await db.refresh(history_entry)
+        return history_entry
+
+    @staticmethod
+    async def get_application_history(
+        db: AsyncSession,
+        doctor_id: int
+    ) -> List[DoctorApplicationHistory]:
+        """Get all application history entries for a doctor"""
+        result = await db.execute(
+            select(DoctorApplicationHistory)
+            .where(DoctorApplicationHistory.doctor_id == doctor_id)
+            .order_by(desc(DoctorApplicationHistory.created_at))
+        )
+        return list(result.scalars().all())
+
 
 # ============== Specialization Service ==============
 
@@ -1002,40 +1067,3 @@ class SpecializationService:
                 await db.refresh(spec)
         
         return created
-
-    @staticmethod
-    async def add_application_history(
-        db: AsyncSession,
-        doctor_id: int,
-        event_type: str,
-        event_title: str,
-        event_description: Optional[str] = None,
-        extra_data: Optional[dict] = None,
-        performed_by: str = "doctor"
-    ) -> DoctorApplicationHistory:
-        """Add an event to the doctor's application history"""
-        history_entry = DoctorApplicationHistory(
-            doctor_id=doctor_id,
-            event_type=event_type,
-            event_title=event_title,
-            event_description=event_description,
-            extra_data=extra_data,
-            performed_by=performed_by
-        )
-        db.add(history_entry)
-        await db.commit()
-        await db.refresh(history_entry)
-        return history_entry
-
-    @staticmethod
-    async def get_application_history(
-        db: AsyncSession,
-        doctor_id: int
-    ) -> List[DoctorApplicationHistory]:
-        """Get all application history entries for a doctor"""
-        result = await db.execute(
-            select(DoctorApplicationHistory)
-            .where(DoctorApplicationHistory.doctor_id == doctor_id)
-            .order_by(desc(DoctorApplicationHistory.created_at))
-        )
-        return list(result.scalars().all())

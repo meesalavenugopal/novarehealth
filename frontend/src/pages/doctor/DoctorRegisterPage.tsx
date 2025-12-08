@@ -175,12 +175,35 @@ export const DoctorRegisterPage: React.FC = () => {
   // Form data - start fresh, check for recovery data on mount
   const [formData, setFormData] = useState(getDefaultFormData);
   
-  // Check for saved data on mount (only if same user)
+  // Check for saved data on mount (only if same user OR pending data from pre-login)
   useEffect(() => {
     if (!user?.id) return;
     
     const saved = localStorage.getItem('doctorRegister_formData');
     const savedUserId = localStorage.getItem('doctorRegister_userId');
+    const isPending = localStorage.getItem('doctorRegister_pending');
+    
+    // Check if there's pending data from before login (user clicked submit without being logged in)
+    if (saved && isPending === 'true') {
+      // Associate pending data with current user and auto-restore
+      localStorage.setItem('doctorRegister_userId', user.id.toString());
+      localStorage.removeItem('doctorRegister_pending');
+      
+      // Auto-restore the form data and jump to review step
+      try {
+        setFormData(JSON.parse(saved));
+        const savedStep = localStorage.getItem('doctorRegister_step');
+        if (savedStep) setStep(parseInt(savedStep));
+      } catch {
+        // Ignore parse errors
+      }
+      // Restore file metadata
+      const govIdMeta = localStorage.getItem('doctorRegister_govIdMeta');
+      const medCertMeta = localStorage.getItem('doctorRegister_medCertMeta');
+      if (govIdMeta) setSavedGovIdMeta(JSON.parse(govIdMeta));
+      if (medCertMeta) setSavedMedCertMeta(JSON.parse(medCertMeta));
+      return;
+    }
     
     // Only show recovery if data exists AND belongs to current user
     if (saved && savedUserId === user.id.toString()) {
@@ -498,6 +521,18 @@ export const DoctorRegisterPage: React.FC = () => {
   const handleSubmit = async () => {
     // Check if user is logged in before submitting
     if (!user || !accessToken) {
+      // Save form data before redirecting to login (mark as pending - no user ID yet)
+      localStorage.setItem('doctorRegister_formData', JSON.stringify(formData));
+      localStorage.setItem('doctorRegister_step', step.toString());
+      localStorage.setItem('doctorRegister_pending', 'true');
+      if (governmentId) {
+        const meta = { name: governmentId.name, size: governmentId.size, type: governmentId.type };
+        localStorage.setItem('doctorRegister_govIdMeta', JSON.stringify(meta));
+      }
+      if (medicalCertificate) {
+        const meta = { name: medicalCertificate.name, size: medicalCertificate.size, type: medicalCertificate.type };
+        localStorage.setItem('doctorRegister_medCertMeta', JSON.stringify(meta));
+      }
       setShowLoginPrompt(true);
       return;
     }

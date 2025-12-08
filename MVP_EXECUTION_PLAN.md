@@ -63,6 +63,9 @@ This document outlines the prioritized MVP execution plan for **NovareHealth (no
 - [x] Doctor Rejection Email - Notification email with reason when application rejected
 - [x] Email Template Styling - Consistent branding, borders, proper font sizes, no emojis
 - [x] Guest Navigation - Show only public pages (Specializations, Find Doctors) for unauthenticated users
+- [x] Doctor Registration Form Persistence - Save form data before login redirect, restore after login
+- [x] Atomic Doctor Registration - Transaction rollback on any error, no partial data saved
+- [x] Email Uniqueness Validation - Check for duplicate email before doctor registration
 
 ### Phase 1 Completed Tasks ✅
 - [x] Project Setup - React + TypeScript + TailwindCSS frontend
