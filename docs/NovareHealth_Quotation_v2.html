@@ -406,6 +406,100 @@
             line-height: 1.5;
         }
         
+        /* Option Card Click Expand */
+        .option-card {
+            cursor: pointer;
+        }
+        
+        .option-card .click-hint {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 6px;
+            margin-top: 14px;
+            font-size: 0.7rem;
+            color: var(--primary);
+            opacity: 0.7;
+            transition: opacity 0.2s ease;
+        }
+        
+        .option-card:hover .click-hint {
+            opacity: 1;
+        }
+        
+        .option-card.expanded .click-hint {
+            display: none;
+        }
+        
+        .option-details {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, margin 0.3s ease, opacity 0.3s ease;
+            opacity: 0;
+            margin-top: 0;
+        }
+        
+        .option-card.expanded .option-details {
+            max-height: 500px;
+            opacity: 1;
+            margin-top: 16px;
+        }
+        
+        .option-details-inner {
+            padding-top: 14px;
+            border-top: 1px solid #e2e8f0;
+            text-align: left;
+        }
+        
+        .option-details h4 {
+            font-size: 0.75rem;
+            color: var(--secondary);
+            margin-bottom: 10px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .option-details ul {
+            list-style: none;
+            padding: 0;
+            margin: 0;
+        }
+        
+        .option-details li {
+            display: flex;
+            align-items: flex-start;
+            gap: 8px;
+            font-size: 0.8rem;
+            color: var(--text-dark);
+            padding: 6px 0;
+        }
+        
+        .option-details li i {
+            color: var(--primary);
+            font-size: 0.65rem;
+            margin-top: 4px;
+        }
+        
+        .option-payment {
+            background: var(--bg-light);
+            border-radius: 8px;
+            padding: 12px;
+            margin-top: 12px;
+        }
+        
+        .option-payment-item {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            padding: 4px 0;
+            color: var(--text-dark);
+        }
+        
+        .option-payment-item span:last-child {
+            font-weight: 600;
+            color: var(--primary);
+        }
+        
         /* Add-ons Table */
         .addons-wrapper {
             background: var(--bg-light);
@@ -592,6 +686,101 @@
                 gap: 12px;
             }
         }
+        
+        /* Accordion Styles */
+        .accordion-section {
+            margin-bottom: 16px;
+            border-radius: 14px;
+            overflow: hidden;
+            border: 1px solid #e2e8f0;
+            background: var(--white);
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-section:hover {
+            border-color: var(--primary);
+            box-shadow: 0 4px 12px rgba(13, 148, 136, 0.1);
+        }
+        
+        .accordion-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            padding: 18px 22px;
+            cursor: pointer;
+            background: var(--white);
+            transition: all 0.3s ease;
+            user-select: none;
+        }
+        
+        .accordion-header:hover {
+            background: var(--bg-light);
+        }
+        
+        .accordion-header-left {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+        }
+        
+        .accordion-icon {
+            width: 42px;
+            height: 42px;
+            background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%);
+            color: var(--white);
+            border-radius: 10px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+        }
+        
+        .accordion-title {
+            font-size: 1.1rem;
+            color: var(--secondary);
+            font-weight: 700;
+        }
+        
+        .accordion-subtitle {
+            font-size: 0.8rem;
+            color: var(--text-muted);
+            margin-top: 2px;
+        }
+        
+        .accordion-toggle {
+            width: 32px;
+            height: 32px;
+            background: var(--bg-light);
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: var(--primary);
+            transition: all 0.3s ease;
+        }
+        
+        .accordion-section.active .accordion-toggle {
+            background: linear-gradient(135deg, #0d9488 0%, #0891b2 100%);
+            color: var(--white);
+            transform: rotate(180deg);
+        }
+        
+        .accordion-content {
+            max-height: 0;
+            overflow: hidden;
+            transition: max-height 0.4s ease, padding 0.3s ease;
+            padding: 0 22px;
+        }
+        
+        .accordion-section.active .accordion-content {
+            max-height: 2000px;
+            padding: 0 22px 22px 22px;
+        }
+        
+        .accordion-inner {
+            padding-top: 16px;
+            border-top: 1px solid #e2e8f0;
+        }
     </style>
 </head>
 <body>
@@ -620,52 +809,63 @@
         
         <!-- Content -->
         <div class="content">
-            <!-- Standard Option -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-icon">
-                        <i class="fas fa-star"></i>
+            <!-- Standard Option Accordion -->
+            <div class="accordion-section active">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-header-left">
+                        <div class="accordion-icon">
+                            <i class="fas fa-star"></i>
+                        </div>
+                        <div>
+                            <div class="accordion-title">Standard Option</div>
+                            <div class="accordion-subtitle">Full ownership with no revenue share</div>
+                        </div>
                     </div>
-                    <h2 class="section-title">Standard Option</h2>
+                    <div class="accordion-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
                 </div>
-                
-                <div class="standard-option">
-                    <div class="standard-content">
-                        <div class="standard-badge">
-                            <i class="fas fa-crown"></i>
-                            Full Ownership
-                        </div>
-                        <h3>Complete Project Development</h3>
-                        <div class="price-row">
-                            <div class="price">₹18,00,000</div>
-                            <div class="no-share-badge">No Revenue Share</div>
-                        </div>
-                        
-                        <div class="payment-schedule">
-                            <h4>
-                                <i class="fas fa-credit-card"></i>
-                                Payment Schedule
-                            </h4>
-                            <div class="payment-item">
-                                <span class="label">
-                                    <i></i>
-                                    30% on Contract Signing
-                                </span>
-                                <span class="amount">₹5,40,000</span>
-                            </div>
-                            <div class="payment-item">
-                                <span class="label">
-                                    <i></i>
-                                    40% after Phase 4 Completion
-                                </span>
-                                <span class="amount">₹7,20,000</span>
-                            </div>
-                            <div class="payment-item">
-                                <span class="label">
-                                    <i></i>
-                                    30% on Final Delivery
-                                </span>
-                                <span class="amount">₹5,40,000</span>
+                <div class="accordion-content">
+                    <div class="accordion-inner">
+                        <div class="standard-option">
+                            <div class="standard-content">
+                                <div class="standard-badge">
+                                    <i class="fas fa-crown"></i>
+                                    Full Ownership
+                                </div>
+                                <h3>Complete Project Development</h3>
+                                <div class="price-row">
+                                    <div class="price">₹18,00,000</div>
+                                    <div class="no-share-badge">No Revenue Share</div>
+                                </div>
+                                
+                                <div class="payment-schedule">
+                                    <h4>
+                                        <i class="fas fa-credit-card"></i>
+                                        Payment Schedule
+                                    </h4>
+                                    <div class="payment-item">
+                                        <span class="label">
+                                            <i></i>
+                                            30% on Contract Signing
+                                        </span>
+                                        <span class="amount">₹5,40,000</span>
+                                    </div>
+                                    <div class="payment-item">
+                                        <span class="label">
+                                            <i></i>
+                                            40% after Phase 4 Completion
+                                        </span>
+                                        <span class="amount">₹7,20,000</span>
+                                    </div>
+                                    <div class="payment-item">
+                                        <span class="label">
+                                            <i></i>
+                                            30% on Final Delivery
+                                        </span>
+                                        <span class="amount">₹5,40,000</span>
+                                    </div>
+                                </div>
                             </div>
                         </div>
                     </div>
@@ -679,126 +879,251 @@
                 <div class="divider-line"></div>
             </div>
             
-            <!-- Revenue Share Options -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-icon">
-                        <i class="fas fa-handshake"></i>
+            <!-- Revenue Share Options Accordion -->
+            <div class="accordion-section">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-header-left">
+                        <div class="accordion-icon">
+                            <i class="fas fa-handshake"></i>
+                        </div>
+                        <div>
+                            <div class="accordion-title">Revenue Share Options</div>
+                            <div class="accordion-subtitle">Flexible partnership models for startups</div>
+                        </div>
                     </div>
-                    <h2 class="section-title">Revenue Share Options</h2>
+                    <div class="accordion-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
                 </div>
-                
-                <div class="options-grid">
-                    <div class="option-card">
-                        <div class="option-name">Option A</div>
-                        <div class="option-price">₹8,00,000</div>
-                        <div class="option-share">+ <span>22%</span> Revenue Share</div>
-                        <p class="option-desc">Lower upfront investment with moderate revenue partnership</p>
-                    </div>
-                    
-                    <div class="option-card">
-                        <div class="option-name">Option B</div>
-                        <div class="option-price">₹10,00,000</div>
-                        <div class="option-share">+ <span>27%</span> Revenue Share</div>
-                        <p class="option-desc">Balanced approach for growing startups</p>
-                    </div>
-                    
-                    <div class="option-card">
-                        <div class="option-name">Option C</div>
-                        <div class="option-price">₹7,00,000</div>
-                        <div class="option-share">+ <span>32%</span> Revenue Share</div>
-                        <p class="option-desc">Minimum upfront with higher revenue partnership</p>
+                <div class="accordion-content">
+                    <div class="accordion-inner">
+                        <div class="options-grid">
+                            <div class="option-card" onclick="toggleOptionCard(this)">
+                                <div class="option-name">Option A</div>
+                                <div class="option-price">₹8,00,000</div>
+                                <div class="option-share">+ <span>22%</span> Revenue Share</div>
+                                <p class="option-desc">Lower upfront investment with moderate revenue partnership</p>
+                                <div class="click-hint">
+                                    <i class="fas fa-hand-pointer"></i>
+                                    <span>Click for details</span>
+                                </div>
+                                <div class="option-details">
+                                    <div class="option-details-inner">
+                                        <h4><i class="fas fa-info-circle"></i> What's Included</h4>
+                                        <ul>
+                                            <li><i class="fas fa-check"></i> Complete healthcare platform development</li>
+                                            <li><i class="fas fa-check"></i> 22% revenue share on platform earnings</li>
+                                            <li><i class="fas fa-check"></i> Full source code ownership</li>
+                                            <li><i class="fas fa-check"></i> 30 days bug-fix support included</li>
+                                        </ul>
+                                        <div class="option-payment">
+                                            <div class="option-payment-item">
+                                                <span>50% on Contract Signing</span>
+                                                <span>₹4,00,000</span>
+                                            </div>
+                                            <div class="option-payment-item">
+                                                <span>50% on Final Delivery</span>
+                                                <span>₹4,00,000</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="option-card" onclick="toggleOptionCard(this)">
+                                <div class="option-name">Option B</div>
+                                <div class="option-price">₹10,00,000</div>
+                                <div class="option-share">+ <span>27%</span> Revenue Share</div>
+                                <p class="option-desc">Balanced approach for growing startups</p>
+                                <div class="click-hint">
+                                    <i class="fas fa-hand-pointer"></i>
+                                    <span>Click for details</span>
+                                </div>
+                                <div class="option-details">
+                                    <div class="option-details-inner">
+                                        <h4><i class="fas fa-info-circle"></i> What's Included</h4>
+                                        <ul>
+                                            <li><i class="fas fa-check"></i> Complete healthcare platform development</li>
+                                            <li><i class="fas fa-check"></i> 27% revenue share on platform earnings</li>
+                                            <li><i class="fas fa-check"></i> Priority support during development</li>
+                                            <li><i class="fas fa-check"></i> 45 days bug-fix support included</li>
+                                        </ul>
+                                        <div class="option-payment">
+                                            <div class="option-payment-item">
+                                                <span>40% on Contract Signing</span>
+                                                <span>₹4,00,000</span>
+                                            </div>
+                                            <div class="option-payment-item">
+                                                <span>30% at Mid-Project</span>
+                                                <span>₹3,00,000</span>
+                                            </div>
+                                            <div class="option-payment-item">
+                                                <span>30% on Final Delivery</span>
+                                                <span>₹3,00,000</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                            
+                            <div class="option-card" onclick="toggleOptionCard(this)">
+                                <div class="option-name">Option C</div>
+                                <div class="option-price">₹7,00,000</div>
+                                <div class="option-share">+ <span>32%</span> Revenue Share</div>
+                                <p class="option-desc">Minimum upfront with higher revenue partnership</p>
+                                <div class="click-hint">
+                                    <i class="fas fa-hand-pointer"></i>
+                                    <span>Click for details</span>
+                                </div>
+                                <div class="option-details">
+                                    <div class="option-details-inner">
+                                        <h4><i class="fas fa-info-circle"></i> What's Included</h4>
+                                        <ul>
+                                            <li><i class="fas fa-check"></i> Complete healthcare platform development</li>
+                                            <li><i class="fas fa-check"></i> 32% revenue share on platform earnings</li>
+                                            <li><i class="fas fa-check"></i> Extended partnership with ongoing support</li>
+                                            <li><i class="fas fa-check"></i> 60 days bug-fix support included</li>
+                                        </ul>
+                                        <div class="option-payment">
+                                            <div class="option-payment-item">
+                                                <span>50% on Contract Signing</span>
+                                                <span>₹3,50,000</span>
+                                            </div>
+                                            <div class="option-payment-item">
+                                                <span>50% on Final Delivery</span>
+                                                <span>₹3,50,000</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 </div>
             </div>
             
-            <!-- Add-ons -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-icon">
-                        <i class="fas fa-plus-circle"></i>
+            <!-- Add-ons Accordion -->
+            <div class="accordion-section">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-header-left">
+                        <div class="accordion-icon">
+                            <i class="fas fa-plus-circle"></i>
+                        </div>
+                        <div>
+                            <div class="accordion-title">Optional Add-Ons</div>
+                            <div class="accordion-subtitle">Extended support and additional services</div>
+                        </div>
                     </div>
-                    <h2 class="section-title">Optional Add-Ons</h2>
+                    <div class="accordion-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
                 </div>
-                
-                <div class="addons-wrapper">
-                    <table class="addons-table">
-                        <thead>
-                            <tr>
-                                <th>Service</th>
-                                <th class="price-col">Price</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            <tr>
-                                <td>
-                                    <div class="addon-name">
-                                        <div class="addon-icon"><i class="fas fa-headset"></i></div>
-                                        <span>Extended Support & Maintenance (3 Months)</span>
-                                    </div>
-                                </td>
-                                <td class="price-col">₹1,50,000</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="addon-name">
-                                        <div class="addon-icon"><i class="fas fa-life-ring"></i></div>
-                                        <span>Extended Support & Maintenance (6 Months)</span>
-                                    </div>
-                                </td>
-                                <td class="price-col">₹2,50,000</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="addon-name">
-                                        <div class="addon-icon"><i class="fab fa-aws"></i></div>
-                                        <span>AWS Deployment & Infrastructure Setup</span>
-                                    </div>
-                                </td>
-                                <td class="price-col">₹75,000</td>
-                            </tr>
-                            <tr>
-                                <td>
-                                    <div class="addon-name">
-                                        <div class="addon-icon"><i class="fas fa-chalkboard-teacher"></i></div>
-                                        <span>Documentation Package</span>
-                                    </div>
-                                </td>
-                                <td class="price-col">₹50,000</td>
-                            </tr>
-                        </tbody>
-                    </table>
+                <div class="accordion-content">
+                    <div class="accordion-inner">
+                        <div class="addons-wrapper">
+                            <table class="addons-table">
+                                <thead>
+                                    <tr>
+                                        <th>Service</th>
+                                        <th class="price-col">Price</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <tr>
+                                        <td>
+                                            <div class="addon-name">
+                                                <div class="addon-icon"><i class="fas fa-tools"></i></div>
+                                                <span>Extended Support & Maintenance (1 Month)</span>
+                                            </div>
+                                        </td>
+                                        <td class="price-col">₹75,000</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="addon-name">
+                                                <div class="addon-icon"><i class="fas fa-headset"></i></div>
+                                                <span>Extended Support & Maintenance (3 Months)</span>
+                                            </div>
+                                        </td>
+                                        <td class="price-col">₹1,50,000</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="addon-name">
+                                                <div class="addon-icon"><i class="fas fa-life-ring"></i></div>
+                                                <span>Extended Support & Maintenance (6 Months)</span>
+                                            </div>
+                                        </td>
+                                        <td class="price-col">₹2,50,000</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="addon-name">
+                                                <div class="addon-icon"><i class="fab fa-aws"></i></div>
+                                                <span>AWS Deployment & Infrastructure Setup</span>
+                                            </div>
+                                        </td>
+                                        <td class="price-col">₹75,000</td>
+                                    </tr>
+                                    <tr>
+                                        <td>
+                                            <div class="addon-name">
+                                                <div class="addon-icon"><i class="fas fa-chalkboard-teacher"></i></div>
+                                                <span>Documentation Package</span>
+                                            </div>
+                                        </td>
+                                        <td class="price-col">₹50,000</td>
+                                    </tr>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
             
-            <!-- Terms -->
-            <div class="section">
-                <div class="section-header">
-                    <div class="section-icon">
-                        <i class="fas fa-file-contract"></i>
+            <!-- Terms Accordion -->
+            <div class="accordion-section">
+                <div class="accordion-header" onclick="toggleAccordion(this)">
+                    <div class="accordion-header-left">
+                        <div class="accordion-icon">
+                            <i class="fas fa-file-contract"></i>
+                        </div>
+                        <div>
+                            <div class="accordion-title">Terms & Conditions</div>
+                            <div class="accordion-subtitle">Project delivery and support terms</div>
+                        </div>
                     </div>
-                    <h2 class="section-title">Terms & Conditions</h2>
+                    <div class="accordion-toggle">
+                        <i class="fas fa-chevron-down"></i>
+                    </div>
                 </div>
-                
-                <div class="terms-box">
-                    <ul class="terms-list">
-                        <li>
-                            <span class="term-icon"><i class="fas fa-check"></i></span>
-                            <span><strong>Bug-Fix Support:</strong> 30 days of bug-fix support included after final delivery for all options</span>
-                        </li>
-                        <li>
-                            <span class="term-icon"><i class="fas fa-check"></i></span>
-                            <span><strong>Third-Party Costs:</strong> Any third-party integration costs (APIs, services, subscriptions) are borne by the client</span>
-                        </li>
-                        <li>
-                            <span class="term-icon"><i class="fas fa-check"></i></span>
-                            <span><strong>Scope:</strong> Complete healthcare platform as per agreed requirements document</span>
-                        </li>
-                        <li>
-                            <span class="term-icon"><i class="fas fa-check"></i></span>
-                            <span><strong>Timeline:</strong> Project delivery as per mutually agreed milestones</span>
-                        </li>
-                    </ul>
+                <div class="accordion-content">
+                    <div class="accordion-inner">
+                        <div class="terms-box">
+                            <ul class="terms-list">
+                                <li>
+                                    <span class="term-icon"><i class="fas fa-check"></i></span>
+                                    <span><strong>Bug-Fix Support:</strong> 30 days of bug-fix support included after final delivery for all options</span>
+                                </li>
+                                <li>
+                                    <span class="term-icon"><i class="fas fa-check"></i></span>
+                                    <span><strong>Third-Party Costs:</strong> Any third-party integration costs (APIs, services, subscriptions) are borne by the client</span>
+                                </li>
+                                <li>
+                                    <span class="term-icon"><i class="fas fa-check"></i></span>
+                                    <span><strong>Scope:</strong> Complete healthcare platform as per agreed requirements document</span>
+                                </li>
+                                <li>
+                                    <span class="term-icon"><i class="fas fa-check"></i></span>
+                                    <span><strong>Timeline:</strong> Project delivery as per mutually agreed milestones</span>
+                                </li>
+                                <li>
+                                    <span class="term-icon"><i class="fas fa-check"></i></span>
+                                    <span><strong>Additional Work:</strong> Any new features, enhancements, or requirement changes beyond the agreed scope will be evaluated and charged separately</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
@@ -820,5 +1145,31 @@
             </div>
         </div>
     </div>
+    
+    <script>
+        // Initialize accordion functionality
+        document.addEventListener('DOMContentLoaded', function() {
+            const accordionHeaders = document.querySelectorAll('.accordion-header');
+            
+            accordionHeaders.forEach(function(header) {
+                header.addEventListener('click', function() {
+                    const section = this.closest('.accordion-section');
+                    section.classList.toggle('active');
+                });
+            });
+        });
+        
+        // Toggle option card details
+        function toggleOptionCard(card) {
+            // Close other expanded cards
+            document.querySelectorAll('.option-card.expanded').forEach(function(c) {
+                if (c !== card) {
+                    c.classList.remove('expanded');
+                }
+            });
+            // Toggle current card
+            card.classList.toggle('expanded');
+        }
+    </script>
 </body>
 </html>
