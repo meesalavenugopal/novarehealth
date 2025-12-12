@@ -203,7 +203,7 @@ export default function HomePage() {
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
-                <Link to="/login">
+                <Link to="/find-doctors">
                   <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-cyan-600 font-semibold rounded-xl shadow-xl hover:bg-cyan-50 transition-colors">
                     Book Consultation
                     <ArrowRight className="w-5 h-5" />
@@ -546,9 +546,9 @@ export default function HomePage() {
             Join thousands of patients and doctors already using NovareHealth
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/login">
+            <Link to="/find-doctors">
               <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-cyan-600 font-semibold rounded-xl shadow-xl hover:bg-cyan-50 transition-colors">
-                Get Started Free
+                Find a Doctor
                 <ArrowRight className="w-5 h-5" />
               </button>
             </Link>
