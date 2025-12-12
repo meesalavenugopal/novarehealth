@@ -192,7 +192,7 @@ export default function DoctorProfilePage() {
           if (response.ok) {
             const data = await response.json();
             // Transform API response to match TimeSlot interface
-            const transformedSlots = (data.slots || []).map((slot: any, index: number) => ({
+            const transformedSlots = (data.slots || []).map((slot: { time: string; is_available: boolean }, index: number) => ({
               id: index,
               start_time: slot.time,
               end_time: '', // API doesn't return end_time, we could calculate it
