@@ -173,10 +173,19 @@ export default function DoctorLandingPage() {
               
               <div className="flex items-center gap-6 mt-8 pt-8 border-t border-white/20">
                 <div className="flex -space-x-3">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="w-10 h-10 rounded-full bg-linear-to-br from-cyan-400 to-teal-400 border-2 border-white flex items-center justify-center">
-                      <span className="text-white text-xs font-bold">D{i}</span>
-                    </div>
+                  {[
+                    'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=80&h=80&fit=crop&crop=face',
+                    'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=80&h=80&fit=crop&crop=face',
+                    'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=80&h=80&fit=crop&crop=face',
+                    'https://images.unsplash.com/photo-1622253692010-333f2da6031d?w=80&h=80&fit=crop&crop=face',
+                    'https://images.unsplash.com/photo-1651008376811-b90baee60c1f?w=80&h=80&fit=crop&crop=face',
+                  ].map((img, i) => (
+                    <img 
+                      key={i} 
+                      src={img} 
+                      alt={`Doctor ${i + 1}`}
+                      className="w-10 h-10 rounded-full border-2 border-white object-cover"
+                    />
                   ))}
                 </div>
                 <div className="text-white/80">

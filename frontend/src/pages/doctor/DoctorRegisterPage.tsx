@@ -34,6 +34,7 @@ import {
   Zap,
   Sparkles,
   Eye,
+  Shield,
 } from 'lucide-react';
 
 interface Specialization {
