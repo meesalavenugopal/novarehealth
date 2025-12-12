@@ -17,9 +17,29 @@ export default function Footer() {
     <footer className="bg-slate-900 text-slate-300">
       {/* Main Footer */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-12 lg:py-16">
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
-          {/* Brand Column */}
-          <div className="lg:col-span-1">
+        {/* Brand Section - Full width on all screens */}
+        <div className="mb-8 lg:mb-0 lg:hidden">
+          <Link to="/" className="flex items-center gap-2 mb-4">
+            <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center">
+              <span className="text-white font-bold text-lg">N</span>
+            </div>
+            <span className="text-xl font-bold text-white">NovareHealth</span>
+          </Link>
+          <p className="text-slate-400 text-sm leading-relaxed mb-4">
+            Your trusted healthcare partner in Africa. Connect with certified doctors for video consultations, 
+            prescriptions, and health records — all from your phone.
+          </p>
+          <div className="flex gap-3">
+            <SocialLink href="https://facebook.com" icon={<Facebook className="w-4 h-4" />} />
+            <SocialLink href="https://twitter.com" icon={<Twitter className="w-4 h-4" />} />
+            <SocialLink href="https://instagram.com" icon={<Instagram className="w-4 h-4" />} />
+            <SocialLink href="https://linkedin.com" icon={<Linkedin className="w-4 h-4" />} />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-2 lg:grid-cols-4 gap-8 lg:gap-12">
+          {/* Brand Column - Hidden on mobile, shown on lg */}
+          <div className="hidden lg:block lg:col-span-1">
             <Link to="/" className="flex items-center gap-2 mb-4">
               <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-xl flex items-center justify-center">
                 <span className="text-white font-bold text-lg">N</span>
@@ -62,8 +82,8 @@ export default function Footer() {
             </ul>
           </div>
 
-          {/* Contact */}
-          <div>
+          {/* Contact - Full width on mobile */}
+          <div className="col-span-2 lg:col-span-1">
             <h3 className="text-white font-semibold mb-4">Contact Us</h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
