@@ -114,7 +114,13 @@ class DoctorService:
     
     @staticmethod
     async def get_doctor_by_id(db: AsyncSession, doctor_id: int) -> Optional[Doctor]:
-        """Get doctor by ID with relationships"""
+        """Get doctor by their doctor profile ID (doctors.id primary key).
+        
+        Use this when you have the doctor's profile ID, e.g., from:
+        - URL parameters (/doctors/{doctor_id})
+        - Appointment records (appointment.doctor_id)
+        - Admin doctor management
+        """
         result = await db.execute(
             select(Doctor)
             .options(
@@ -127,7 +133,13 @@ class DoctorService:
     
     @staticmethod
     async def get_doctor_by_user_id(db: AsyncSession, user_id: int) -> Optional[Doctor]:
-        """Get doctor profile by user ID"""
+        """Get doctor profile by their user account ID (users.id foreign key).
+        
+        Use this when you have the logged-in user's ID, e.g., from:
+        - Current authenticated user (current_user.id)
+        - User profile lookups
+        - Checking if a user has a doctor profile
+        """
         result = await db.execute(
             select(Doctor)
             .options(

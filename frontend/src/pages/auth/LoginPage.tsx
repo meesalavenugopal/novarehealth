@@ -156,6 +156,34 @@ export default function LoginPage() {
     }
   };
 
+  // Handle paste for OTP - allows pasting complete 6-digit code
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    
+    if (pastedData.length > 0) {
+      const newOtpValues = [...otpValues];
+      for (let i = 0; i < 6; i++) {
+        newOtpValues[i] = pastedData[i] || '';
+      }
+      setOtpValues(newOtpValues);
+      
+      // Focus the next empty input or last input
+      const nextEmptyIndex = newOtpValues.findIndex(v => !v);
+      if (nextEmptyIndex !== -1) {
+        otpRefs.current[nextEmptyIndex]?.focus();
+      } else {
+        otpRefs.current[5]?.focus();
+      }
+      
+      // Auto-submit if complete
+      if (pastedData.length === 6) {
+        otpForm.setValue('otp', pastedData);
+        handleVerifyOTP({ otp: pastedData });
+      }
+    }
+  };
+
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
@@ -487,6 +515,7 @@ export default function LoginPage() {
                         value={value}
                         onChange={(e) => handleOtpChange(index, e.target.value)}
                         onKeyDown={(e) => handleOtpKeyDown(index, e)}
+                        onPaste={handleOtpPaste}
                         className="w-12 h-14 sm:w-14 sm:h-16 text-center text-2xl font-bold border-2 border-slate-200 rounded-xl focus:ring-0 focus:border-cyan-500 outline-none transition"
                       />
                     ))}
