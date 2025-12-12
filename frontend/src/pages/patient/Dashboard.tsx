@@ -175,6 +175,7 @@ export default function PatientDashboard() {
             <Button
               leftIcon={<Plus className="w-4 h-4" />}
               size="lg"
+              onClick={() => navigate('/find-doctors')}
             >
               Book Consultation
             </Button>
