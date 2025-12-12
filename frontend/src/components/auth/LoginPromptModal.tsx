@@ -1,4 +1,4 @@
-import { X, LogIn, UserPlus, Stethoscope } from 'lucide-react';
+import { X, LogIn, Stethoscope } from 'lucide-react';
 import { useNavigate } from 'react-router-dom';
 import { saveBookingContext } from '../../services/api';
 import type { BookingContext } from '../../services/api';
@@ -36,25 +36,6 @@ export default function LoginPromptModal({
       state: { 
         returnUrl: bookingContext?.returnUrl || window.location.pathname,
         message: 'Please login to continue with your booking'
-      } 
-    });
-  };
-
-  const handleRegister = () => {
-    // Save booking context if provided
-    if (bookingContext) {
-      saveBookingContext({
-        ...bookingContext,
-        returnUrl: window.location.pathname,
-      });
-    }
-    
-    onClose();
-    navigate('/login', { 
-      state: { 
-        returnUrl: bookingContext?.returnUrl || window.location.pathname,
-        isRegister: true,
-        message: 'Create an account to book your consultation'
       } 
     });
   };
@@ -123,21 +104,6 @@ export default function LoginPromptModal({
           >
             <LogIn className="w-5 h-5" />
             Login to Continue
-          </button>
-          
-          <button
-            onClick={handleRegister}
-            className="w-full flex items-center justify-center gap-2 px-6 py-3.5 border-2 border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium"
-          >
-            <UserPlus className="w-5 h-5" />
-            Create an Account
-          </button>
-          
-          <button
-            onClick={onClose}
-            className="w-full text-center text-sm text-slate-500 hover:text-slate-700 py-2"
-          >
-            Continue browsing as guest
           </button>
         </div>
       </div>

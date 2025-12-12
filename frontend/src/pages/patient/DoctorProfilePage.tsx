@@ -204,7 +204,12 @@ export default function DoctorProfilePage() {
         // Calculate the date for this iteration (day 0, 1, 2... 6 of the week)
         const currentDate = new Date(startDate);
         currentDate.setDate(startDate.getDate() + i);
-        const dateStr = currentDate.toISOString().split('T')[0]; // Format: "YYYY-MM-DD"
+        // Format as YYYY-MM-DD using local timezone (not UTC)
+        // toISOString() uses UTC which can cause off-by-one day errors
+        const year = currentDate.getFullYear();
+        const month = String(currentDate.getMonth() + 1).padStart(2, '0');
+        const day = String(currentDate.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
         
         try {
           // API call to get bookable slots for this specific date

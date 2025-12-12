@@ -199,9 +199,9 @@ export default function PatientDashboard() {
           ))}
         </div>
 
-        <div className="grid lg:grid-cols-3 gap-8">
-          {/* Left Column - 2/3 width */}
-          <div className="lg:col-span-2 space-y-8">
+        <div className="grid xl:grid-cols-3 gap-8">
+          {/* Left Column - 2/3 width on xl screens */}
+          <div className="xl:col-span-2 space-y-8">
             {/* Upcoming Appointments */}
             <Card padding="lg">
               <CardHeader 
@@ -319,7 +319,7 @@ export default function PatientDashboard() {
             </Card>
           </div>
 
-          {/* Right Column - 1/3 width */}
+          {/* Right Column - 1/3 width on xl screens, stacks below on smaller screens */}
           <div className="space-y-8">
             {/* Health Stats Card */}
             <Card padding="lg" className="bg-gradient-to-br from-cyan-500 to-teal-500 border-0 text-white">
