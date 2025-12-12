@@ -4,6 +4,7 @@ import {
   Search,
   Loader2,
   ChevronRight,
+  Stethoscope,
 } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
 import { guestFetch } from '../../services/api';
@@ -13,6 +14,7 @@ interface Specialization {
   id: number;
   name: string;
   description?: string;
+  icon: string;
   doctor_count?: number;
 }
 
