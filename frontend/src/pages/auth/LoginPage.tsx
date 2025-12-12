@@ -21,7 +21,7 @@ import {
 import { authService } from '../../services/auth';
 import { useAuthStore } from '../../store/authStore';
 import Button from '../../components/ui/Button';
-import { getBookingContext, clearBookingContext } from '../../services/api';
+import { getBookingContext } from '../../services/api';
 
 // Get country rules for validation messages
 const countryRules = config.phone.rules;
@@ -237,9 +237,10 @@ export default function LoginPage() {
       
       // ============== REDIRECT PRIORITY 1: Guest Booking Context ==============
       // Highest priority - user was booking as guest, continue that flow
+      // NOTE: Don't clear booking context here - let the destination page handle it
+      // so it can restore the user's selection (date, time slot, etc.)
       if (pendingBooking?.returnUrl) {
         const bookingReturnUrl = pendingBooking.returnUrl;
-        clearBookingContext(); // Clear localStorage booking data
         navigate(bookingReturnUrl);
         return;
       }

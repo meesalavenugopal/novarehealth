@@ -9,7 +9,7 @@
  * 
  * @see /docs/DoctorProfileFlowDiagram.md for detailed flow documentation
  */
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useParams, useNavigate, Link } from 'react-router-dom';
 import {
   ArrowLeft,
@@ -29,7 +29,7 @@ import {
 import Navbar from '../../components/layout/Navbar';
 import LoginPromptModal from '../../components/auth/LoginPromptModal';
 import { ReviewsList } from '../../components/reviews';
-import { guestFetch, authFetch } from '../../services/api';
+import { guestFetch, authFetch, getBookingContext, clearBookingContext } from '../../services/api';
 import type { BookingContext } from '../../services/api';
 
 /** Education entry - supports both string and structured formats from API */
@@ -104,6 +104,7 @@ export default function DoctorProfilePage() {
   // ─────────────────────────────────────────────────────────────
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);           // Login modal visibility
   const [bookingContext, setBookingContext] = useState<BookingContext | null>(null); // Preserved booking intent
+  const bookingContextRestoredRef = useRef(false); // Track if we've already restored booking context
 
   /** Check if user is authenticated via access token */
   const isLoggedIn = !!localStorage.getItem('access_token');
@@ -221,8 +222,38 @@ export default function DoctorProfilePage() {
       
       setAvailability(days);
       
-      // Auto-select first available date
-      if (days.length > 0) {
+      // Check for pending booking context FIRST (guest booking flow)
+      // Only attempt restore once - use ref to prevent multiple restores
+      if (!bookingContextRestoredRef.current) {
+        const savedContext = getBookingContext();
+        
+        if (isLoggedIn && savedContext && savedContext.doctorId === doctor.id && savedContext.selectedDate) {
+          // Find the saved date in availability
+          const savedDay = days.find(day => day.date === savedContext.selectedDate);
+          
+          if (savedDay) {
+            // Mark as restored BEFORE setting state to prevent race conditions
+            bookingContextRestoredRef.current = true;
+            clearBookingContext();
+            
+            setSelectedDate(savedContext.selectedDate!);
+            
+            // Find and select the slot by time
+            const savedSlot = savedDay.slots.find(
+              slot => slot.start_time === savedContext.selectedSlotTime && slot.is_available
+            );
+            
+            if (savedSlot) {
+              setSelectedSlot(savedSlot);
+            }
+            
+            return; // Don't auto-select first date
+          }
+        }
+      }
+      
+      // Auto-select first available date (only if no pending booking was restored)
+      if (!bookingContextRestoredRef.current && days.length > 0) {
         const firstAvailable = days.find((day) => 
           day.slots.some(slot => slot.is_available)
         );
@@ -235,13 +266,36 @@ export default function DoctorProfilePage() {
     } finally {
       setLoadingSlots(false);
     }
-  }, [doctor, weekOffset]);
+  }, [doctor, weekOffset, isLoggedIn]);
 
   useEffect(() => {
     if (id) {
       fetchDoctor();
     }
   }, [id, fetchDoctor]);
+
+  // ─────────────────────────────────────────────────────────────
+  // EFFECT: Restore Booking Context Week Offset (runs before availability fetch)
+  // ─────────────────────────────────────────────────────────────
+  useEffect(() => {
+    if (!isLoggedIn || !doctor) return;
+    
+    const savedContext = getBookingContext();
+    if (savedContext && savedContext.doctorId === doctor.id && savedContext.selectedDate) {
+      // Calculate the week offset needed to show the saved date
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      const savedDate = new Date(savedContext.selectedDate);
+      savedDate.setHours(0, 0, 0, 0);
+      
+      const diffDays = Math.floor((savedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
+      const neededWeekOffset = Math.floor(diffDays / 7);
+      
+      if (neededWeekOffset >= 0 && neededWeekOffset !== weekOffset) {
+        setWeekOffset(neededWeekOffset);
+      }
+    }
+  }, [isLoggedIn, doctor, weekOffset]);
 
   useEffect(() => {
     if (doctor) {
