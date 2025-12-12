@@ -126,21 +126,21 @@ export default function HomePage() {
       role: 'Patient from Maputo',
       content: 'NovareHealth made it so easy to consult a cardiologist without traveling hours to the city. The doctor was professional and caring.',
       rating: 5,
-      avatar: 'MS'
+      image: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=100&h=100&fit=crop&crop=face'
     },
     {
       name: 'Dr. João Fernandes',
       role: 'Cardiologist',
       content: `As a doctor, this platform allows me to reach patients across ${config.country.name}. The video quality is excellent and payments are seamless.`,
       rating: 5,
-      avatar: 'JF'
+      image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face'
     },
     {
       name: 'Ana Machava',
       role: 'Patient from Beira',
       content: 'I got my prescription within minutes after the consultation. No need to visit a hospital. This is the future of healthcare!',
       rating: 5,
-      avatar: 'AM'
+      image: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?w=100&h=100&fit=crop&crop=face'
     },
   ];
 
@@ -280,12 +280,20 @@ export default function HomePage() {
 
                       <p className="text-slate-900 font-semibold mb-3">Top Specialists</p>
                       <div className="space-y-3">
-                        {[1, 2, 3].map((i) => (
+                        {[
+                          { name: 'Dr. Ana Ferreira', specialty: 'Cardiologist', image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=100&h=100&fit=crop&crop=face' },
+                          { name: 'Dr. Carlos Mendes', specialty: 'Neurologist', image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=100&h=100&fit=crop&crop=face' },
+                          { name: 'Dr. Sofia Machava', specialty: 'Pediatrician', image: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=100&h=100&fit=crop&crop=face' }
+                        ].map((doctor, i) => (
                           <div key={i} className="flex items-center gap-3 p-3 bg-slate-50 rounded-xl">
-                            <div className="w-10 h-10 bg-slate-200 rounded-lg" />
+                            <img 
+                              src={doctor.image} 
+                              alt={doctor.name}
+                              className="w-10 h-10 rounded-lg object-cover"
+                            />
                             <div className="flex-1">
-                              <p className="text-slate-900 text-sm font-medium">Dr. Example {i}</p>
-                              <p className="text-slate-500 text-xs">Cardiologist</p>
+                              <p className="text-slate-900 text-sm font-medium">{doctor.name}</p>
+                              <p className="text-slate-500 text-xs">{doctor.specialty}</p>
                             </div>
                             <div className="flex items-center text-amber-500">
                               <Star className="w-3 h-3 fill-current" />
@@ -519,18 +527,20 @@ export default function HomePage() {
             {testimonials.map((testimonial, index) => (
               <div 
                 key={index}
-                className="bg-slate-50 rounded-2xl p-8 border border-slate-100"
+                className="bg-slate-50 rounded-2xl p-8 border border-slate-100 flex flex-col h-full"
               >
                 <div className="flex gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
                     <Star key={i} className="w-5 h-5 text-amber-400 fill-current" />
                   ))}
                 </div>
-                <p className="text-slate-700 mb-6 leading-relaxed">"{testimonial.content}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-teal-500 flex items-center justify-center text-white font-semibold">
-                    {testimonial.avatar}
-                  </div>
+                <p className="text-slate-700 mb-6 leading-relaxed flex-1">"{testimonial.content}"</p>
+                <div className="flex items-center gap-3 mt-auto">
+                  <img 
+                    src={testimonial.image} 
+                    alt={testimonial.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
                   <div>
                     <p className="font-semibold text-slate-900">{testimonial.name}</p>
                     <p className="text-sm text-slate-500">{testimonial.role}</p>

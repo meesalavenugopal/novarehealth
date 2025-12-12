@@ -112,14 +112,6 @@ const steps = [
   { id: 5, name: 'Review', icon: Eye },
 ];
 
-// Default specializations fallback when API is unavailable
-const DEFAULT_SPECIALIZATIONS: Specialization[] = [
-  { id: 1, name: 'General Medicine', description: 'Primary healthcare', icon: 'stethoscope' },
-  { id: 2, name: 'Cardiology', description: 'Heart specialist', icon: 'heart' },
-  { id: 3, name: 'Dermatology', description: 'Skin specialist', icon: 'skin' },
-  { id: 4, name: 'Pediatrics', description: 'Child healthcare', icon: 'baby' },
-];
-
 export const DoctorRegisterPage: React.FC = () => {
   const navigate = useNavigate();
   const { user, accessToken, updateUser, logout } = useAuthStore();
@@ -281,19 +273,28 @@ export const DoctorRegisterPage: React.FC = () => {
     return spec?.name || 'General Medicine';
   };
 
-  // Fetch specializations
+  // Track specialization fetch error for retry functionality
+  const [specsError, setSpecsError] = useState(false);
+
+  // Fetch specializations from backend - no fallback defaults
   useEffect(() => {
     const fetchSpecializations = async () => {
       setFetchingSpecs(true);
+      setSpecsError(false);
       try {
         const response = await fetch(`${config.apiUrl}/doctors/specializations/all`);
         if (response.ok) {
           const data = await response.json();
           setSpecializations(data);
+        } else {
+          console.error('Failed to fetch specializations: API returned', response.status);
+          setSpecsError(true);
+          setSpecializations([]);
         }
       } catch (error) {
         console.error('Failed to fetch specializations:', error);
-        setSpecializations(DEFAULT_SPECIALIZATIONS);
+        setSpecsError(true);
+        setSpecializations([]);
       } finally {
         setFetchingSpecs(false);
       }
@@ -306,12 +307,16 @@ export const DoctorRegisterPage: React.FC = () => {
     const fetchAITips = async () => {
       if (!formData.specialization_id) return;
       
+      // Inline logic to get specialization name (avoids dependency on getSelectedSpecName function)
+      const spec = specializations.find(s => s.id.toString() === formData.specialization_id);
+      const specName = spec?.name || 'General Medicine';
+      
       try {
         const response = await fetch(`${config.apiUrl}/ai/registration-tips`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            specialization: getSelectedSpecName(),
+            specialization: specName,
             step: step
           })
         });
@@ -327,7 +332,7 @@ export const DoctorRegisterPage: React.FC = () => {
     };
     
     fetchAITips();
-  }, [step, formData.specialization_id]);
+  }, [step, formData.specialization_id, specializations]);
 
   // Scroll chat to bottom
   useEffect(() => {
@@ -609,8 +614,8 @@ export const DoctorRegisterPage: React.FC = () => {
       clearDoctorRegistrationData();
 
       navigate('/doctor/verification-pending');
-    } catch (err: any) {
-      setError(err.message || 'An error occurred');
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'An error occurred');
     } finally {
       setLoading(false);
     }
@@ -976,6 +981,37 @@ export const DoctorRegisterPage: React.FC = () => {
         {fetchingSpecs ? (
           <div className="flex items-center justify-center py-12">
             <Loader2 className="w-8 h-8 text-cyan-600 animate-spin" />
+          </div>
+        ) : specsError || specializations.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-center">
+            <div className="w-16 h-16 bg-red-50 rounded-full flex items-center justify-center mb-4">
+              <AlertCircle className="w-8 h-8 text-red-500" />
+            </div>
+            <h4 className="text-lg font-semibold text-slate-900 mb-2">
+              Unable to Load Specializations
+            </h4>
+            <p className="text-slate-500 text-sm mb-4 max-w-md">
+              We couldn't fetch the available specializations. Please check your connection and try again.
+            </p>
+            <Button
+              onClick={() => {
+                setFetchingSpecs(true);
+                setSpecsError(false);
+                fetch(`${config.apiUrl}/doctors/specializations/all`)
+                  .then(res => res.ok ? res.json() : Promise.reject('API error'))
+                  .then(data => setSpecializations(data))
+                  .catch(() => {
+                    setSpecsError(true);
+                    setSpecializations([]);
+                  })
+                  .finally(() => setFetchingSpecs(false));
+              }}
+              variant="outline"
+              className="gap-2"
+            >
+              <RefreshCw className="w-4 h-4" />
+              Retry
+            </Button>
           </div>
         ) : (
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
