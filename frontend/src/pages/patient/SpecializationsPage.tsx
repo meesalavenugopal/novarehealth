@@ -2,23 +2,12 @@ import { useState, useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import {
   Search,
-  Heart,
-  Brain,
-  Bone,
-  Eye,
-  Baby,
-  Stethoscope,
-  Pill,
-  Activity,
   Loader2,
   ChevronRight,
-  Smile,
-  Wind,
-  Droplets,
-  Shield,
 } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
 import { guestFetch } from '../../services/api';
+import { getSpecializationIcon } from '../../utils/specializationIcons';
 
 interface Specialization {
   id: number;
@@ -26,26 +15,6 @@ interface Specialization {
   description?: string;
   doctor_count?: number;
 }
-
-// Icon mapping for specializations
-const getSpecializationIcon = (name: string) => {
-  const iconMap: Record<string, React.ReactNode> = {
-    'Cardiology': <Heart className="w-6 h-6" />,
-    'Neurology': <Brain className="w-6 h-6" />,
-    'Orthopedics': <Bone className="w-6 h-6" />,
-    'Ophthalmology': <Eye className="w-6 h-6" />,
-    'Pediatrics': <Baby className="w-6 h-6" />,
-    'General Medicine': <Stethoscope className="w-6 h-6" />,
-    'Dermatology': <Smile className="w-6 h-6" />,
-    'Psychiatry': <Brain className="w-6 h-6" />,
-    'Pharmacy': <Pill className="w-6 h-6" />,
-    'Pulmonology': <Wind className="w-6 h-6" />,
-    'Nephrology': <Droplets className="w-6 h-6" />,
-    'Oncology': <Shield className="w-6 h-6" />,
-    'Gastroenterology': <Activity className="w-6 h-6" />,
-  };
-  return iconMap[name] || <Stethoscope className="w-6 h-6" />;
-};
 
 export default function SpecializationsPage() {
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
@@ -124,7 +93,7 @@ export default function SpecializationsPage() {
               >
                 {/* Icon */}
                 <div className="w-12 h-12 rounded-xl bg-cyan-50 flex items-center justify-center text-cyan-600 group-hover:bg-cyan-100 transition-colors flex-shrink-0">
-                  {getSpecializationIcon(spec.name)}
+                  {getSpecializationIcon(spec.icon)}
                 </div>
                 
                 {/* Content */}

@@ -4,19 +4,9 @@ import { useAuthStore, clearDoctorRegistrationData } from '../../store/authStore
 import { Button, Input, Card } from '../../components/ui';
 import { Navbar } from '../../components/layout';
 import { config } from '../../config';
+import { getSpecializationIcon } from '../../utils/specializationIcons';
 import {
   Stethoscope,
-  Heart,
-  Brain,
-  Baby,
-  Eye,
-  Bone,
-  Users,
-  Activity,
-  Pill,
-  Syringe,
-  Sparkles,
-  Shield,
   Check,
   Upload,
   FileText,
@@ -42,6 +32,8 @@ import {
   PenLine,
   Smile,
   Zap,
+  Sparkles,
+  Eye,
 } from 'lucide-react';
 
 interface Specialization {
@@ -72,37 +64,6 @@ interface ChatMessage {
   role: 'user' | 'assistant';
   content: string;
 }
-
-// Icon mapping for specializations
-const getSpecializationIcon = (iconName: string) => {
-  const iconMap: { [key: string]: React.ReactNode } = {
-    stethoscope: <Stethoscope className="w-6 h-6" />,
-    heart: <Heart className="w-6 h-6" />,
-    brain: <Brain className="w-6 h-6" />,
-    baby: <Baby className="w-6 h-6" />,
-    eye: <Eye className="w-6 h-6" />,
-    bone: <Bone className="w-6 h-6" />,
-    skin: <Sparkles className="w-6 h-6" />,
-    female: <Users className="w-6 h-6" />,
-    activity: <Activity className="w-6 h-6" />,
-    pill: <Pill className="w-6 h-6" />,
-    syringe: <Syringe className="w-6 h-6" />,
-    tooth: <Sparkles className="w-6 h-6" />,
-    allergy: <Shield className="w-6 h-6" />,
-    lungs: <Activity className="w-6 h-6" />,
-    kidney: <Activity className="w-6 h-6" />,
-    stomach: <Activity className="w-6 h-6" />,
-    ear: <Activity className="w-6 h-6" />,
-    cancer: <Shield className="w-6 h-6" />,
-    emergency: <Activity className="w-6 h-6" />,
-    nutrition: <Pill className="w-6 h-6" />,
-    physiotherapy: <Activity className="w-6 h-6" />,
-    radiology: <Eye className="w-6 h-6" />,
-    pathology: <FileText className="w-6 h-6" />,
-    surgery: <Syringe className="w-6 h-6" />,
-  };
-  return iconMap[iconName] || <Stethoscope className="w-6 h-6" />;
-};
 
 const steps = [
   { id: 1, name: 'Specialty', icon: Stethoscope },

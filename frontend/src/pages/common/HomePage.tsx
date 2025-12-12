@@ -12,13 +12,8 @@ import {
   Smartphone,
   CreditCard,
   Stethoscope,
-  Users,
-  Heart,
-  Brain,
-  Eye,
-  Baby,
   Clock,
-  Activity
+  Users,
 } from 'lucide-react';
 import { Footer } from '../../components/layout';
 import { AIChatWidget } from '../../components/chat';
@@ -26,6 +21,7 @@ import Button from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
 import { config } from '../../config';
 import api from '../../services/api';
+import { getSpecializationIcon } from '../../utils/specializationIcons';
 
 interface Specialization {
   id: number;
@@ -33,19 +29,6 @@ interface Specialization {
   icon: string;
   doctor_count: number;
 }
-
-// Icon mapping for specialization names
-const getSpecializationIcon = (name: string): React.ReactNode => {
-  const iconMap: Record<string, React.ReactNode> = {
-    'Cardiology': <Heart className="w-6 h-6" />,
-    'Neurology': <Brain className="w-6 h-6" />,
-    'Ophthalmology': <Eye className="w-6 h-6" />,
-    'Pediatrics': <Baby className="w-6 h-6" />,
-    'General Medicine': <Stethoscope className="w-6 h-6" />,
-    'Family Medicine': <Users className="w-6 h-6" />,
-  };
-  return iconMap[name] || <Activity className="w-6 h-6" />;
-};
 
 export default function HomePage() {
   const { user } = useAuthStore();
@@ -346,21 +329,18 @@ export default function HomePage() {
       {/* Stats Section */}
       <section className="py-16 bg-white">
         <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-wrap justify-center gap-8 md:gap-6">
+          <div className="grid grid-cols-2 lg:grid-cols-4 gap-y-8 gap-x-4 sm:gap-8">
             {stats.map((stat, index) => {
               const Icon = stat.icon;
               return (
-                <div key={index} className="flex items-center gap-4">
-                  <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20">
+                <div key={index} className="flex flex-col sm:flex-row items-center sm:items-center gap-2 sm:gap-4 text-center sm:text-left">
+                  <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg shadow-cyan-500/20 flex-shrink-0">
                     <Icon className="w-7 h-7 text-white" />
                   </div>
                   <div>
-                    <p className="text-3xl font-bold text-slate-800">{stat.value}</p>
-                    <p className="text-slate-500 text-sm font-medium">{stat.label}</p>
+                    <p className="text-2xl sm:text-3xl font-bold text-slate-800">{stat.value}</p>
+                    <p className="text-slate-500 text-xs sm:text-sm font-medium">{stat.label}</p>
                   </div>
-                  {index < stats.length - 1 && (
-                    <div className="hidden md:block w-px h-12 bg-slate-200 ml-6" />
-                  )}
                 </div>
               );
             })}
@@ -484,7 +464,7 @@ export default function HomePage() {
                   className="flex items-center gap-4 p-6 bg-white rounded-2xl border border-slate-200 hover:border-cyan-300 hover:shadow-lg transition-all group"
                 >
                   <div className="w-14 h-14 rounded-2xl bg-cyan-50 flex items-center justify-center text-cyan-600 group-hover:bg-cyan-100 transition-colors">
-                    {getSpecializationIcon(spec.name)}
+                    {getSpecializationIcon(spec.icon || spec.name)}
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-900">{spec.name}</h3>
