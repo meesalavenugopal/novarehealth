@@ -40,6 +40,7 @@ class AppointmentResponse(BaseModel):
     id: int
     doctor_id: int
     doctor_name: str
+    doctor_avatar_url: Optional[str] = None
     specialization: str
     patient_id: int
     patient_name: str
@@ -240,6 +241,7 @@ async def book_appointment(
         id=appointment.id,
         doctor_id=doctor.id,
         doctor_name=f"Dr. {doctor.user.first_name} {doctor.user.last_name}",
+        doctor_avatar_url=doctor.user.avatar_url,
         specialization=doctor.specialization.name if doctor.specialization else "",
         patient_id=current_user.id,
         patient_name=f"{current_user.first_name} {current_user.last_name}",
@@ -317,6 +319,7 @@ async def list_my_appointments(
             id=apt.id,
             doctor_id=apt.doctor_id,
             doctor_name=f"Dr. {apt.doctor.user.first_name} {apt.doctor.user.last_name}",
+            doctor_avatar_url=apt.doctor.user.avatar_url,
             specialization=apt.doctor.specialization.name if apt.doctor.specialization else "",
             patient_id=apt.patient_id,
             patient_name=f"{apt.patient.first_name} {apt.patient.last_name}",

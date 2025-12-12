@@ -893,29 +893,36 @@ class DoctorService:
             booked_times.add(appt.scheduled_time.strftime("%H:%M"))
         
         # Generate all possible slots from availability windows
-        all_slots = []
+        # Use a dict to deduplicate by time (later slots don't overwrite if already booked)
+        slots_dict = {}
         for window in availability_windows:
             current_time = datetime.combine(target_date, window.start_time)
             end_time = datetime.combine(target_date, window.end_time)
             
             while current_time + timedelta(minutes=consultation_duration) <= end_time:
                 slot_time_str = current_time.strftime("%H:%M")
-                is_available = slot_time_str not in booked_times
                 
-                # Also check if slot is in the past (for today's date)
-                # Allow bookings up to 1 hour before the slot time
-                if target_date == date.today():
-                    now = datetime.now()
-                    # Slot must be at least 1 hour in the future
-                    if current_time <= now + timedelta(hours=1):
-                        is_available = False
-                
-                all_slots.append({
-                    "time": slot_time_str,
-                    "is_available": is_available
-                })
+                # Only add if not already in dict (avoid duplicates from overlapping windows)
+                if slot_time_str not in slots_dict:
+                    is_available = slot_time_str not in booked_times
+                    
+                    # Also check if slot is in the past (for today's date)
+                    # Allow bookings up to 1 hour before the slot time
+                    if target_date == date.today():
+                        now = datetime.now()
+                        # Slot must be at least 1 hour in the future
+                        if current_time <= now + timedelta(hours=1):
+                            is_available = False
+                    
+                    slots_dict[slot_time_str] = {
+                        "time": slot_time_str,
+                        "is_available": is_available
+                    }
                 
                 current_time += timedelta(minutes=consultation_duration)
+        
+        # Convert dict to sorted list
+        all_slots = [slots_dict[k] for k in sorted(slots_dict.keys())]
         
         return {
             "doctor_id": doctor_id,

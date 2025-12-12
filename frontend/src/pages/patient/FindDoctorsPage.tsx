@@ -362,11 +362,19 @@ function DoctorCard({ doctor }: { doctor: Doctor }) {
       <div className="p-6">
         {/* Header */}
         <div className="flex items-start gap-4 mb-4">
-          <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-            <span className="text-white text-xl font-bold">
-              {doctor.first_name?.[0]?.toUpperCase() || 'D'}
-            </span>
-          </div>
+          {doctor.avatar_url ? (
+            <img 
+              src={doctor.avatar_url} 
+              alt={`Dr. ${doctor.first_name} ${doctor.last_name}`}
+              className="w-16 h-16 rounded-2xl object-cover shadow-lg flex-shrink-0"
+            />
+          ) : (
+            <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+              <span className="text-white text-xl font-bold">
+                {doctor.first_name?.[0]?.toUpperCase() || 'D'}
+              </span>
+            </div>
+          )}
           <div className="flex-1 min-w-0">
             <h3 className="font-semibold text-slate-900 truncate">
               Dr. {doctor.first_name} {doctor.last_name}

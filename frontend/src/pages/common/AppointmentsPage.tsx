@@ -29,6 +29,7 @@ import { authFetch } from '../../services/api';
 interface Appointment {
   id: number;
   doctor_name: string;
+  doctor_avatar_url?: string;
   doctor_specialization: string;
   patient_name: string;
   scheduled_date: string;
@@ -108,6 +109,7 @@ export default function AppointmentsPage() {
         const transformedAppointments = (data.appointments || []).map((apt: any) => ({
           id: apt.id,
           doctor_name: apt.doctor_name,
+          doctor_avatar_url: apt.doctor_avatar_url,
           doctor_specialization: apt.specialization,
           patient_name: apt.patient_name,
           scheduled_date: apt.scheduled_date,
@@ -435,11 +437,19 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
         <div className="flex flex-col sm:flex-row sm:items-center gap-4">
           {/* Doctor/Patient Info */}
           <div className="flex items-center gap-4 flex-1">
-            <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
-              <span className="text-white text-lg font-bold">
-                {(isDoctor ? appointment.patient_name : appointment.doctor_name).charAt(0)}
-              </span>
-            </div>
+            {!isDoctor && appointment.doctor_avatar_url ? (
+              <img 
+                src={appointment.doctor_avatar_url} 
+                alt={appointment.doctor_name}
+                className="w-14 h-14 rounded-2xl object-cover shadow-lg flex-shrink-0"
+              />
+            ) : (
+              <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg flex-shrink-0">
+                <span className="text-white text-lg font-bold">
+                  {(isDoctor ? appointment.patient_name : appointment.doctor_name).charAt(0)}
+                </span>
+              </div>
+            )}
             <div>
               <h3 className="font-semibold text-slate-900">
                 {isDoctor ? appointment.patient_name : appointment.doctor_name}
@@ -624,11 +634,19 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
                   </h4>
                   
                   <div className="flex items-center gap-4">
-                    <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
-                      <span className="text-white text-xl font-bold">
-                        {(isDoctor ? appointment.patient_name : appointment.doctor_name).charAt(0)}
-                      </span>
-                    </div>
+                    {!isDoctor && appointment.doctor_avatar_url ? (
+                      <img 
+                        src={appointment.doctor_avatar_url} 
+                        alt={appointment.doctor_name}
+                        className="w-14 h-14 rounded-2xl object-cover shadow-lg"
+                      />
+                    ) : (
+                      <div className="w-14 h-14 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center shadow-lg">
+                        <span className="text-white text-xl font-bold">
+                          {(isDoctor ? appointment.patient_name : appointment.doctor_name).charAt(0)}
+                        </span>
+                      </div>
+                    )}
                     <div>
                       <p className="font-semibold text-slate-900 text-lg">
                         {isDoctor ? appointment.patient_name : appointment.doctor_name}
