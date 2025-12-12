@@ -164,15 +164,28 @@ export default function DoctorProfilePage() {
   // ─────────────────────────────────────────────────────────────
   /**
    * Fetches 7-day availability starting from current week + offset
+   * 
+   * This function is responsible for:
+   * 1. Fetching bookable slots for each day in the current week view
+   * 2. Restoring booking context after guest login (if applicable)
+   * 3. Auto-selecting the first available date for convenience
+   * 
    * @endpoint GET /api/v1/doctors/:id/bookable-slots?target_date=YYYY-MM-DD (public)
    * @dependency Requires doctor data to be loaded first
+   * @triggers Re-runs when doctor, weekOffset, or isLoggedIn changes
    */
   const fetchAvailability = useCallback(async () => {
+    // Guard: Don't fetch if doctor data isn't loaded yet
     if (!doctor) return;
     
     setLoadingSlots(true);
     try {
-      // Calculate start date based on week offset (0=this week, 1=next week, etc.)
+      // ─────────────────────────────────────────────────────────────
+      // STEP 1: Calculate the date range for the current week view
+      // ─────────────────────────────────────────────────────────────
+      // weekOffset=0 means "this week" (starting from today)
+      // weekOffset=1 means "next week" (starting 7 days from today)
+      // weekOffset=2 means "in 2 weeks" (starting 14 days from today), etc.
       const today = new Date();
       const startDate = new Date(today);
       startDate.setDate(today.getDate() + (weekOffset * 7));
@@ -180,83 +193,129 @@ export default function DoctorProfilePage() {
       const days: DayAvailability[] = [];
       const dayNames = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
       
-      // Fetch bookable slots for each day
+      // ─────────────────────────────────────────────────────────────
+      // STEP 2: Fetch bookable slots for each of the 7 days
+      // ─────────────────────────────────────────────────────────────
+      // We make 7 sequential API calls, one for each day in the week.
+      // Each call returns the available time slots for that specific date.
+      // Note: Sequential calls ensure proper ordering; parallel calls could
+      // return out of order and complicate the UI rendering.
       for (let i = 0; i < 7; i++) {
+        // Calculate the date for this iteration (day 0, 1, 2... 6 of the week)
         const currentDate = new Date(startDate);
         currentDate.setDate(startDate.getDate() + i);
-        const dateStr = currentDate.toISOString().split('T')[0];
+        const dateStr = currentDate.toISOString().split('T')[0]; // Format: "YYYY-MM-DD"
         
         try {
+          // API call to get bookable slots for this specific date
+          // Uses guestFetch (no auth required) so guests can browse availability
           const response = await guestFetch(
             `/api/v1/doctors/${doctor.id}/bookable-slots?target_date=${dateStr}`
           );
           
           if (response.ok) {
             const data = await response.json();
-            // Transform API response to match TimeSlot interface
+            // Transform API response format to our TimeSlot interface
+            // API returns: { slots: [{ time: "09:00", is_available: true }, ...] }
+            // We transform to: { id, start_time, end_time, is_available }
             const transformedSlots = (data.slots || []).map((slot: { time: string; is_available: boolean }, index: number) => ({
-              id: index,
-              start_time: slot.time,
-              end_time: '', // API doesn't return end_time, we could calculate it
-              is_available: slot.is_available,
+              id: index,                    // Use array index as ID (unique within this day)
+              start_time: slot.time,        // e.g., "09:00", "09:30", "10:00"
+              end_time: '',                 // API doesn't return end_time; could calculate from slot duration
+              is_available: slot.is_available, // false if already booked by another patient
             }));
             days.push({
               date: dateStr,
-              day_name: dayNames[currentDate.getDay()],
+              day_name: dayNames[currentDate.getDay()], // e.g., "Monday", "Tuesday"
               slots: transformedSlots,
             });
           } else {
+            // API returned an error (e.g., 404, 500) - add empty day
             days.push({
               date: dateStr,
               day_name: dayNames[currentDate.getDay()],
-              slots: [],
+              slots: [], // No slots available (API error)
             });
           }
         } catch {
+          // Network error or other exception - add empty day
+          // This ensures the calendar still renders even if some days fail
           days.push({
             date: dateStr,
             day_name: dayNames[currentDate.getDay()],
-            slots: [],
+            slots: [], // No slots available (network error)
           });
         }
       }
       
+      // Update state with the fetched availability data
       setAvailability(days);
       
-      // Check for pending booking context FIRST (guest booking flow)
-      // Only attempt restore once - use ref to prevent multiple restores
+      // ─────────────────────────────────────────────────────────────
+      // STEP 3: Restore Booking Context (Guest Login Flow)
+      // ─────────────────────────────────────────────────────────────
+      // This handles the scenario where:
+      // 1. A guest user selected a doctor, date, and time slot
+      // 2. They clicked "Book" and were prompted to login
+      // 3. After logging in, they're redirected back to this page
+      // 4. We need to restore their previous selection so they don't
+      //    have to re-select everything
+      //
+      // The ref (bookingContextRestoredRef) ensures we only attempt
+      // this restoration ONCE, even if fetchAvailability runs multiple
+      // times due to React's strict mode or dependency changes.
       if (!bookingContextRestoredRef.current) {
+        // Check localStorage for saved booking context
         const savedContext = getBookingContext();
         
+        // Validate the saved context:
+        // - User must be logged in (they just completed login)
+        // - Context must exist and match THIS doctor (not a different doctor)
+        // - Must have a selected date to restore
         if (isLoggedIn && savedContext && savedContext.doctorId === doctor.id && savedContext.selectedDate) {
-          // Find the saved date in availability
+          // Find the saved date in the fetched availability
           const savedDay = days.find(day => day.date === savedContext.selectedDate);
           
           if (savedDay) {
             // Mark as restored BEFORE setting state to prevent race conditions
+            // This is crucial: if we set state first, the component might re-render
+            // and trigger fetchAvailability again before we set the ref
             bookingContextRestoredRef.current = true;
+            
+            // Clear the saved context from localStorage (one-time use)
             clearBookingContext();
             
+            // Restore the user's date selection
             setSelectedDate(savedContext.selectedDate!);
             
-            // Find and select the slot by time
+            // Find and restore the slot selection by matching the time string
+            // We also verify the slot is still available (another user might have
+            // booked it while this user was logging in)
             const savedSlot = savedDay.slots.find(
               slot => slot.start_time === savedContext.selectedSlotTime && slot.is_available
             );
             
             if (savedSlot) {
               setSelectedSlot(savedSlot);
+              // Slot successfully restored - user can now click "Confirm Booking"
             }
+            // If slot is no longer available, we still restore the date selection
+            // but the user will need to pick a different time slot
             
-            return; // Don't auto-select first date
+            return; // Skip auto-selection since we restored from context
           }
         }
       }
       
-      // Auto-select first available date (only if no pending booking was restored)
+      // ─────────────────────────────────────────────────────────────
+      // STEP 4: Auto-select first available date (default behavior)
+      // ─────────────────────────────────────────────────────────────
+      // Only runs if no booking context was restored.
+      // This provides a better UX by pre-selecting a date that has
+      // available slots, so the user immediately sees bookable times.
       if (!bookingContextRestoredRef.current && days.length > 0) {
         const firstAvailable = days.find((day) => 
-          day.slots.some(slot => slot.is_available)
+          day.slots.some(slot => slot.is_available) // Day has at least one available slot
         );
         if (firstAvailable) {
           setSelectedDate(firstAvailable.date);
@@ -276,22 +335,37 @@ export default function DoctorProfilePage() {
   }, [id, fetchDoctor]);
 
   // ─────────────────────────────────────────────────────────────
-  // EFFECT: Restore Booking Context Week Offset (runs before availability fetch)
+  // EFFECT: Restore Booking Context Week Offset
   // ─────────────────────────────────────────────────────────────
+  // This effect runs BEFORE fetchAvailability to ensure the calendar
+  // is showing the correct week when we try to restore a booking context.
+  //
+  // Example scenario:
+  // 1. Guest user is viewing "Next Week" (weekOffset=1) and selects a slot
+  // 2. They login and are redirected back
+  // 3. By default, the page shows "This Week" (weekOffset=0)
+  // 4. This effect detects the saved date is in "Next Week" and updates weekOffset
+  // 5. fetchAvailability then runs with the correct weekOffset
+  // 6. The booking context restoration finds the saved date in the results
   useEffect(() => {
+    // Only run for logged-in users with doctor data loaded
     if (!isLoggedIn || !doctor) return;
     
     const savedContext = getBookingContext();
     if (savedContext && savedContext.doctorId === doctor.id && savedContext.selectedDate) {
-      // Calculate the week offset needed to show the saved date
+      // Calculate which week the saved date falls into
+      // We need to determine: how many weeks from today is the saved date?
       const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      today.setHours(0, 0, 0, 0); // Normalize to midnight for accurate day diff
       const savedDate = new Date(savedContext.selectedDate);
       savedDate.setHours(0, 0, 0, 0);
       
+      // Calculate days difference and convert to weeks
       const diffDays = Math.floor((savedDate.getTime() - today.getTime()) / (1000 * 60 * 60 * 24));
       const neededWeekOffset = Math.floor(diffDays / 7);
       
+      // Update weekOffset if needed (and if the date is in the future)
+      // This will trigger fetchAvailability with the correct week
       if (neededWeekOffset >= 0 && neededWeekOffset !== weekOffset) {
         setWeekOffset(neededWeekOffset);
       }
@@ -326,45 +400,66 @@ export default function DoctorProfilePage() {
     if (!doctor || !selectedSlot || !selectedDate || bookingInProgress) return;
 
     // Create booking context to preserve user's selection
+    // This object captures all booking details so we can restore the user's
+    // selection after they login (for guest booking flow)
     const context: BookingContext = {
-      doctorId: doctor.id,
-      doctorName: `Dr. ${doctor.first_name} ${doctor.last_name}`,
-      specializationName: doctor.specialization_name,
-      selectedDate,
-      selectedSlotId: selectedSlot.id,
-      selectedSlotTime: selectedSlot.start_time,
-      consultationFee: doctor.consultation_fee,
-      returnUrl: `/doctor/${doctor.id}`,
+      doctorId: doctor.id,                                    // Doctor being booked
+      doctorName: `Dr. ${doctor.first_name} ${doctor.last_name}`, // For display in login modal
+      specializationName: doctor.specialization_name,         // Doctor's specialty
+      selectedDate,                                           // Date user selected (YYYY-MM-DD)
+      selectedSlotId: selectedSlot.id,                        // Slot index in the day's slots array
+      selectedSlotTime: selectedSlot.start_time,              // Time string (HH:MM) for matching after restore
+      consultationFee: doctor.consultation_fee,               // Fee for display
+      returnUrl: `/doctor/${doctor.id}`,                      // Redirect back here after login
     };
 
-    // GUEST FLOW: Save context and prompt login
+    // ─────────────────────────────────────────────────────────────
+    // GUEST FLOW: Save context and show login modal
+    // ─────────────────────────────────────────────────────────────
+    // Guest users cannot book directly. Instead, we:
+    // 1. Save their booking intent to localStorage (via setBookingContext)
+    // 2. Show the login modal (LoginPromptModal component)
+    // 3. After login, they're redirected back here
+    // 4. fetchAvailability restores their selection from localStorage
+    // 5. They can then click "Confirm Booking" as an authenticated user
     if (!isLoggedIn) {
-      setBookingContext(context);
-      setShowLoginPrompt(true);
-      return;
+      setBookingContext(context); // Save to state (for modal display)
+      setShowLoginPrompt(true);   // Show login/register modal
+      return; // Exit early - don't proceed to booking API
     }
 
-    // AUTHENTICATED FLOW: Create appointment directly
+    // ─────────────────────────────────────────────────────────────
+    // AUTHENTICATED FLOW: Create appointment via API
+    // ─────────────────────────────────────────────────────────────
+    // User is logged in, so we can create the appointment directly.
+    // The booking button is disabled while this is in progress to
+    // prevent double-clicking (race condition protection).
     setBookingInProgress(true);
     try {
-      // Include user's timezone for proper scheduling across timezones
+      // Get user's timezone for proper scheduling
+      // This ensures the appointment is stored in UTC but displayed
+      // correctly in the user's local timezone
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       
+      // POST request to create the appointment
+      // authFetch automatically includes the JWT token in headers
       const response = await authFetch('/api/v1/appointments/', {
         method: 'POST',
         body: JSON.stringify({
-          doctor_id: doctor.id,
-          scheduled_date: selectedDate,
-          scheduled_time: selectedSlot.start_time,
-          consultation_type: 'video',
-          notes: '',
-          timezone: userTimezone,
+          doctor_id: doctor.id,              // Which doctor to book
+          scheduled_date: selectedDate,       // Date in YYYY-MM-DD format
+          scheduled_time: selectedSlot.start_time, // Time in HH:MM format
+          consultation_type: 'video',         // Always video for now (Zoom integration)
+          notes: '',                          // Optional patient notes (empty for now)
+          timezone: userTimezone,             // For proper time conversion
         }),
       });
 
       if (response.ok) {
+        // Success! Appointment was created
         const appointment = await response.json();
-        // Navigate to appointments list with success message
+        // Navigate to appointments page with success toast/message
+        // The appointments page reads this state and shows a success notification
         navigate('/appointments', {
           state: { 
             success: true, 
@@ -372,13 +467,18 @@ export default function DoctorProfilePage() {
           }
         });
       } else {
+        // API returned an error (e.g., slot no longer available, validation error)
         const error = await response.json();
         alert(error.detail || 'Failed to book appointment');
+        // Note: We could refresh slots here to show updated availability
       }
     } catch (err) {
+      // Network error or other exception
       console.error('Error booking appointment:', err);
       alert('Failed to book appointment. Please try again.');
     } finally {
+      // Always reset loading state, whether success or failure
+      // This re-enables the booking button
       setBookingInProgress(false);
     }
   };
