@@ -118,15 +118,16 @@ async def book_appointment(
         )
     
     # Check if slot is still available (not already booked)
+    # Use SELECT FOR UPDATE to prevent race conditions
     existing = await db.execute(
         select(Appointment).where(
             and_(
                 Appointment.doctor_id == request.doctor_id,
                 Appointment.scheduled_date == scheduled_date,
                 Appointment.scheduled_time == scheduled_time,
-                Appointment.status.not_in([AppointmentStatus.CANCELLED])
+                Appointment.status.notin_([AppointmentStatus.CANCELLED, AppointmentStatus.NO_SHOW])
             )
-        )
+        ).with_for_update()
     )
     if existing.scalar_one_or_none():
         raise HTTPException(
@@ -157,7 +158,22 @@ async def book_appointment(
     )
     
     db.add(appointment)
-    await db.commit()
+    
+    try:
+        await db.commit()
+    except Exception as e:
+        await db.rollback()
+        # Check if it's a duplicate booking error
+        if "unique" in str(e).lower() or "duplicate" in str(e).lower():
+            raise HTTPException(
+                status_code=status.HTTP_409_CONFLICT,
+                detail="This time slot is no longer available"
+            )
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="Failed to create appointment"
+        )
+    
     await db.refresh(appointment)
     
     # Create Zoom meeting for video consultations

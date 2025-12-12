@@ -99,11 +99,12 @@ export default function DoctorProfilePage() {
   const [selectedSlot, setSelectedSlot] = useState<TimeSlot | null>(null); // Selected time slot
   const [weekOffset, setWeekOffset] = useState(0);                         // Week navigation (0=current, 1=next, etc.)
   
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────
   // STATE: Guest Booking Flow (Login Prompt)
-  // ─────────────────────────────────────────────────────────────
+  // ─────────────────────────────────────────────────────────────────
   const [showLoginPrompt, setShowLoginPrompt] = useState(false);           // Login modal visibility
   const [bookingContext, setBookingContext] = useState<BookingContext | null>(null); // Preserved booking intent
+  const [bookingInProgress, setBookingInProgress] = useState(false);       // Prevent double-click
   const bookingContextRestoredRef = useRef(false); // Track if we've already restored booking context
 
   /** Check if user is authenticated via access token */
@@ -322,7 +323,7 @@ export default function DoctorProfilePage() {
    * @endpoint POST /api/v1/appointments/ (requires auth)
    */
   const handleBookAppointment = async () => {
-    if (!doctor || !selectedSlot || !selectedDate) return;
+    if (!doctor || !selectedSlot || !selectedDate || bookingInProgress) return;
 
     // Create booking context to preserve user's selection
     const context: BookingContext = {
@@ -344,6 +345,7 @@ export default function DoctorProfilePage() {
     }
 
     // AUTHENTICATED FLOW: Create appointment directly
+    setBookingInProgress(true);
     try {
       // Include user's timezone for proper scheduling across timezones
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
@@ -376,6 +378,8 @@ export default function DoctorProfilePage() {
     } catch (err) {
       console.error('Error booking appointment:', err);
       alert('Failed to book appointment. Please try again.');
+    } finally {
+      setBookingInProgress(false);
     }
   };
 
@@ -732,19 +736,28 @@ export default function DoctorProfilePage() {
                 {/* 
                   Book Button - Dynamic label based on state:
                   - No slot selected: "Select a Time Slot" (disabled)
+                  - Booking in progress: "Booking..." (disabled, shows spinner)
                   - Slot selected + logged in: "Confirm Booking"
                   - Slot selected + guest: "Login to Book" (triggers modal)
                 */}
                 <button
                   onClick={handleBookAppointment}
-                  disabled={!selectedSlot}
+                  disabled={!selectedSlot || bookingInProgress}
                   className={`w-full py-3.5 rounded-xl font-medium transition-colors ${
-                    selectedSlot
+                    selectedSlot && !bookingInProgress
                       ? 'bg-cyan-600 text-white hover:bg-cyan-700'
                       : 'bg-slate-100 text-slate-400 cursor-not-allowed'
                   }`}
                 >
-                  {selectedSlot ? (
+                  {bookingInProgress ? (
+                    <span className="flex items-center justify-center gap-2">
+                      <svg className="animate-spin h-5 w-5" viewBox="0 0 24 24">
+                        <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
+                        <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
+                      </svg>
+                      Booking...
+                    </span>
+                  ) : selectedSlot ? (
                     isLoggedIn ? 'Confirm Booking' : 'Login to Book'
                   ) : (
                     'Select a Time Slot'
