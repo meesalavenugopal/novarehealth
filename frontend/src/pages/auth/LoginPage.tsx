@@ -55,25 +55,49 @@ const otpSchema = z.object({
 type PhoneFormData = z.infer<typeof phoneSchema>;
 type OTPFormData = z.infer<typeof otpSchema>;
 
+/**
+ * LoginPage Component - Handles user authentication via phone OTP
+ * 
+ * For complete flow diagram and all use cases, see:
+ * @see /docs/LoginFlowDiagram.md
+ */
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
   const { setAuth } = useAuthStore();
+  
+  // ============== STATE VARIABLES ==============
+  // step: Controls which view is shown ('phone' entry or 'otp' verification)
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
+  // phone: Normalized phone number with country code (+258XXXXXXXXX)
   const [phone, setPhone] = useState('');
+  // phoneDisplay: Formatted phone for UI display (XX XXX XXXX)
   const [phoneDisplay, setPhoneDisplay] = useState('');
+  // isLoading: Shows loading spinner during API calls
   const [isLoading, setIsLoading] = useState(false);
+  // error: Displays error messages from API or validation
   const [error, setError] = useState('');
+  // otpValues: 6-element array for individual OTP digit inputs
   const [otpValues, setOtpValues] = useState(['', '', '', '', '', '']);
+  // otpRefs: References to OTP input elements for focus management
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
   
-  // Get redirect info from state
-  const redirectFrom = location.state?.from;
-  const redirectMessage = location.state?.message;
-  const returnUrl = location.state?.returnUrl;
+  // ============== REDIRECT SOURCES ==============
+  // Source 1: Protected Route Redirect
+  // When user tries to access a protected route without auth,
+  // they're redirected here with the original path stored in state
+  const redirectFrom = location.state?.from;         // Original protected route path
+  const redirectMessage = location.state?.message;   // Message explaining why redirected
   
-  // Check for pending booking context
-  const pendingBooking = getBookingContext();
+  // Source 2: Login Prompt Modal
+  // When LoginPromptModal is shown (e.g., clicking "Book" on doctor card),
+  // it passes the returnUrl to navigate back after login
+  const returnUrl = location.state?.returnUrl;       // URL to return after login
+  
+  // Source 3: Guest Booking Context
+  // When guest user starts booking flow, context is stored in localStorage
+  // and retrieved here to continue booking after login
+  const pendingBooking = getBookingContext();        // { doctorId, returnUrl, ... }
 
   const phoneForm = useForm<PhoneFormData>({
     resolver: zodResolver(phoneSchema),
@@ -84,21 +108,21 @@ export default function LoginPage() {
     resolver: zodResolver(otpSchema),
   });
 
-  // Auto-focus first OTP input when step changes
+  // Auto-focus first OTP input when step changes to 'otp'
   useEffect(() => {
     if (step === 'otp' && otpRefs.current[0]) {
       otpRefs.current[0].focus();
     }
   }, [step]);
 
-  // Handle phone input with formatting
+  /** Formats phone input for display with country-specific formatting */
   const handlePhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const input = e.target.value;
     // Only allow digits and spaces
     const cleaned = input.replace(/[^\d\s]/g, '');
     const digits = cleaned.replace(/\s/g, '');
     
-    // Limit to max length
+    // Limit to max length from config (e.g., 9 for Mozambique)
     if (digits.length > config.phone.maxLength) {
       return;
     }
@@ -109,7 +133,7 @@ export default function LoginPage() {
     phoneForm.setValue('phone', digits, { shouldValidate: true });
   };
 
-  // Normalize phone: prepend country code from config
+  /** Converts local phone to international format with country code */
   const normalizePhone = (phone: string): string => {
     const digitsOnly = phone.replace(/\D/g, '');
     
@@ -118,18 +142,20 @@ export default function LoginPage() {
       return digitsOnly;
     }
     
-    // Prepend country code from config
+    // Prepend country code from config (e.g., "258" for Mozambique)
     return `${config.phone.defaultCountryCode}${digitsOnly}`;
   };
 
+  /** Sends OTP to phone number and transitions to OTP step */
   const handleSendOTP = async (data: PhoneFormData) => {
     setIsLoading(true);
     setError('');
     try {
+      // Normalize phone to international format with country code
       const normalizedPhone = normalizePhone(data.phone);
       await authService.sendOTPPhone(normalizedPhone);
-      setPhone(normalizedPhone);
-      setStep('otp');
+      setPhone(normalizedPhone); // Store for verification step
+      setStep('otp');            // Transition to OTP input step
     } catch (err: any) {
       setError(err.response?.data?.detail || 'Failed to send OTP. Please try again.');
     } finally {
@@ -137,38 +163,42 @@ export default function LoginPage() {
     }
   };
 
+  /** Handles single digit input with auto-focus and auto-submit */
   const handleOtpChange = (index: number, value: string) => {
+    // Only allow digits
     if (!/^\d*$/.test(value)) return;
     
     const newOtpValues = [...otpValues];
-    newOtpValues[index] = value.slice(-1);
+    newOtpValues[index] = value.slice(-1); // Take only last digit
     setOtpValues(newOtpValues);
 
-    // Auto-focus next input
+    // Auto-focus next input on digit entry
     if (value && index < 5) {
       otpRefs.current[index + 1]?.focus();
     }
 
-    // Auto-submit when all digits entered
+    // Auto-submit when all 6 digits are filled
     if (newOtpValues.every(v => v) && newOtpValues.join('').length === 6) {
       otpForm.setValue('otp', newOtpValues.join(''));
       handleVerifyOTP({ otp: newOtpValues.join('') });
     }
   };
 
-  // Handle paste for OTP - allows pasting complete 6-digit code
+  /** Handles paste of complete 6-digit OTP code */
   const handleOtpPaste = (e: React.ClipboardEvent) => {
     e.preventDefault();
+    // Extract only digits, max 6
     const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
     
     if (pastedData.length > 0) {
       const newOtpValues = [...otpValues];
+      // Distribute pasted digits across inputs
       for (let i = 0; i < 6; i++) {
         newOtpValues[i] = pastedData[i] || '';
       }
       setOtpValues(newOtpValues);
       
-      // Focus the next empty input or last input
+      // Focus the next empty input or last input if complete
       const nextEmptyIndex = newOtpValues.findIndex(v => !v);
       if (nextEmptyIndex !== -1) {
         otpRefs.current[nextEmptyIndex]?.focus();
@@ -176,7 +206,7 @@ export default function LoginPage() {
         otpRefs.current[5]?.focus();
       }
       
-      // Auto-submit if complete
+      // Auto-submit if all 6 digits pasted
       if (pastedData.length === 6) {
         otpForm.setValue('otp', pastedData);
         handleVerifyOTP({ otp: pastedData });
@@ -184,12 +214,17 @@ export default function LoginPage() {
     }
   };
 
+  /** Handles backspace navigation between OTP inputs */
   const handleOtpKeyDown = (index: number, e: React.KeyboardEvent) => {
     if (e.key === 'Backspace' && !otpValues[index] && index > 0) {
       otpRefs.current[index - 1]?.focus();
     }
   };
 
+  /** 
+   * Verifies OTP and handles post-login redirect
+   * @see /docs/LoginFlowDiagram.md for complete flow details
+   */
   const handleVerifyOTP = async (data: OTPFormData) => {
     setIsLoading(true);
     setError('');
@@ -200,29 +235,33 @@ export default function LoginPage() {
       });
       setAuth(response.user, response.access_token, response.refresh_token);
       
-      // Check for pending booking context first (guest mode)
+      // ============== REDIRECT PRIORITY 1: Guest Booking Context ==============
+      // Highest priority - user was booking as guest, continue that flow
       if (pendingBooking?.returnUrl) {
         const bookingReturnUrl = pendingBooking.returnUrl;
-        clearBookingContext();
+        clearBookingContext(); // Clear localStorage booking data
         navigate(bookingReturnUrl);
         return;
       }
       
-      // Then check for returnUrl from state (passed from login prompt)
+      // ============== REDIRECT PRIORITY 2: Login Prompt returnUrl ==============
+      // User clicked login from a modal with specific destination
       if (returnUrl) {
         navigate(returnUrl);
         return;
       }
       
-      // Redirect to original destination if coming from protected route
+      // ============== REDIRECT PRIORITY 3: Protected Route Origin ==============
+      // User was redirected from a protected route, go back there
       if (redirectFrom) {
         navigate(redirectFrom);
         return;
       }
       
-      // Otherwise redirect based on role
+      // ============== REDIRECT PRIORITY 4: Role-Based Default ==============
+      // No specific destination, route based on user role
       if (response.user.role === 'doctor') {
-        // For doctors, check verification status
+        // Doctor flow: Check verification status via GET /doctors/me
         try {
           const doctorResponse = await fetch(`${config.apiUrl}/doctors/me`, {
             headers: {
@@ -247,11 +286,14 @@ export default function LoginPage() {
           navigate('/register/doctor');
         }
       } else if (response.user.role === 'admin' || response.user.role === 'super_admin') {
+        // ADMIN FLOW: Direct to admin dashboard
         navigate('/admin/dashboard');
       } else {
+        // PATIENT FLOW: Direct to patient dashboard
         navigate('/patient/dashboard');
       }
     } catch (err: any) {
+      // OTP verification failed - reset and show error
       setError(err.response?.data?.detail || 'Invalid OTP. Please try again.');
       setOtpValues(['', '', '', '', '', '']);
       otpRefs.current[0]?.focus();
@@ -269,7 +311,7 @@ export default function LoginPage() {
 
   return (
     <div className="min-h-screen flex">
-      {/* Left Panel - Features */}
+      {/* Left Panel - Features (Desktop only) */}
       <div className="hidden lg:flex lg:w-1/2 bg-gradient-to-br from-cyan-600 via-teal-600 to-emerald-600 p-12 flex-col justify-between relative overflow-hidden">
         {/* Background Pattern */}
         <div className="absolute inset-0 opacity-10">
