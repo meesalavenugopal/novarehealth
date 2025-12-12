@@ -12,6 +12,7 @@ import {
 } from 'lucide-react';
 import { useState, useRef, useEffect } from 'react';
 import { useAuthStore } from '../../store/authStore';
+import { useFeatureFlags } from '../../store/featureFlagsStore';
 
 // Define navigation items for each role
 const getNavItems = (role: string | undefined, isAuthenticated: boolean) => {
@@ -203,7 +204,9 @@ export default function Navbar() {
                       <div className="py-1">
                         <DropdownLink to={dashboardLink} icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
                         <DropdownLink to="/profile" icon={<User className="w-4 h-4" />} label="My Profile" />
-                        <DropdownLink to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" />
+                        {useFeatureFlags.getState().flags.settings_enabled && (
+                          <DropdownLink to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" />
+                        )}
                         <DropdownLink to="/help" icon={<HelpCircle className="w-4 h-4" />} label="Help & Support" />
                       </div>
                       <div className="border-t border-slate-100 py-1">

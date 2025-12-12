@@ -1,5 +1,5 @@
 from fastapi import APIRouter
-from app.api.v1.endpoints import auth, users, appointments, prescriptions, ehr, reviews
+from app.api.v1.endpoints import auth, users, appointments, prescriptions, ehr, reviews, config
 from app.api.v1 import doctors, admin, uploads, ai
 
 api_router = APIRouter()
@@ -14,3 +14,4 @@ api_router.include_router(appointments.router)
 api_router.include_router(prescriptions.router)
 api_router.include_router(ehr.router)
 api_router.include_router(reviews.router)
+api_router.include_router(config.router)

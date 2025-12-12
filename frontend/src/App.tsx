@@ -1,5 +1,6 @@
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { useEffect } from 'react';
 import ScrollToTop from './components/common/ScrollToTop';
 import LoginPage from './pages/auth/LoginPage';
 import HomePage from './pages/common/HomePage';
@@ -24,6 +25,7 @@ import { AdminDashboard, PatientsPage as AdminPatientsPage, AppointmentsPage as 
 import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage } from './pages/legal';
 import ConsultationSummaryPage from './pages/common/consultation/ConsultationSummaryPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import { useFeatureFlags } from './store/featureFlagsStore';
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -35,6 +37,13 @@ const queryClient = new QueryClient({
 });
 
 function App() {
+  const fetchFlags = useFeatureFlags((state) => state.fetchFlags);
+  
+  // Fetch feature flags on app initialization
+  useEffect(() => {
+    fetchFlags();
+  }, [fetchFlags]);
+
   return (
     <QueryClientProvider client={queryClient}>
       <BrowserRouter>
