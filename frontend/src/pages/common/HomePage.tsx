@@ -19,6 +19,7 @@ import { Footer } from '../../components/layout';
 import { AIChatWidget } from '../../components/chat';
 import Button from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
+import { useFeatureFlags } from '../../store/featureFlagsStore';
 import { config } from '../../config';
 import api from '../../services/api';
 import { getSpecializationIcon } from '../../utils/specializationIcons';
@@ -561,38 +562,40 @@ export default function HomePage() {
         </div>
       </section>
 
-      {/* Download App Banner */}
-      <section className="py-16 bg-slate-900">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="flex flex-col md:flex-row items-center justify-between gap-8">
-            <div className="flex items-center gap-6">
-              <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center">
-                <Smartphone className="w-8 h-8 text-white" />
+      {/* Download App Banner - Hidden via feature flag */}
+      {useFeatureFlags.getState().flags.mobile_app_banner_enabled && (
+        <section className="py-16 bg-slate-900">
+          <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div className="flex flex-col md:flex-row items-center justify-between gap-8">
+              <div className="flex items-center gap-6">
+                <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center">
+                  <Smartphone className="w-8 h-8 text-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Download our mobile app</h3>
+                  <p className="text-slate-400">Get the full experience on your phone</p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">Download our mobile app</h3>
-                <p className="text-slate-400">Get the full experience on your phone</p>
+              <div className="flex gap-4">
+                <a href="#" className="block">
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" 
+                    alt="Download on App Store" 
+                    className="h-12"
+                  />
+                </a>
+                <a href="#" className="block">
+                  <img 
+                    src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" 
+                    alt="Get it on Google Play" 
+                    className="h-12"
+                  />
+                </a>
               </div>
-            </div>
-            <div className="flex gap-4">
-              <a href="#" className="block">
-                <img 
-                  src="https://upload.wikimedia.org/wikipedia/commons/3/3c/Download_on_the_App_Store_Badge.svg" 
-                  alt="Download on App Store" 
-                  className="h-12"
-                />
-              </a>
-              <a href="#" className="block">
-                <img 
-                  src="https://upload.wikimedia.org/wikipedia/commons/7/78/Google_Play_Store_badge_EN.svg" 
-                  alt="Get it on Google Play" 
-                  className="h-12"
-                />
-              </a>
             </div>
           </div>
-        </div>
-      </section>
+        </section>
+      )}
 
       <Footer />
 

@@ -20,6 +20,7 @@ class FeatureFlags(BaseModel):
     ai_chat_enabled: bool = True             # AI Chat widget
     video_consult_enabled: bool = True       # Video consultation feature
     reviews_enabled: bool = True             # Reviews feature
+    mobile_app_banner_enabled: bool = False  # Download app banner
 
 
 class AppConfig(BaseModel):
@@ -39,6 +40,7 @@ DEFAULT_FEATURE_FLAGS = FeatureFlags(
     ai_chat_enabled=True,
     video_consult_enabled=True,
     reviews_enabled=True,
+    mobile_app_banner_enabled=False,  # Hide download app banner for now
 )
 
 

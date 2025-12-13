@@ -15,6 +15,7 @@ export interface FeatureFlags {
   ai_chat_enabled: boolean;
   video_consult_enabled: boolean;
   reviews_enabled: boolean;
+  mobile_app_banner_enabled: boolean;
 }
 
 interface FeatureFlagsState {
@@ -28,7 +29,7 @@ interface FeatureFlagsState {
   isEnabled: (flag: keyof FeatureFlags) => boolean;
 }
 
-// Default flags (all enabled except settings)
+// Default flags (all enabled except settings and mobile app banner)
 const DEFAULT_FLAGS: FeatureFlags = {
   settings_enabled: false,
   prescriptions_enabled: true,
@@ -37,6 +38,7 @@ const DEFAULT_FLAGS: FeatureFlags = {
   ai_chat_enabled: true,
   video_consult_enabled: true,
   reviews_enabled: true,
+  mobile_app_banner_enabled: false,
 };
 
 export const useFeatureFlags = create<FeatureFlagsState>((set, get) => ({

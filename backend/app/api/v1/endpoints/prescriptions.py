@@ -530,3 +530,36 @@ async def regenerate_prescription_pdf(
     )
     
     return {"message": "PDF regeneration started", "prescription_id": prescription_id}
+
+
+# ============== Stats Endpoint ==============
+
+@router.get("/stats/me", response_model=dict)
+async def get_my_prescription_stats(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """Get statistics about user's prescriptions."""
+    # Total count
+    total_result = await db.execute(
+        select(func.count(Prescription.id))
+        .where(Prescription.patient_id == current_user.id)
+    )
+    total_count = total_result.scalar() or 0
+    
+    # Count with follow-up dates
+    follow_up_result = await db.execute(
+        select(func.count(Prescription.id))
+        .where(
+            and_(
+                Prescription.patient_id == current_user.id,
+                Prescription.follow_up_date != None
+            )
+        )
+    )
+    with_follow_up = follow_up_result.scalar() or 0
+    
+    return {
+        "total_prescriptions": total_count,
+        "with_follow_up": with_follow_up
+    }

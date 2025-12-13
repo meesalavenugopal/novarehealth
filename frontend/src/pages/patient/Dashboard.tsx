@@ -8,11 +8,6 @@ import {
   Video,
   ChevronRight,
   Stethoscope,
-  Heart,
-  Brain,
-  Eye,
-  Baby,
-  Bone,
   Activity,
   Plus,
   ArrowUpRight,
@@ -24,6 +19,7 @@ import { AIChatWidget } from '../../components/chat';
 import { Card, CardHeader, Button } from '../../components/ui';
 import { authFetch } from '../../services/api';
 import { config } from '../../config';
+import { getSpecializationWithColor } from '../../utils/specializationIcons';
 
 interface Appointment {
   id: number;
@@ -47,19 +43,6 @@ interface DashboardStats {
   total_prescriptions: number;
   total_records: number;
 }
-
-// Icon mapping for specializations
-const getSpecIcon = (name: string) => {
-  const icons: Record<string, { icon: React.ReactNode; color: string }> = {
-    'Cardiology': { icon: <Heart className="w-5 h-5" />, color: 'bg-red-50 text-red-600' },
-    'Neurology': { icon: <Brain className="w-5 h-5" />, color: 'bg-purple-50 text-purple-600' },
-    'Ophthalmology': { icon: <Eye className="w-5 h-5" />, color: 'bg-blue-50 text-blue-600' },
-    'Pediatrics': { icon: <Baby className="w-5 h-5" />, color: 'bg-pink-50 text-pink-600' },
-    'Orthopedics': { icon: <Bone className="w-5 h-5" />, color: 'bg-amber-50 text-amber-600' },
-    'General Medicine': { icon: <Stethoscope className="w-5 h-5" />, color: 'bg-teal-50 text-teal-600' },
-  };
-  return icons[name] || { icon: <Activity className="w-5 h-5" />, color: 'bg-slate-50 text-slate-600' };
-};
 
 export default function PatientDashboard() {
   const { user } = useAuthStore();
@@ -95,7 +78,19 @@ export default function PatientDashboard() {
           setSpecializations(specData.slice(0, 6)); // Show top 6
         }
 
-        // TODO: Fetch prescriptions count and health records count when APIs are available
+        // Fetch prescriptions count
+        const prescResponse = await authFetch(`${config.apiUrl}/prescriptions/stats/me`);
+        if (prescResponse.ok) {
+          const prescData = await prescResponse.json();
+          setStats(prev => ({ ...prev, total_prescriptions: prescData.total_prescriptions || 0 }));
+        }
+
+        // Fetch health records count
+        const ehrResponse = await authFetch(`${config.apiUrl}/health-records/stats/me`);
+        if (ehrResponse.ok) {
+          const ehrData = await ehrResponse.json();
+          setStats(prev => ({ ...prev, total_records: ehrData.total_records || 0 }));
+        }
       } catch (error) {
         console.error('Failed to fetch dashboard data:', error);
       } finally {
@@ -294,7 +289,7 @@ export default function PatientDashboard() {
               <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
                 {specializations.length > 0 ? (
                   specializations.map((spec) => {
-                    const { icon, color } = getSpecIcon(spec.name);
+                    const { icon, color } = getSpecializationWithColor(spec.name);
                     return (
                       <Link
                         key={spec.id}
