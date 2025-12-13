@@ -104,58 +104,57 @@ export const EarningsPage: React.FC = () => {
             </Card>
           ) : earnings ? (
             <>
-              {/* Total Earnings Card */}
-              <Card className="p-8 mb-8 bg-gradient-to-br from-cyan-500 to-teal-500 text-white">
-                <div className="flex items-center justify-between">
-                  <div>
+              {/* Top Cards - Side by Side */}
+              <div className={`grid gap-6 mb-8 ${earnings.projected_total > 0 ? 'grid-cols-1 lg:grid-cols-2' : 'grid-cols-1'}`}>
+                {/* Total Earnings Card */}
+                <Card className="p-6 bg-gradient-to-br from-cyan-500 to-teal-500 text-white h-full">
+                  <div className="flex items-center justify-between mb-4">
                     <p className="text-cyan-100 text-sm font-medium">Total Earnings</p>
-                    <p className="text-4xl font-bold mt-2">{formatCurrency(earnings.total_earnings)}</p>
-                    <p className="text-cyan-100 mt-2">
-                      From {earnings.total_completed_appointments} completed consultation{earnings.total_completed_appointments !== 1 ? 's' : ''}
-                    </p>
+                    <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center">
+                      <DollarSign className="w-6 h-6 text-white" />
+                    </div>
                   </div>
-                  <div className="w-16 h-16 bg-white/20 rounded-2xl flex items-center justify-center">
-                    <DollarSign className="w-8 h-8 text-white" />
-                  </div>
-                </div>
-              </Card>
+                  <p className="text-3xl font-bold">{formatCurrency(earnings.total_earnings)}</p>
+                  <p className="text-cyan-100 mt-2">
+                    From {earnings.total_completed_appointments} completed consultation{earnings.total_completed_appointments !== 1 ? 's' : ''}
+                  </p>
+                </Card>
 
-              {/* Projected Earnings Card */}
-              {earnings.projected_total > 0 && (
-                <Card className="p-6 mb-8 bg-gradient-to-br from-amber-500 to-orange-500 text-white">
-                  <div className="flex items-center justify-between">
-                    <div>
+                {/* Projected Earnings Card */}
+                {earnings.projected_total > 0 && (
+                  <Card className="p-6 bg-gradient-to-br from-amber-500 to-orange-500 text-white h-full">
+                    <div className="flex items-center justify-between mb-4">
                       <p className="text-amber-100 text-sm font-medium flex items-center gap-2">
                         <Target className="w-4 h-4" />
                         Projected Earnings
                       </p>
-                      <p className="text-3xl font-bold mt-2">{formatCurrency(earnings.projected_total)}</p>
-                      <p className="text-amber-100 mt-2">
-                        From {earnings.projected_total_appointments} confirmed appointment{earnings.projected_total_appointments !== 1 ? 's' : ''}
-                      </p>
                     </div>
-                    <div className="text-right">
-                      <div className="grid grid-cols-3 gap-4 text-sm">
-                        <div>
-                          <p className="text-amber-100">Today</p>
-                          <p className="font-semibold">{formatCurrency(earnings.projected_today)}</p>
-                          <p className="text-amber-200 text-xs">{earnings.projected_today_appointments} apt{earnings.projected_today_appointments !== 1 ? 's' : ''}</p>
-                        </div>
-                        <div>
-                          <p className="text-amber-100">Week</p>
-                          <p className="font-semibold">{formatCurrency(earnings.projected_week)}</p>
-                          <p className="text-amber-200 text-xs">{earnings.projected_week_appointments} apt{earnings.projected_week_appointments !== 1 ? 's' : ''}</p>
-                        </div>
-                        <div>
-                          <p className="text-amber-100">Month</p>
-                          <p className="font-semibold">{formatCurrency(earnings.projected_month)}</p>
-                          <p className="text-amber-200 text-xs">{earnings.projected_month_appointments} apt{earnings.projected_month_appointments !== 1 ? 's' : ''}</p>
-                        </div>
+                    <p className="text-3xl font-bold">{formatCurrency(earnings.projected_total)}</p>
+                    <p className="text-amber-100 mt-2 mb-4">
+                      From {earnings.projected_total_appointments} confirmed appointment{earnings.projected_total_appointments !== 1 ? 's' : ''}
+                    </p>
+                    
+                    {/* Breakdown Row */}
+                    <div className="grid grid-cols-3 gap-2 pt-4 border-t border-white/20">
+                      <div className="text-center">
+                        <p className="text-amber-200 text-xs uppercase tracking-wide mb-1">Today</p>
+                        <p className="text-sm font-bold">{formatCurrency(earnings.projected_today)}</p>
+                        <p className="text-amber-200 text-xs">{earnings.projected_today_appointments} apt{earnings.projected_today_appointments !== 1 ? 's' : ''}</p>
+                      </div>
+                      <div className="text-center border-x border-white/20">
+                        <p className="text-amber-200 text-xs uppercase tracking-wide mb-1">Week</p>
+                        <p className="text-sm font-bold">{formatCurrency(earnings.projected_week)}</p>
+                        <p className="text-amber-200 text-xs">{earnings.projected_week_appointments} apt{earnings.projected_week_appointments !== 1 ? 's' : ''}</p>
+                      </div>
+                      <div className="text-center">
+                        <p className="text-amber-200 text-xs uppercase tracking-wide mb-1">Month</p>
+                        <p className="text-sm font-bold">{formatCurrency(earnings.projected_month)}</p>
+                        <p className="text-amber-200 text-xs">{earnings.projected_month_appointments} apt{earnings.projected_month_appointments !== 1 ? 's' : ''}</p>
                       </div>
                     </div>
-                  </div>
-                </Card>
-              )}
+                  </Card>
+                )}
+              </div>
 
               {/* Earnings Breakdown - Completed */}
               <h3 className="text-lg font-semibold text-gray-900 mb-4">Completed Earnings</h3>
