@@ -45,6 +45,7 @@ export interface PrescriptionUpdate {
   notes?: string;
   follow_up_date?: string;
   advice?: string;
+  edit_reason?: string;  // Optional reason for the edit
 }
 
 export interface Prescription {
@@ -59,6 +60,23 @@ export interface Prescription {
   follow_up_date?: string;
   pdf_url?: string;
   created_at: string;
+  edit_count?: number;
+  last_edited_at?: string;
+}
+
+export interface PrescriptionEditHistory {
+  id: number;
+  prescription_id: number;
+  edited_by_doctor_id: number;
+  edited_by_name?: string;
+  previous_medications?: MedicationItem[];
+  previous_diagnosis?: string;
+  previous_notes?: string;
+  previous_advice?: string;
+  previous_follow_up_date?: string;
+  changes_summary?: string;
+  edit_reason?: string;
+  edited_at: string;
 }
 
 export interface PrescriptionDetail extends Prescription {
@@ -145,6 +163,22 @@ export const regeneratePrescriptionPdf = async (
 ): Promise<{ message: string; prescription_id: number }> => {
   const response = await api.post(`/prescriptions/${prescriptionId}/regenerate-pdf`);
   return response.data;
+};
+
+// Get prescription edit history
+export const getPrescriptionEditHistory = async (
+  prescriptionId: number
+): Promise<PrescriptionEditHistory[]> => {
+  const response = await api.get(`/prescriptions/${prescriptionId}/history`);
+  return response.data;
+};
+
+// Check if prescription can be edited (within 48 hours)
+export const canEditPrescription = (prescription: Prescription): boolean => {
+  const createdAt = new Date(prescription.created_at);
+  const now = new Date();
+  const hoursSinceCreation = (now.getTime() - createdAt.getTime()) / (1000 * 60 * 60);
+  return hoursSinceCreation <= 48;
 };
 
 // Helper to get PDF download URL

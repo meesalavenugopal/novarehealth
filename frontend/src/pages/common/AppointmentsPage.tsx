@@ -19,12 +19,15 @@ import {
   X,
   ExternalLink,
   Copy,
-  Check
+  Check,
+  Pill
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import { useAuthStore } from '../../store/authStore';
 import { authFetch } from '../../services/api';
+import { getPrescriptionByAppointment, type PrescriptionDetail } from '../../services/prescription';
+import PrescriptionEditor from '../../components/doctor/PrescriptionEditor';
 
 interface Appointment {
   id: number;
@@ -64,6 +67,8 @@ const consultationTypeIcons: Record<string, any> = {
 export default function AppointmentsPage() {
   const { user } = useAuthStore();
   const location = useLocation();
+  const isDoctor = user?.role === 'doctor';
+  
   const [appointments, setAppointments] = useState<Appointment[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'upcoming' | 'past' | 'all'>('upcoming');
@@ -75,6 +80,11 @@ export default function AppointmentsPage() {
   const [dateFrom, setDateFrom] = useState<string>('');
   const [dateTo, setDateTo] = useState<string>('');
   const [showFilters, setShowFilters] = useState(false);
+
+  // Prescription Editor state
+  const [showPrescriptionEditor, setShowPrescriptionEditor] = useState(false);
+  const [selectedAppointmentForPrescription, setSelectedAppointmentForPrescription] = useState<Appointment | null>(null);
+  const [appointmentPrescriptions, setAppointmentPrescriptions] = useState<Record<number, PrescriptionDetail | null>>({});
 
   const hasActiveFilters = consultationType || dateFrom || dateTo;
 
@@ -124,12 +134,48 @@ export default function AppointmentsPage() {
           zoom_password: apt.zoom_password,
         }));
         setAppointments(transformedAppointments);
+        
+        // Check prescription status for completed appointments (for doctors)
+        if (isDoctor) {
+          const completedApts = transformedAppointments.filter((apt: Appointment) => apt.status === 'completed');
+          for (const apt of completedApts) {
+            checkPrescriptionStatus(apt.id);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching appointments:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const checkPrescriptionStatus = async (appointmentId: number) => {
+    try {
+      const prescription = await getPrescriptionByAppointment(appointmentId);
+      setAppointmentPrescriptions(prev => ({ ...prev, [appointmentId]: prescription }));
+    } catch {
+      setAppointmentPrescriptions(prev => ({ ...prev, [appointmentId]: null }));
+    }
+  };
+
+  const handleWritePrescription = (appointment: Appointment) => {
+    setSelectedAppointmentForPrescription(appointment);
+    setShowPrescriptionEditor(true);
+  };
+
+  const handlePrescriptionSaved = () => {
+    setShowPrescriptionEditor(false);
+    if (selectedAppointmentForPrescription) {
+      // Mark this appointment as having a prescription
+      setAppointmentPrescriptions(prev => ({ 
+        ...prev, 
+        [selectedAppointmentForPrescription.id]: {} as PrescriptionDetail 
+      }));
+    }
+    setSelectedAppointmentForPrescription(null);
+    setSuccessMessage('Prescription created successfully');
+    setTimeout(() => setSuccessMessage(null), 5000);
   };
 
   const handleCancelAppointment = async (appointmentId: number) => {
@@ -201,8 +247,6 @@ export default function AppointmentsPage() {
 
     return true;
   });
-
-  const isDoctor = user?.role === 'doctor';
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-cyan-50">
@@ -390,16 +434,61 @@ export default function AppointmentsPage() {
                 appointment={appointment} 
                 isDoctor={isDoctor}
                 onCancel={handleCancelAppointment}
+                onWritePrescription={handleWritePrescription}
+                hasPrescription={!!appointmentPrescriptions[appointment.id]}
               />
             ))}
           </div>
         )}
       </div>
+
+      {/* Prescription Editor Modal */}
+      {showPrescriptionEditor && selectedAppointmentForPrescription && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full my-8">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Create Prescription</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  For {selectedAppointmentForPrescription.patient_name} • {new Date(selectedAppointmentForPrescription.scheduled_date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowPrescriptionEditor(false);
+                  setSelectedAppointmentForPrescription(null);
+                }}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <PrescriptionEditor
+                appointmentId={selectedAppointmentForPrescription.id}
+                patientName={selectedAppointmentForPrescription.patient_name}
+                onClose={() => {
+                  setShowPrescriptionEditor(false);
+                  setSelectedAppointmentForPrescription(null);
+                }}
+                onSuccess={handlePrescriptionSaved}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
 
-function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: Appointment; isDoctor: boolean; onCancel?: (id: number) => void }) {
+function AppointmentCard({ appointment, isDoctor, onCancel, onWritePrescription, hasPrescription }: { 
+  appointment: Appointment; 
+  isDoctor: boolean; 
+  onCancel?: (id: number) => void;
+  onWritePrescription?: (appointment: Appointment) => void;
+  hasPrescription?: boolean;
+}) {
   const [expanded, setExpanded] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
   const status = statusConfig[appointment.status] || { label: appointment.status, color: 'bg-slate-100 text-slate-700', icon: Clock };
@@ -667,19 +756,46 @@ function AppointmentCard({ appointment, isDoctor, onCancel }: { appointment: App
                   
                   {appointment.status === 'completed' && (
                     <>
-                      <Link 
-                        to={`/consultation/${appointment.id}/summary`}
-                        className="w-full px-4 py-3 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium flex items-center justify-center gap-2"
-                      >
-                        <FileText className="w-4 h-4" />
-                        {isDoctor ? 'View/Write Prescription' : 'View Prescription'}
-                      </Link>
-                      <Link 
-                        to={`/find-doctors`}
-                        className="w-full px-4 py-3 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium text-center"
-                      >
-                        Book Again
-                      </Link>
+                      {/* Doctor-specific prescription buttons */}
+                      {isDoctor && (
+                        hasPrescription ? (
+                          <Link 
+                            to={`/consultation/${appointment.id}/summary`}
+                            className="w-full px-4 py-3 border border-green-200 text-green-700 bg-green-50 rounded-xl hover:bg-green-100 transition-colors font-medium flex items-center justify-center gap-2"
+                          >
+                            <CheckCircle className="w-4 h-4" />
+                            View Prescription
+                          </Link>
+                        ) : (
+                          <button
+                            onClick={() => onWritePrescription?.(appointment)}
+                            className="w-full px-4 py-3 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium flex items-center justify-center gap-2"
+                          >
+                            <Pill className="w-4 h-4" />
+                            Write Prescription
+                          </button>
+                        )
+                      )}
+                      
+                      {/* Patient view */}
+                      {!isDoctor && (
+                        <Link 
+                          to={`/consultation/${appointment.id}/summary`}
+                          className="w-full px-4 py-3 border border-slate-200 text-slate-700 rounded-xl hover:bg-slate-50 transition-colors font-medium flex items-center justify-center gap-2"
+                        >
+                          <FileText className="w-4 h-4" />
+                          View Prescription
+                        </Link>
+                      )}
+                      
+                      {!isDoctor && (
+                        <Link 
+                          to={`/find-doctors`}
+                          className="w-full px-4 py-3 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium text-center"
+                        >
+                          Book Again
+                        </Link>
+                      )}
                     </>
                   )}
 

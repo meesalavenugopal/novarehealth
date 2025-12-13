@@ -585,6 +585,7 @@ class PrescriptionUpdate(BaseModel):
     notes: Optional[str] = None
     follow_up_date: Optional[date] = None
     advice: Optional[str] = None
+    edit_reason: Optional[str] = None  # Optional reason for the edit
 
 
 class PrescriptionResponse(BaseModel):
@@ -599,6 +600,28 @@ class PrescriptionResponse(BaseModel):
     follow_up_date: Optional[date] = None
     pdf_url: Optional[str] = None
     created_at: datetime
+    # Edit tracking
+    edit_count: Optional[int] = 0
+    last_edited_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+
+class PrescriptionEditHistoryResponse(BaseModel):
+    """Response for prescription edit history"""
+    id: int
+    prescription_id: int
+    edited_by_doctor_id: int
+    edited_by_name: Optional[str] = None
+    previous_medications: Optional[List[dict]] = None
+    previous_diagnosis: Optional[str] = None
+    previous_notes: Optional[str] = None
+    previous_advice: Optional[str] = None
+    previous_follow_up_date: Optional[date] = None
+    changes_summary: Optional[str] = None
+    edit_reason: Optional[str] = None
+    edited_at: datetime
 
     class Config:
         from_attributes = True

@@ -15,7 +15,8 @@ import {
   User,
   Clock,
   X,
-  CheckCircle
+  CheckCircle,
+  Edit
 } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
 import { useAuthStore } from '../../store/authStore';
@@ -25,6 +26,7 @@ import {
   getDoctorPrescriptions,
   getPrescriptionPdfUrl,
   getPrescriptionByAppointment,
+  canEditPrescription,
   type PrescriptionDetail,
   type Prescription
 } from '../../services/prescription';
@@ -54,6 +56,9 @@ export default function PrescriptionsPage() {
   const [loadingAppointments, setLoadingAppointments] = useState(false);
   const [selectedAppointment, setSelectedAppointment] = useState<AppointmentForPrescription | null>(null);
   const [showPrescriptionEditor, setShowPrescriptionEditor] = useState(false);
+  
+  // Edit prescription state
+  const [editingPrescription, setEditingPrescription] = useState<PrescriptionDetail | null>(null);
 
   const isDoctor = user?.role === 'doctor';
 
@@ -131,7 +136,13 @@ export default function PrescriptionsPage() {
   const handlePrescriptionSaved = (_prescription: Prescription) => {
     setShowPrescriptionEditor(false);
     setSelectedAppointment(null);
+    setEditingPrescription(null);
     fetchPrescriptions(); // Refresh the list
+  };
+
+  const handleEditPrescription = (prescription: PrescriptionDetail, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setEditingPrescription(prescription);
   };
 
   const handleDownloadPdf = (prescription: PrescriptionDetail) => {
@@ -367,8 +378,34 @@ export default function PrescriptionsPage() {
                         </div>
                       )}
 
+                      {/* Edit Info */}
+                      {prescription.edit_count !== undefined && prescription.edit_count > 0 && (
+                        <div className="flex items-center gap-2 text-sm text-slate-500 mb-4">
+                          <Clock className="w-4 h-4" />
+                          <span>
+                            Edited {prescription.edit_count} time{prescription.edit_count > 1 ? 's' : ''}
+                            {prescription.last_edited_at && ` • Last edited ${formatDate(prescription.last_edited_at)}`}
+                          </span>
+                        </div>
+                      )}
+
                       {/* Actions */}
                       <div className="flex items-center gap-2 pt-4 border-t border-slate-100">
+                        {isDoctor && canEditPrescription(prescription) && (
+                          <button
+                            onClick={(e) => handleEditPrescription(prescription, e)}
+                            className="flex items-center gap-2 px-4 py-2 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium"
+                          >
+                            <Edit className="w-4 h-4" />
+                            Edit
+                          </button>
+                        )}
+                        {isDoctor && !canEditPrescription(prescription) && (
+                          <span className="flex items-center gap-2 px-4 py-2 bg-slate-100 text-slate-500 rounded-xl text-sm">
+                            <Clock className="w-4 h-4" />
+                            Edit window expired (48h)
+                          </span>
+                        )}
                         {prescription.pdf_url && (
                           <>
                             <button
@@ -503,6 +540,40 @@ export default function PrescriptionsPage() {
                   setShowPrescriptionEditor(false);
                   setSelectedAppointment(null);
                 }}
+                onSuccess={handlePrescriptionSaved}
+              />
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Edit Prescription Modal */}
+      {editingPrescription && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full my-8">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Edit Prescription</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  For {editingPrescription.patient_name} • Created {formatDate(editingPrescription.created_at)}
+                </p>
+              </div>
+              <button
+                onClick={() => setEditingPrescription(null)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <PrescriptionEditor
+                appointmentId={editingPrescription.appointment_id}
+                patientName={editingPrescription.patient_name || 'Patient'}
+                patientAge={editingPrescription.patient_age}
+                patientGender={editingPrescription.patient_gender}
+                existingPrescription={editingPrescription}
+                onClose={() => setEditingPrescription(null)}
                 onSuccess={handlePrescriptionSaved}
               />
             </div>

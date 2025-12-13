@@ -75,6 +75,17 @@ class User(Base):
     health_records = relationship("HealthRecord", back_populates="patient")
     reviews_given = relationship("Review", back_populates="patient")
     prescriptions = relationship("Prescription", back_populates="patient")
+    
+    @property
+    def full_name(self) -> str:
+        """Return the user's full name."""
+        if self.first_name and self.last_name:
+            return f"{self.first_name} {self.last_name}"
+        elif self.first_name:
+            return self.first_name
+        elif self.last_name:
+            return self.last_name
+        return ""
 
 
 class Specialization(Base):
@@ -253,6 +264,10 @@ class Prescription(Base):
     # PDF
     pdf_url = Column(String(500), nullable=True)
     
+    # Edit tracking
+    edit_count = Column(Integer, default=0)  # Number of times edited
+    last_edited_at = Column(DateTime, nullable=True)  # Last edit timestamp
+    
     # Timestamps
     created_at = Column(DateTime, default=datetime.utcnow)
     updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
@@ -261,6 +276,38 @@ class Prescription(Base):
     appointment = relationship("Appointment", back_populates="prescription")
     doctor = relationship("Doctor", back_populates="prescriptions")
     patient = relationship("User", back_populates="prescriptions")
+    edit_history = relationship("PrescriptionEditHistory", back_populates="prescription", order_by="desc(PrescriptionEditHistory.edited_at)")
+
+
+class PrescriptionEditHistory(Base):
+    """Audit trail for prescription edits"""
+    __tablename__ = "prescription_edit_history"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    prescription_id = Column(Integer, ForeignKey("prescriptions.id"), nullable=False)
+    
+    # Who made the edit
+    edited_by_doctor_id = Column(Integer, ForeignKey("doctors.id"), nullable=False)
+    
+    # Previous values (stored as JSON for flexibility)
+    previous_medications = Column(JSON, nullable=True)
+    previous_diagnosis = Column(Text, nullable=True)
+    previous_notes = Column(Text, nullable=True)
+    previous_advice = Column(Text, nullable=True)
+    previous_follow_up_date = Column(Date, nullable=True)
+    
+    # What was changed (for quick reference)
+    changes_summary = Column(Text, nullable=True)  # e.g., "Updated medications, diagnosis"
+    
+    # Edit reason (optional - doctor can explain why they edited)
+    edit_reason = Column(Text, nullable=True)
+    
+    # Timestamp
+    edited_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    prescription = relationship("Prescription", back_populates="edit_history")
+    edited_by = relationship("Doctor")
 
 
 class HealthRecord(Base):
