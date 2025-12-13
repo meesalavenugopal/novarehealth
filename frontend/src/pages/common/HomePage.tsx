@@ -17,6 +17,7 @@ import {
 } from 'lucide-react';
 import { Footer } from '../../components/layout';
 import Button from '../../components/ui/Button';
+import LanguageSwitcher from '../../components/ui/LanguageSwitcher';
 import { useAuthStore } from '../../store/authStore';
 import { useFeatureFlags } from '../../store/featureFlagsStore';
 import { config } from '../../config';
@@ -158,6 +159,7 @@ export default function HomePage() {
             </div>
 
             <div className="flex items-center gap-3">
+              <LanguageSwitcher className="[&_button]:text-white/80 [&_button]:hover:text-white [&_button]:hover:bg-white/10" />
               <Link 
                 to="/login" 
                 className="hidden sm:block px-4 py-2 text-white/90 hover:text-white transition font-medium"

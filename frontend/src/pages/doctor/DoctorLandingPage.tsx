@@ -16,6 +16,7 @@ import {
   HeartPulse
 } from 'lucide-react';
 import Footer from '../../components/layout/Footer';
+import LanguageSwitcher from '../../components/ui/LanguageSwitcher';
 import { config } from '../../config';
 
 export default function DoctorLandingPage() {
@@ -81,21 +82,24 @@ export default function DoctorLandingPage() {
       specialty: 'General Practitioner',
       location: 'Maputo',
       quote: 'NovareHealth has transformed how I practice medicine. I can now help patients across the country while maintaining work-life balance.',
-      rating: 5
+      rating: 5,
+      image: 'https://images.unsplash.com/photo-1559839734-2b71ea197ec2?w=150&h=150&fit=crop&crop=face'
     },
     {
       name: 'Dr. João Macuácua',
       specialty: 'Pediatrician',
       location: 'Beira',
       quote: 'The platform is incredibly easy to use. I\'ve expanded my practice and increased my earnings by 40% in just 3 months.',
-      rating: 5
+      rating: 5,
+      image: 'https://images.unsplash.com/photo-1612349317150-e413f6a5b16d?w=150&h=150&fit=crop&crop=face'
     },
     {
       name: 'Dr. Ana Mondlane',
       specialty: 'Dermatologist',
       location: 'Nampula',
       quote: 'Finally, a platform built for African healthcare needs. The M-Pesa integration makes payments seamless.',
-      rating: 5
+      rating: 5,
+      image: 'https://images.unsplash.com/photo-1594824476967-48c8b964273f?w=150&h=150&fit=crop&crop=face'
     }
   ];
 
@@ -120,6 +124,7 @@ export default function DoctorLandingPage() {
             </Link>
             
             <div className="flex items-center gap-4">
+              <LanguageSwitcher className="[&_button]:text-white/80 [&_button]:hover:text-white [&_button]:hover:bg-white/10" />
               <Link 
                 to="/login" 
                 className="hidden sm:block px-4 py-2 text-white/90 hover:text-white transition font-medium"
@@ -331,17 +336,19 @@ export default function DoctorLandingPage() {
           
           <div className="grid md:grid-cols-3 gap-8">
             {testimonials.map((testimonial, index) => (
-              <div key={index} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100">
+              <div key={index} className="bg-white rounded-2xl p-6 shadow-sm border border-slate-100 flex flex-col h-full">
                 <div className="flex items-center gap-1 mb-4">
                   {[...Array(testimonial.rating)].map((_, i) => (
                     <Star key={i} className="w-5 h-5 text-yellow-400 fill-yellow-400" />
                   ))}
                 </div>
-                <p className="text-slate-600 mb-6 italic">"{testimonial.quote}"</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-linear-to-br from-cyan-500 to-teal-500 flex items-center justify-center">
-                    <span className="text-white font-bold">{testimonial.name.split(' ').map(n => n[0]).join('')}</span>
-                  </div>
+                <p className="text-slate-600 mb-6 italic flex-grow">"{testimonial.quote}"</p>
+                <div className="flex items-center gap-3 mt-auto">
+                  <img 
+                    src={testimonial.image} 
+                    alt={testimonial.name}
+                    className="w-12 h-12 rounded-full object-cover"
+                  />
                   <div>
                     <p className="font-semibold text-slate-900">{testimonial.name}</p>
                     <p className="text-sm text-slate-500">{testimonial.specialty} • {testimonial.location}</p>

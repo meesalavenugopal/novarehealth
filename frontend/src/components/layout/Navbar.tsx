@@ -16,6 +16,7 @@ import { useAuthStore } from '../../store/authStore';
 import { useFeatureFlags } from '../../store/featureFlagsStore';
 import { getNotifications, getUnreadCount, markAsRead } from '../../services/notifications';
 import type { Notification } from '../../services/notifications';
+import LanguageSwitcher from '../ui/LanguageSwitcher';
 
 // Define navigation items for each role
 const getNavItems = (role: string | undefined, isAuthenticated: boolean) => {
@@ -181,6 +182,9 @@ export default function Navbar() {
 
           {/* Right Section */}
           <div className="flex items-center gap-2">
+            {/* Google Translate */}
+            <LanguageSwitcher className="hidden sm:flex" />
+            
             {user ? (
               <>
                 {/* Notifications - only for logged in users */}
@@ -325,6 +329,10 @@ export default function Navbar() {
                   onClick={() => setIsMobileMenuOpen(false)} 
                 />
               ))}
+              {/* Google Translate for mobile */}
+              <div className="px-4 py-3 border-t border-slate-100 mt-2">
+                <LanguageSwitcher />
+              </div>
             </div>
           </div>
         )}
