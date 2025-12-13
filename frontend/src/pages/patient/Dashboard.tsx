@@ -14,7 +14,7 @@ import {
   TrendingUp,
   Loader2
 } from 'lucide-react';
-import { Navbar, Footer } from '../../components/layout';
+import { Navbar } from '../../components/layout';
 import { Card, CardHeader, Button } from '../../components/ui';
 import { authFetch } from '../../services/api';
 import { config } from '../../config';
@@ -398,8 +398,6 @@ export default function PatientDashboard() {
           </div>
         </div>
       </main>
-
-      <Footer />
     </div>
   );
 }
