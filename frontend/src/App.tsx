@@ -19,7 +19,8 @@ import {
   DoctorRegisterPage, 
   VerificationPendingPage, 
   AvailabilityPage,
-  DoctorLandingPage
+  DoctorLandingPage,
+  EarningsPage
 } from './pages/doctor';
 import { AdminDashboard, PatientsPage as AdminPatientsPage, AppointmentsPage as AdminAppointmentsPage, SpecializationsPage as AdminSpecializationsPage } from './pages/admin';
 import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage } from './pages/legal';
@@ -170,6 +171,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['doctor']}>
                 <AvailabilityPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/doctor/earnings"
+            element={
+              <ProtectedRoute allowedRoles={['doctor']}>
+                <EarningsPage />
               </ProtectedRoute>
             }
           />

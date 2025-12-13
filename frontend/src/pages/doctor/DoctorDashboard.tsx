@@ -70,6 +70,17 @@ export const DoctorDashboard: React.FC = () => {
             total_consultations: doctorData.total_consultations || 0,
           }));
         }
+
+        // Fetch earnings data
+        const earningsResponse = await authFetch(`${config.apiUrl}/doctors/me/earnings`);
+        if (earningsResponse.ok) {
+          const earningsData = await earningsResponse.json();
+          setStats(prev => ({
+            ...prev,
+            total_earnings: earningsData.total_earnings || 0,
+            total_consultations: earningsData.total_completed_appointments || prev.total_consultations,
+          }));
+        }
       } catch (err) {
         console.error('Failed to check verification status:', err);
       } finally {
@@ -457,7 +468,7 @@ export const DoctorDashboard: React.FC = () => {
                     </button>
                   </Link>
                   
-                  <Link to="/appointments" className="block">
+                  <Link to="/doctor/earnings" className="block">
                     <button className="w-full flex items-center gap-3 p-3 rounded-xl hover:bg-gray-50 transition-colors">
                       <div className="w-10 h-10 rounded-lg bg-green-100 flex items-center justify-center">
                         <svg className="w-5 h-5 text-green-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">

@@ -1,11 +1,12 @@
-from datetime import date
+from datetime import date, datetime, timedelta
 from typing import List, Optional
 from fastapi import APIRouter, Depends, HTTPException, status, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, func, and_
 
 from app.db.database import get_db
 from app.api.deps import get_current_user, require_role
-from app.models.models import User, UserRole
+from app.models.models import User, UserRole, Doctor, Appointment, AppointmentStatus, Payment, PaymentStatus
 from app.services.doctor_service import DoctorService, SpecializationService
 from app.services.notification_service import notification_service
 from app.services.email_service import get_email_service
@@ -500,3 +501,88 @@ async def get_specialization(
             detail="Specialization not found"
         )
     return specialization
+
+
+# ============== Earnings Endpoint ==============
+
+@router.get("/me/earnings", response_model=dict)
+async def get_my_earnings(
+    db: AsyncSession = Depends(get_db),
+    current_user: User = Depends(require_role([UserRole.DOCTOR]))
+):
+    """
+    Get earnings statistics for the current doctor.
+    Calculates earnings from completed appointments using actual payment amounts.
+    """
+    from sqlalchemy.orm import selectinload
+    
+    # Get doctor profile
+    doctor = await DoctorService.get_doctor_by_user_id(db, current_user.id)
+    if not doctor:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="Doctor profile not found"
+        )
+    
+    consultation_fee = float(doctor.consultation_fee) if doctor.consultation_fee else 0
+    
+    # Get today's date
+    today = date.today()
+    start_of_month = today.replace(day=1)
+    start_of_week = today - timedelta(days=today.weekday())
+    
+    # Helper function to get earnings for a date filter
+    async def get_earnings_for_period(date_filter=None):
+        query = (
+            select(Appointment)
+            .options(selectinload(Appointment.payment))
+            .where(
+                and_(
+                    Appointment.doctor_id == doctor.id,
+                    Appointment.status == AppointmentStatus.COMPLETED
+                )
+            )
+        )
+        if date_filter is not None:
+            query = query.where(date_filter)
+        
+        result = await db.execute(query)
+        appointments = result.scalars().all()
+        
+        total = 0.0
+        count = 0
+        for apt in appointments:
+            count += 1
+            # Use actual payment amount if available, otherwise use current consultation fee
+            if apt.payment and apt.payment.status == PaymentStatus.SUCCESS:
+                total += float(apt.payment.amount)
+            else:
+                # Fallback to current consultation fee for appointments without payment records
+                total += consultation_fee
+        
+        return {"earnings": total, "count": count}
+    
+    # Get all completed appointments (all time)
+    total_data = await get_earnings_for_period()
+    
+    # Today's completed appointments
+    today_data = await get_earnings_for_period(Appointment.scheduled_date == today)
+    
+    # This week's completed appointments
+    week_data = await get_earnings_for_period(Appointment.scheduled_date >= start_of_week)
+    
+    # This month's completed appointments
+    month_data = await get_earnings_for_period(Appointment.scheduled_date >= start_of_month)
+    
+    return {
+        "consultation_fee": consultation_fee,
+        "total_earnings": total_data["earnings"],
+        "today_earnings": today_data["earnings"],
+        "week_earnings": week_data["earnings"],
+        "month_earnings": month_data["earnings"],
+        "total_completed_appointments": total_data["count"],
+        "today_completed_appointments": today_data["count"],
+        "week_completed_appointments": week_data["count"],
+        "month_completed_appointments": month_data["count"],
+        "currency": "MZN"
+    }
