@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Search, 
   Filter, 
@@ -37,6 +38,7 @@ interface Specialization {
 }
 
 export default function FindDoctorsPage() {
+  const { t } = useTranslation();
   const [searchParams] = useSearchParams();
   const [doctors, setDoctors] = useState<Doctor[]>([]);
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
@@ -186,8 +188,8 @@ export default function FindDoctorsPage() {
       <div className="max-w-7xl mx-auto px-4 py-8">
         {/* Header */}
         <div className="mb-8">
-          <h1 className="text-3xl font-bold text-slate-900 mb-2">Find Doctors</h1>
-          <p className="text-slate-500">Search and book appointments with verified healthcare professionals</p>
+          <h1 className="text-3xl font-bold text-slate-900 mb-2">{t('doctors.title')}</h1>
+          <p className="text-slate-500">{t('doctors.subtitle')}</p>
         </div>
 
         {/* Search and Filters */}
@@ -200,7 +202,7 @@ export default function FindDoctorsPage() {
                 type="text"
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                placeholder="Search by name, specialization, or keyword..."
+                placeholder={t('doctors.searchPlaceholder')}
                 className="w-full pl-12 pr-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
               />
             </div>
@@ -215,7 +217,7 @@ export default function FindDoctorsPage() {
               }`}
             >
               <Filter className="w-5 h-5" />
-              Filters
+              {t('common.filter')}
               {hasActiveFilters && (
                 <span className="w-2 h-2 bg-cyan-500 rounded-full" />
               )}
@@ -228,10 +230,10 @@ export default function FindDoctorsPage() {
                 onChange={(e) => setFilters({ ...filters, sortBy: e.target.value })}
                 className="appearance-none w-full md:w-48 px-4 py-3 pr-10 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white"
               >
-                <option value="rating">Highest Rated</option>
-                <option value="experience">Most Experienced</option>
-                <option value="fee_low">Lowest Fee</option>
-                <option value="fee_high">Highest Fee</option>
+                <option value="rating">{t('doctors.sort.highestRated')}</option>
+                <option value="experience">{t('doctors.sort.mostExperienced')}</option>
+                <option value="fee_low">{t('doctors.sort.lowestFee')}</option>
+                <option value="fee_high">{t('doctors.sort.highestFee')}</option>
               </select>
               <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 w-5 h-5 text-slate-400 pointer-events-none" />
             </div>
@@ -243,13 +245,13 @@ export default function FindDoctorsPage() {
               <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
                 {/* Specialization */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Specialization</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('doctors.filters.specialization')}</label>
                   <select
                     value={filters.specialization}
                     onChange={(e) => setFilters({ ...filters, specialization: e.target.value })}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   >
-                    <option value="">All Specializations</option>
+                    <option value="">{t('doctors.filters.allSpecializations')}</option>
                     {specializations.map((spec) => (
                       <option key={spec.id} value={spec.name}>{spec.name}</option>
                     ))}
@@ -258,7 +260,7 @@ export default function FindDoctorsPage() {
 
                 {/* Fee Range */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Min Fee (MZN)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('doctors.filters.minFee')}</label>
                   <input
                     type="number"
                     value={filters.minFee}
@@ -268,29 +270,29 @@ export default function FindDoctorsPage() {
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Max Fee (MZN)</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('doctors.filters.maxFee')}</label>
                   <input
                     type="number"
                     value={filters.maxFee}
                     onChange={(e) => setFilters({ ...filters, maxFee: e.target.value })}
-                    placeholder="Any"
+                    placeholder={t('doctors.filters.any')}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   />
                 </div>
 
                 {/* Min Rating */}
                 <div>
-                  <label className="block text-sm font-medium text-slate-700 mb-1">Min Rating</label>
+                  <label className="block text-sm font-medium text-slate-700 mb-1">{t('doctors.filters.minRating')}</label>
                   <select
                     value={filters.minRating}
                     onChange={(e) => setFilters({ ...filters, minRating: e.target.value })}
                     className="w-full px-3 py-2.5 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent"
                   >
-                    <option value="">Any Rating</option>
-                    <option value="4.5">4.5+ Stars</option>
-                    <option value="4">4+ Stars</option>
-                    <option value="3.5">3.5+ Stars</option>
-                    <option value="3">3+ Stars</option>
+                    <option value="">{t('doctors.filters.anyRating')}</option>
+                    <option value="4.5">{t('doctors.filters.stars45')}</option>
+                    <option value="4">{t('doctors.filters.stars4')}</option>
+                    <option value="3.5">{t('doctors.filters.stars35')}</option>
+                    <option value="3">{t('doctors.filters.stars3')}</option>
                   </select>
                 </div>
               </div>
@@ -303,7 +305,7 @@ export default function FindDoctorsPage() {
                     onChange={(e) => setFilters({ ...filters, availableNow: e.target.checked })}
                     className="w-4 h-4 text-cyan-600 rounded focus:ring-cyan-500"
                   />
-                  <span className="text-sm text-slate-700">Available Now</span>
+                  <span className="text-sm text-slate-700">{t('doctors.filters.availableNow')}</span>
                 </label>
 
                 {hasActiveFilters && (
@@ -312,7 +314,7 @@ export default function FindDoctorsPage() {
                     className="text-sm text-cyan-600 hover:underline flex items-center gap-1"
                   >
                     <X className="w-4 h-4" />
-                    Clear all filters
+                    {t('doctors.filters.clearAll')}
                   </button>
                 )}
               </div>
@@ -322,7 +324,7 @@ export default function FindDoctorsPage() {
 
         {/* Results Count */}
         <div className="mb-4 text-sm text-slate-500">
-          {loading ? 'Loading...' : `${filteredDoctors.length} doctors found`}
+          {loading ? t('common.loading') : t('doctors.doctorsFound', { count: filteredDoctors.length })}
         </div>
 
         {/* Doctors Grid */}
@@ -333,21 +335,21 @@ export default function FindDoctorsPage() {
         ) : filteredDoctors.length === 0 ? (
           <div className="text-center py-20 bg-white rounded-2xl border border-slate-200">
             <Stethoscope className="w-12 h-12 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-lg font-medium text-slate-900 mb-2">No doctors found</h3>
-            <p className="text-slate-500 mb-4">Try adjusting your search or filters</p>
+            <h3 className="text-lg font-medium text-slate-900 mb-2">{t('doctors.noDoctorsFound')}</h3>
+            <p className="text-slate-500 mb-4">{t('doctors.tryAdjusting')}</p>
             {hasActiveFilters && (
               <button
                 onClick={clearFilters}
                 className="text-cyan-600 hover:underline"
               >
-                Clear all filters
+                {t('doctors.filters.clearAll')}
               </button>
             )}
           </div>
         ) : (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
             {filteredDoctors.map((doctor) => (
-              <DoctorCard key={doctor.id} doctor={doctor} />
+              <DoctorCard key={doctor.id} doctor={doctor} t={t} />
             ))}
           </div>
         )}
@@ -356,7 +358,7 @@ export default function FindDoctorsPage() {
   );
 }
 
-function DoctorCard({ doctor }: { doctor: Doctor }) {
+function DoctorCard({ doctor, t }: { doctor: Doctor; t: any }) {
   return (
     <div className="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden hover:shadow-lg transition-shadow">
       <div className="p-6">
@@ -383,18 +385,18 @@ function DoctorCard({ doctor }: { doctor: Doctor }) {
             <div className="flex items-center gap-1 mt-1">
               <Star className="w-4 h-4 text-amber-400 fill-amber-400" />
               <span className="text-sm font-medium text-slate-700">
-                {doctor.rating?.toFixed(1) || 'New'}
+                {doctor.rating?.toFixed(1) || t('doctors.new')}
               </span>
               {doctor.total_reviews > 0 && (
                 <span className="text-sm text-slate-400">
-                  ({doctor.total_reviews} reviews)
+                  ({doctor.total_reviews} {t('doctors.reviews')})
                 </span>
               )}
             </div>
           </div>
           {doctor.is_available && (
             <span className="px-2 py-1 bg-green-100 text-green-700 text-xs font-medium rounded-full">
-              Online
+              {t('doctors.online')}
             </span>
           )}
         </div>
@@ -403,7 +405,7 @@ function DoctorCard({ doctor }: { doctor: Doctor }) {
         <div className="space-y-2 mb-4">
           <div className="flex items-center gap-2 text-sm text-slate-600">
             <GraduationCap className="w-4 h-4 text-slate-400" />
-            <span>{doctor.experience_years || 0} years experience</span>
+            <span>{doctor.experience_years || 0} {t('doctors.yearsExperience')}</span>
           </div>
           {doctor.languages && doctor.languages.length > 0 && (
             <div className="flex items-center gap-2 text-sm text-slate-600">
@@ -426,13 +428,13 @@ function DoctorCard({ doctor }: { doctor: Doctor }) {
             <span className="text-lg font-bold text-slate-900">
               {doctor.consultation_fee?.toLocaleString()} MZN
             </span>
-            <span className="text-sm text-slate-500"> / consultation</span>
+            <span className="text-sm text-slate-500"> / {t('doctors.consultation')}</span>
           </div>
           <Link
             to={`/doctor/${doctor.id}`}
             className="px-4 py-2 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors text-sm font-medium"
           >
-            Book Now
+            {t('doctors.bookNow')}
           </Link>
         </div>
       </div>

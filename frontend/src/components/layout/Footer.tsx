@@ -1,4 +1,5 @@
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { 
   Phone, 
   Mail, 
@@ -11,7 +12,7 @@ import {
 import { config } from '../../config';
 
 export default function Footer() {
-  const currentYear = new Date().getFullYear();
+  const { t } = useTranslation();
 
   return (
     <footer className="bg-slate-900 text-slate-300">
@@ -60,31 +61,31 @@ export default function Footer() {
 
           {/* Quick Links */}
           <div>
-            <h3 className="text-white font-semibold mb-4">Quick Links</h3>
+            <h3 className="text-white font-semibold mb-4">{t('footer.quickLinks')}</h3>
             <ul className="space-y-3">
-              <FooterLink to="/find-doctors">Find Doctors</FooterLink>
-              <FooterLink to="/specializations">Specializations</FooterLink>
-              <FooterLink to="/book-appointment">Book Appointment</FooterLink>
-              <FooterLink to="/my-appointments">My Appointments</FooterLink>
-              <FooterLink to="/prescriptions">Prescriptions</FooterLink>
+              <FooterLink to="/find-doctors">{t('nav.findDoctors')}</FooterLink>
+              <FooterLink to="/specializations">{t('nav.specializations')}</FooterLink>
+              <FooterLink to="/book-appointment">{t('nav.bookAppointment')}</FooterLink>
+              <FooterLink to="/my-appointments">{t('nav.appointments')}</FooterLink>
+              <FooterLink to="/prescriptions">{t('nav.prescriptions')}</FooterLink>
             </ul>
           </div>
 
           {/* For Doctors */}
           <div>
-            <h3 className="text-white font-semibold mb-4">For Doctors</h3>
+            <h3 className="text-white font-semibold mb-4">{t('home.forDoctors.title')}</h3>
             <ul className="space-y-3">
-              <FooterLink to="/for-doctors">Join as Doctor</FooterLink>
-              <FooterLink to="/doctor/dashboard">Doctor Dashboard</FooterLink>
-              <FooterLink to="/doctor/earnings">Earnings</FooterLink>
-              <FooterLink to="/doctor-guidelines">Guidelines</FooterLink>
-              <FooterLink to="/faq/doctors">Doctor FAQ</FooterLink>
+              <FooterLink to="/for-doctors">{t('home.forDoctors.joinNow')}</FooterLink>
+              <FooterLink to="/doctor/dashboard">{t('doctor.dashboard.title')}</FooterLink>
+              <FooterLink to="/doctor/earnings">{t('doctor.earnings.title')}</FooterLink>
+              <FooterLink to="/doctor-guidelines">{t('help.faq')}</FooterLink>
+              <FooterLink to="/faq/doctors">{t('help.faq')}</FooterLink>
             </ul>
           </div>
 
           {/* Contact - Full width on mobile */}
           <div className="col-span-2 lg:col-span-1">
-            <h3 className="text-white font-semibold mb-4">Contact Us</h3>
+            <h3 className="text-white font-semibold mb-4">{t('footer.contact')}</h3>
             <ul className="space-y-4">
               <li className="flex items-start gap-3">
                 <MapPin className="w-5 h-5 text-cyan-500 flex-shrink-0 mt-0.5" />
@@ -115,17 +116,17 @@ export default function Footer() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           <div className="flex flex-col md:flex-row items-center justify-between gap-4">
             <p className="text-sm text-slate-400">
-              © {currentYear} NovareHealth. All rights reserved.
+              {t('footer.copyright')}
             </p>
             <div className="flex flex-wrap items-center gap-4 text-sm">
               <Link to="/privacy" className="text-slate-400 hover:text-cyan-400 transition-colors">
-                Privacy Policy
+                {t('footer.privacyPolicy')}
               </Link>
               <Link to="/terms" className="text-slate-400 hover:text-cyan-400 transition-colors">
-                Terms of Service
+                {t('footer.termsOfService')}
               </Link>
               <Link to="/refund-policy" className="text-slate-400 hover:text-cyan-400 transition-colors">
-                Refund Policy
+                {t('footer.refundPolicy')}
               </Link>
             </div>
           </div>

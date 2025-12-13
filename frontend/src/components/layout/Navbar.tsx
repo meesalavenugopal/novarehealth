@@ -9,21 +9,24 @@ import {
   Settings,
   HelpCircle,
   LayoutDashboard,
-  Loader2
+  Loader2,
+  Globe
 } from 'lucide-react';
 import { useState, useRef, useEffect, useCallback } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/authStore';
 import { useFeatureFlags } from '../../store/featureFlagsStore';
 import { getNotifications, getUnreadCount, markAsRead } from '../../services/notifications';
 import type { Notification } from '../../services/notifications';
+import { changeLanguage, getCurrentLanguage } from '../../i18n';
 
 // Define navigation items for each role
-const getNavItems = (role: string | undefined, isAuthenticated: boolean) => {
+const getNavItems = (role: string | undefined, isAuthenticated: boolean, t: (key: string) => string) => {
   // For unauthenticated users, show only public pages
   if (!isAuthenticated) {
     return [
-      { to: '/specializations', label: 'Specializations' },
-      { to: '/find-doctors', label: 'Find Doctors' },
+      { to: '/specializations', label: t('nav.specializations') },
+      { to: '/find-doctors', label: t('nav.findDoctors') },
     ];
   }
   
@@ -31,25 +34,25 @@ const getNavItems = (role: string | undefined, isAuthenticated: boolean) => {
     case 'admin':
     case 'super_admin':
       return [
-        { to: '/admin/dashboard', label: 'Dashboard' },
-        { to: '/admin/patients', label: 'Patients' },
-        { to: '/admin/appointments', label: 'Appointments' },
-        { to: '/admin/specializations', label: 'Specializations' },
+        { to: '/admin/dashboard', label: t('nav.dashboard') },
+        { to: '/admin/patients', label: t('admin.users.patients') },
+        { to: '/admin/appointments', label: t('nav.appointments') },
+        { to: '/admin/specializations', label: t('nav.specializations') },
       ];
     case 'doctor':
       return [
-        { to: '/doctor/dashboard', label: 'Dashboard' },
-        { to: '/doctor/appointments', label: 'Appointments' },
-        { to: '/doctor/availability', label: 'Availability' },
-        { to: '/prescriptions', label: 'Prescriptions' },
+        { to: '/doctor/dashboard', label: t('nav.dashboard') },
+        { to: '/doctor/appointments', label: t('nav.appointments') },
+        { to: '/doctor/availability', label: t('nav.availability') },
+        { to: '/prescriptions', label: t('nav.prescriptions') },
       ];
     case 'patient':
     default:
       return [
-        { to: '/find-doctors', label: 'Find Doctors' },
-        { to: '/appointments', label: 'Appointments' },
-        { to: '/prescriptions', label: 'Prescriptions' },
-        { to: '/health-records', label: 'Records' },
+        { to: '/find-doctors', label: t('nav.findDoctors') },
+        { to: '/appointments', label: t('nav.appointments') },
+        { to: '/prescriptions', label: t('nav.prescriptions') },
+        { to: '/health-records', label: t('nav.healthRecords') },
       ];
   }
 };
@@ -70,16 +73,27 @@ const getDashboardLink = (role: string | undefined) => {
 };
 
 export default function Navbar() {
+  const { t } = useTranslation();
   const { user, logout } = useAuthStore();
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+  const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [unreadCount, setUnreadCount] = useState(0);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
+  const languageRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+
+  // Language switcher
+  const handleLanguageChange = (lang: 'pt' | 'en') => {
+    changeLanguage(lang);
+    setCurrentLang(lang);
+    setIsLanguageOpen(false);
+  };
 
   // Fetch notifications
   const fetchNotifications = useCallback(async () => {
@@ -144,6 +158,9 @@ export default function Navbar() {
       if (notificationRef.current && !notificationRef.current.contains(event.target as Node)) {
         setIsNotificationOpen(false);
       }
+      if (languageRef.current && !languageRef.current.contains(event.target as Node)) {
+        setIsLanguageOpen(false);
+      }
     }
     document.addEventListener('mousedown', handleClickOutside);
     return () => document.removeEventListener('mousedown', handleClickOutside);
@@ -155,7 +172,7 @@ export default function Navbar() {
 
   // Get role-specific navigation items
   const isAuthenticated = !!user;
-  const navItems = getNavItems(user?.role, isAuthenticated);
+  const navItems = getNavItems(user?.role, isAuthenticated, t);
   const dashboardLink = getDashboardLink(user?.role);
 
   return (
@@ -181,6 +198,41 @@ export default function Navbar() {
 
           {/* Right Section */}
           <div className="flex items-center gap-2">
+            {/* Language Switcher */}
+            <div ref={languageRef} className="relative">
+              <button
+                onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+                className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-slate-600 hover:bg-slate-100 transition-colors text-sm font-medium"
+              >
+                <Globe className="w-4 h-4" />
+                <span className="hidden sm:block">{currentLang === 'pt' ? 'PT' : 'EN'}</span>
+                <ChevronDown className="w-3.5 h-3.5" />
+              </button>
+
+              {isLanguageOpen && (
+                <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-200 py-1 animate-fadeIn z-50">
+                  <button
+                    onClick={() => handleLanguageChange('pt')}
+                    className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                      currentLang === 'pt' ? 'bg-cyan-50 text-cyan-700' : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-lg">🇧🇷</span>
+                    <span className="font-medium">Português</span>
+                  </button>
+                  <button
+                    onClick={() => handleLanguageChange('en')}
+                    className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                      currentLang === 'en' ? 'bg-cyan-50 text-cyan-700' : 'text-slate-700 hover:bg-slate-50'
+                    }`}
+                  >
+                    <span className="text-lg">🇺🇸</span>
+                    <span className="font-medium">English</span>
+                  </button>
+                </div>
+              )}
+            </div>
+
             {user ? (
               <>
                 {/* Notifications - only for logged in users */}
@@ -200,7 +252,7 @@ export default function Navbar() {
                   {isNotificationOpen && (
                     <div className="absolute right-0 mt-2 w-80 bg-white rounded-2xl shadow-xl border border-slate-200 py-2 animate-fadeIn">
                       <div className="px-4 py-2 border-b border-slate-100">
-                        <h3 className="font-semibold text-slate-900">Notifications</h3>
+                        <h3 className="font-semibold text-slate-900">{t('notifications.title')}</h3>
                       </div>
                       <div className="max-h-80 overflow-y-auto">
                         {notificationsLoading ? (
@@ -209,7 +261,7 @@ export default function Navbar() {
                           </div>
                         ) : notifications.length === 0 ? (
                           <div className="px-4 py-8 text-center text-slate-500 text-sm">
-                            No notifications yet
+                            {t('notifications.noNotifications')}
                           </div>
                         ) : (
                           notifications.map((notification) => (
@@ -234,7 +286,7 @@ export default function Navbar() {
                       </div>
                       <div className="px-4 py-2 border-t border-slate-100">
                         <Link to="/notifications" className="text-cyan-600 text-sm font-medium hover:underline">
-                          View all notifications
+                          {t('common.seeAll')}
                         </Link>
                       </div>
                     </div>
@@ -265,12 +317,12 @@ export default function Navbar() {
                         <p className="text-sm text-slate-500">{user.email || user.phone}</p>
                       </div>
                       <div className="py-1">
-                        <DropdownLink to={dashboardLink} icon={<LayoutDashboard className="w-4 h-4" />} label="Dashboard" />
-                        <DropdownLink to="/profile" icon={<User className="w-4 h-4" />} label="My Profile" />
+                        <DropdownLink to={dashboardLink} icon={<LayoutDashboard className="w-4 h-4" />} label={t('nav.dashboard')} />
+                        <DropdownLink to="/profile" icon={<User className="w-4 h-4" />} label={t('profile.myProfile')} />
                         {useFeatureFlags.getState().flags.settings_enabled && (
-                          <DropdownLink to="/settings" icon={<Settings className="w-4 h-4" />} label="Settings" />
+                          <DropdownLink to="/settings" icon={<Settings className="w-4 h-4" />} label={t('nav.settings')} />
                         )}
-                        <DropdownLink to="/help" icon={<HelpCircle className="w-4 h-4" />} label="Help & Support" />
+                        <DropdownLink to="/help" icon={<HelpCircle className="w-4 h-4" />} label={t('nav.help')} />
                       </div>
                       <div className="border-t border-slate-100 py-1">
                         <button
@@ -278,7 +330,7 @@ export default function Navbar() {
                           className="w-full px-4 py-2 text-left text-red-600 hover:bg-red-50 flex items-center gap-3 text-sm font-medium transition-colors"
                         >
                           <LogOut className="w-4 h-4" />
-                          Logout
+                          {t('nav.logout')}
                         </button>
                       </div>
                     </div>
@@ -292,13 +344,13 @@ export default function Navbar() {
                   to="/login"
                   className="px-4 py-2 text-sm font-medium text-slate-600 hover:text-slate-900 transition-colors"
                 >
-                  Login
+                  {t('nav.login')}
                 </Link>
                 <Link
                   to="/login"
                   className="px-4 py-2 text-sm font-medium text-white bg-gradient-to-r from-cyan-500 to-teal-500 rounded-xl hover:from-cyan-600 hover:to-teal-600 transition-all shadow-lg shadow-cyan-500/25"
                 >
-                  Get Started
+                  {t('home.cta.getStarted')}
                 </Link>
               </div>
             )}

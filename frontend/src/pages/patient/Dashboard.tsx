@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuthStore } from '../../store/authStore';
 import { 
   Calendar, 
@@ -44,6 +45,7 @@ interface DashboardStats {
 }
 
 export default function PatientDashboard() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const navigate = useNavigate();
   const [loading, setLoading] = useState(true);
@@ -103,32 +105,32 @@ export default function PatientDashboard() {
   const quickActions = [
     { 
       icon: <Video className="w-6 h-6" />, 
-      title: 'Video Consult', 
-      description: 'Talk to a doctor now',
+      title: t('dashboard.quickActions.videoConsult'),
+      description: t('dashboard.quickActions.videoConsultDesc'),
       href: '/find-doctors',
       color: 'from-cyan-500 to-teal-500',
       shadow: 'shadow-cyan-500/20'
     },
     { 
       icon: <Calendar className="w-6 h-6" />, 
-      title: 'Book Appointment', 
-      description: 'Schedule for later',
+      title: t('dashboard.quickActions.bookAppointment'),
+      description: t('dashboard.quickActions.bookAppointmentDesc'),
       href: '/find-doctors',
       color: 'from-violet-500 to-purple-500',
       shadow: 'shadow-violet-500/20'
     },
     { 
       icon: <FileText className="w-6 h-6" />, 
-      title: 'Prescriptions', 
-      description: 'View your medicines',
+      title: t('dashboard.quickActions.prescriptions'),
+      description: t('dashboard.quickActions.prescriptionsDesc'),
       href: '/prescriptions',
       color: 'from-emerald-500 to-green-500',
       shadow: 'shadow-emerald-500/20'
     },
     { 
       icon: <Activity className="w-6 h-6" />, 
-      title: 'Health Records', 
-      description: 'Your medical history',
+      title: t('dashboard.quickActions.healthRecords'),
+      description: t('dashboard.quickActions.healthRecordsDesc'),
       href: '/health-records',
       color: 'from-amber-500 to-orange-500',
       shadow: 'shadow-amber-500/20'
@@ -162,16 +164,16 @@ export default function PatientDashboard() {
           <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
             <div>
               <h1 className="text-2xl sm:text-3xl font-bold text-slate-900">
-                Welcome back, {user?.first_name || 'there'}! 👋
+                {t('dashboard.welcomeBack')}, {user?.first_name || t('common.there')}! 👋
               </h1>
-              <p className="text-slate-500 mt-1">How are you feeling today?</p>
+              <p className="text-slate-500 mt-1">{t('dashboard.howAreYou')}</p>
             </div>
             <Button
               leftIcon={<Plus className="w-4 h-4" />}
               size="lg"
               onClick={() => navigate('/find-doctors')}
             >
-              Book Consultation
+              {t('dashboard.bookConsultation')}
             </Button>
           </div>
         </div>
@@ -200,11 +202,11 @@ export default function PatientDashboard() {
             {/* Upcoming Appointments */}
             <Card padding="lg">
               <CardHeader 
-                title="Upcoming Appointments" 
-                subtitle="Your scheduled consultations"
+                title={t('dashboard.upcomingAppointments')}
+                subtitle={t('dashboard.scheduledConsultations')}
                 action={
                   <Link to="/patient/appointments" className="text-sm text-cyan-600 font-medium hover:underline flex items-center gap-1">
-                    View all <ArrowUpRight className="w-4 h-4" />
+                    {t('common.viewAll')} <ArrowUpRight className="w-4 h-4" />
                   </Link>
                 }
               />
@@ -266,9 +268,9 @@ export default function PatientDashboard() {
                   <div className="w-16 h-16 bg-slate-100 rounded-2xl flex items-center justify-center mx-auto mb-4">
                     <Calendar className="w-8 h-8 text-slate-400" />
                   </div>
-                  <h3 className="font-medium text-slate-900 mb-1">No upcoming appointments</h3>
-                  <p className="text-slate-500 text-sm mb-4">Book your first consultation with a doctor</p>
-                  <Button>Book Appointment</Button>
+                  <h3 className="font-medium text-slate-900 mb-1">{t('dashboard.noUpcomingAppointments')}</h3>
+                  <p className="text-slate-500 text-sm mb-4">{t('dashboard.bookFirstConsultation')}</p>
+                  <Button>{t('dashboard.quickActions.bookAppointment')}</Button>
                 </div>
               )}
             </Card>
@@ -276,11 +278,11 @@ export default function PatientDashboard() {
             {/* Browse by Specialization */}
             <Card padding="lg">
               <CardHeader 
-                title="Browse by Specialization" 
-                subtitle="Find doctors by their expertise"
+                title={t('dashboard.browseBySpecialization')}
+                subtitle={t('dashboard.findDoctorsByExpertise')}
                 action={
                   <Link to="/specializations" className="text-sm text-cyan-600 font-medium hover:underline flex items-center gap-1">
-                    View all <ArrowUpRight className="w-4 h-4" />
+                    {t('common.viewAll')} <ArrowUpRight className="w-4 h-4" />
                   </Link>
                 }
               />
@@ -300,14 +302,14 @@ export default function PatientDashboard() {
                         </div>
                         <div>
                           <h4 className="font-medium text-slate-900 text-sm">{spec.name}</h4>
-                          <p className="text-xs text-slate-500">{spec.doctor_count} doctors</p>
+                          <p className="text-xs text-slate-500">{spec.doctor_count} {t('common.doctors')}</p>
                         </div>
                       </Link>
                     );
                   })
                 ) : (
                   <div className="col-span-full text-center py-8 text-slate-500">
-                    No specializations available
+                    {t('dashboard.noSpecializations')}
                   </div>
                 )}
               </div>
@@ -319,22 +321,22 @@ export default function PatientDashboard() {
             {/* Health Stats Card */}
             <Card padding="lg" className="bg-gradient-to-br from-cyan-500 to-teal-500 border-0 text-white">
               <div className="flex items-center justify-between mb-4">
-                <h3 className="font-semibold">Your Activity</h3>
+                <h3 className="font-semibold">{t('dashboard.yourActivity')}</h3>
                 <TrendingUp className="w-5 h-5 opacity-80" />
               </div>
-              <p className="text-sm opacity-80 mb-4">Track your healthcare journey with NovareHealth.</p>
+              <p className="text-sm opacity-80 mb-4">{t('dashboard.trackHealthcare')}</p>
               <div className="flex gap-2">
                 <div className="flex-1 bg-white/20 rounded-lg p-3 text-center backdrop-blur">
                   <p className="text-2xl font-bold">{stats.total_consultations}</p>
-                  <p className="text-xs opacity-80">Consultations</p>
+                  <p className="text-xs opacity-80">{t('dashboard.stats.consultations')}</p>
                 </div>
                 <div className="flex-1 bg-white/20 rounded-lg p-3 text-center backdrop-blur">
                   <p className="text-2xl font-bold">{appointments.length}</p>
-                  <p className="text-xs opacity-80">Appointments</p>
+                  <p className="text-xs opacity-80">{t('dashboard.stats.appointments')}</p>
                 </div>
                 <div className="flex-1 bg-white/20 rounded-lg p-3 text-center backdrop-blur">
                   <p className="text-2xl font-bold">{stats.total_prescriptions}</p>
-                  <p className="text-xs opacity-80">Prescriptions</p>
+                  <p className="text-xs opacity-80">{t('dashboard.stats.prescriptions')}</p>
                 </div>
               </div>
             </Card>
@@ -342,8 +344,8 @@ export default function PatientDashboard() {
             {/* Find a Doctor */}
             <Card padding="lg">
               <CardHeader 
-                title="Need Help?" 
-                subtitle="Find the right doctor for you"
+                title={t('dashboard.needHelp')}
+                subtitle={t('dashboard.findRightDoctor')}
               />
               
               <div className="space-y-3">
@@ -355,8 +357,8 @@ export default function PatientDashboard() {
                     <Stethoscope className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-medium text-slate-900 text-sm">Browse All Doctors</h4>
-                    <p className="text-xs text-slate-500">Find specialists near you</p>
+                    <h4 className="font-medium text-slate-900 text-sm">{t('dashboard.browseAllDoctors')}</h4>
+                    <p className="text-xs text-slate-500">{t('dashboard.findSpecialists')}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-400" />
                 </Link>
@@ -369,15 +371,15 @@ export default function PatientDashboard() {
                     <Activity className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
-                    <h4 className="font-medium text-slate-900 text-sm">All Specializations</h4>
-                    <p className="text-xs text-slate-500">View all medical fields</p>
+                    <h4 className="font-medium text-slate-900 text-sm">{t('dashboard.allSpecializations')}</h4>
+                    <p className="text-xs text-slate-500">{t('dashboard.viewMedicalFields')}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-400" />
                 </Link>
               </div>
 
               <Button variant="primary" fullWidth className="mt-4" onClick={() => navigate('/find-doctors')}>
-                Book Consultation
+                {t('dashboard.bookConsultation')}
               </Button>
             </Card>
 
@@ -388,9 +390,9 @@ export default function PatientDashboard() {
                   <span className="text-xl">💡</span>
                 </div>
                 <div>
-                  <h3 className="font-semibold text-amber-900 mb-1">Health Tip of the Day</h3>
+                  <h3 className="font-semibold text-amber-900 mb-1">{t('dashboard.healthTipTitle')}</h3>
                   <p className="text-sm text-amber-700">
-                    Stay hydrated! Drink at least 8 glasses of water daily for better health and energy.
+                    {t('dashboard.healthTipContent')}
                   </p>
                 </div>
               </div>

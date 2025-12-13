@@ -1,4 +1,5 @@
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { Link } from 'react-router-dom';
 import {
   Search,
@@ -19,6 +20,7 @@ interface Specialization {
 }
 
 export default function SpecializationsPage() {
+  const { t } = useTranslation();
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchQuery, setSearchQuery] = useState('');
@@ -53,10 +55,10 @@ export default function SpecializationsPage() {
         {/* Header */}
         <div className="text-center mb-12">
           <h1 className="text-4xl font-bold text-slate-900 mb-4">
-            Find Doctors by Specialization
+            {t('specializations.findBySpecialization')}
           </h1>
           <p className="text-lg text-slate-600 max-w-2xl mx-auto">
-            Browse our comprehensive list of medical specializations and find the right specialist for your healthcare needs
+            {t('specializations.browseDescription')}
           </p>
         </div>
 
@@ -68,7 +70,7 @@ export default function SpecializationsPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Search specializations..."
+              placeholder={t('specializations.searchPlaceholder')}
               className="w-full pl-12 pr-4 py-4 border border-slate-200 rounded-2xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent bg-white shadow-sm"
             />
           </div>
@@ -82,8 +84,8 @@ export default function SpecializationsPage() {
         ) : filteredSpecializations.length === 0 ? (
           <div className="text-center py-20">
             <Stethoscope className="w-16 h-16 text-slate-300 mx-auto mb-4" />
-            <h3 className="text-xl font-medium text-slate-900 mb-2">No specializations found</h3>
-            <p className="text-slate-500">Try a different search term</p>
+            <h3 className="text-xl font-medium text-slate-900 mb-2">{t('specializations.noSpecializationsFound')}</h3>
+            <p className="text-slate-500">{t('specializations.tryDifferentSearch')}</p>
           </div>
         ) : (
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-4">
@@ -104,7 +106,7 @@ export default function SpecializationsPage() {
                     {spec.name}
                   </h3>
                   <p className="text-sm text-slate-500">
-                    {spec.doctor_count || 0} Doctors
+                    {spec.doctor_count || 0} {t('specializations.doctors')}
                   </p>
                 </div>
                 
@@ -117,12 +119,12 @@ export default function SpecializationsPage() {
 
         {/* Browse All Doctors CTA */}
         <div className="text-center mt-16 pt-8 border-t border-slate-200">
-          <p className="text-slate-600 mb-4">Not sure which specialist you need?</p>
+          <p className="text-slate-600 mb-4">{t('specializations.notSureWhich')}</p>
           <Link
             to="/find-doctors"
             className="inline-flex items-center gap-2 px-6 py-3 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium"
           >
-            Browse All Doctors
+            {t('specializations.browseAllDoctors')}
             <ChevronRight className="w-5 h-5" />
           </Link>
         </div>

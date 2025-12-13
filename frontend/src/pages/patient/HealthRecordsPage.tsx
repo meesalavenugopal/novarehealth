@@ -1,9 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navbar } from '../../components/layout';
 import { HealthRecords } from '../../components/patient';
 import { FolderOpen } from 'lucide-react';
 
 export const HealthRecordsPage: React.FC = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
@@ -15,10 +18,10 @@ export const HealthRecordsPage: React.FC = () => {
             <div className="p-2 bg-cyan-100 rounded-xl">
               <FolderOpen className="w-6 h-6 text-cyan-600" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-800">Health Records</h1>
+            <h1 className="text-2xl font-bold text-slate-800">{t('healthRecords.title')}</h1>
           </div>
           <p className="text-slate-500">
-            Upload and manage your medical documents, lab reports, and prescriptions
+            {t('healthRecords.subtitle')}
           </p>
         </div>
 

@@ -1,9 +1,12 @@
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { Navbar } from '../../components/layout';
 import { PrescriptionList } from '../../components/patient';
 import { FileText } from 'lucide-react';
 
 export const PrescriptionsPage: React.FC = () => {
+  const { t } = useTranslation();
+
   return (
     <div className="min-h-screen bg-slate-50">
       <Navbar />
@@ -15,10 +18,10 @@ export const PrescriptionsPage: React.FC = () => {
             <div className="p-2 bg-cyan-100 rounded-xl">
               <FileText className="w-6 h-6 text-cyan-600" />
             </div>
-            <h1 className="text-2xl font-bold text-slate-800">My Prescriptions</h1>
+            <h1 className="text-2xl font-bold text-slate-800">{t('prescriptions.myPrescriptions')}</h1>
           </div>
           <p className="text-slate-500">
-            View and download prescriptions from your consultations
+            {t('prescriptions.subtitle')}
           </p>
         </div>
 

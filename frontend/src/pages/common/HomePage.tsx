@@ -1,5 +1,6 @@
 import { Link, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { 
   Video, 
   Shield, 
@@ -14,11 +15,14 @@ import {
   Stethoscope,
   Clock,
   Users,
+  Globe,
+  ChevronDown,
 } from 'lucide-react';
 import { Footer } from '../../components/layout';
 import Button from '../../components/ui/Button';
 import { useAuthStore } from '../../store/authStore';
 import { useFeatureFlags } from '../../store/featureFlagsStore';
+import { changeLanguage, getCurrentLanguage } from '../../i18n';
 import { config } from '../../config';
 import api from '../../services/api';
 import { getSpecializationIcon } from '../../utils/specializationIcons';
@@ -31,10 +35,19 @@ interface Specialization {
 }
 
 export default function HomePage() {
+  const { t } = useTranslation();
   const { user } = useAuthStore();
   const [specializations, setSpecializations] = useState<Specialization[]>([]);
   const [totalDoctors, setTotalDoctors] = useState<number>(0);
   const [loading, setLoading] = useState(true);
+  const [isLanguageOpen, setIsLanguageOpen] = useState(false);
+  const [currentLang, setCurrentLang] = useState(getCurrentLanguage());
+
+  const handleLanguageChange = (lang: 'pt' | 'en') => {
+    changeLanguage(lang);
+    setCurrentLang(lang);
+    setIsLanguageOpen(false);
+  };
 
   useEffect(() => {
     const fetchData = async () => {
@@ -72,35 +85,35 @@ export default function HomePage() {
   const features = [
     {
       icon: <Video className="w-6 h-6" />,
-      title: 'Video Consultations',
-      description: 'Connect with certified doctors through HD video calls from anywhere in Africa.',
+      title: t('home.features.videoConsultation.title'),
+      description: t('home.features.videoConsultation.description'),
       color: 'from-cyan-500 to-teal-500',
     },
     {
       icon: <FileText className="w-6 h-6" />,
-      title: 'Digital Prescriptions',
-      description: 'Receive prescriptions directly on your phone. No more paper hassles.',
+      title: t('prescriptions.title'),
+      description: t('home.features.healthRecords.description'),
       color: 'from-violet-500 to-purple-500',
     },
     {
       icon: <Shield className="w-6 h-6" />,
-      title: 'Secure & Private',
-      description: 'Your health data is encrypted and protected with bank-level security.',
+      title: t('home.features.securePayments.title'),
+      description: t('home.features.securePayments.description'),
       color: 'from-emerald-500 to-green-500',
     },
     {
       icon: <CreditCard className="w-6 h-6" />,
-      title: 'Easy M-Pesa Payments',
-      description: 'Pay securely with M-Pesa. Simple, fast, and convenient.',
+      title: t('payments.title'),
+      description: t('home.features.securePayments.description'),
       color: 'from-amber-500 to-orange-500',
     },
   ];
 
   const steps = [
-    { step: '01', title: 'Search & Choose', description: 'Find doctors by specialty, rating, or availability' },
-    { step: '02', title: 'Book & Pay', description: 'Select a time slot and pay securely with M-Pesa' },
-    { step: '03', title: 'Consult Online', description: 'Join video call and discuss your health concerns' },
-    { step: '04', title: 'Get Prescription', description: 'Receive digital prescription on your phone' },
+    { step: '01', title: t('home.howItWorks.step1.title'), description: t('home.howItWorks.step1.description') },
+    { step: '02', title: t('home.howItWorks.step2.title'), description: t('home.howItWorks.step2.description') },
+    { step: '03', title: t('home.howItWorks.step3.title'), description: t('home.howItWorks.step3.description') },
+    { step: '04', title: t('prescriptions.title'), description: t('home.howItWorks.step3.description') },
   ];
 
   const testimonials = [
@@ -128,10 +141,10 @@ export default function HomePage() {
   ];
 
   const stats = [
-    { value: totalDoctors > 0 ? `${totalDoctors}+` : '0', label: 'Verified Doctors', icon: Users },
-    { value: '50K+', label: 'Consultations', icon: Video },
-    { value: '4.9', label: 'User Rating', icon: Star },
-    { value: '24/7', label: 'Available', icon: Clock },
+    { value: totalDoctors > 0 ? `${totalDoctors}+` : '0', label: t('home.stats.doctors'), icon: Users },
+    { value: '50K+', label: t('home.stats.consultations'), icon: Video },
+    { value: '4.9', label: t('home.stats.satisfaction'), icon: Star },
+    { value: '24/7', label: t('home.features.support.title'), icon: Clock },
   ];
 
   return (
@@ -148,25 +161,60 @@ export default function HomePage() {
             </Link>
             
             <div className="hidden md:flex items-center gap-8">
-              <a href="#features" className="text-white/80 hover:text-white transition">Features</a>
-              <a href="#how-it-works" className="text-white/80 hover:text-white transition">How it Works</a>
-              <a href="#specializations" className="text-white/80 hover:text-white transition">Find a Doctor</a>
+              <a href="#features" className="text-white/80 hover:text-white transition">{t('home.features.title')}</a>
+              <a href="#how-it-works" className="text-white/80 hover:text-white transition">{t('home.howItWorks.title')}</a>
+              <a href="#specializations" className="text-white/80 hover:text-white transition">{t('home.hero.findDoctor')}</a>
               <Link to="/for-doctors" className="text-white/80 hover:text-white transition font-medium flex items-center gap-1">
                 <Stethoscope className="w-4 h-4" />
-                For Doctors
+                {t('home.forDoctors.title')}
               </Link>
             </div>
 
             <div className="flex items-center gap-3">
+              {/* Language Switcher */}
+              <div className="relative">
+                <button
+                  onClick={() => setIsLanguageOpen(!isLanguageOpen)}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl text-white/80 hover:text-white hover:bg-white/10 transition-colors text-sm font-medium"
+                >
+                  <Globe className="w-4 h-4" />
+                  <span className="hidden sm:block">{currentLang === 'pt' ? 'PT' : 'EN'}</span>
+                  <ChevronDown className="w-3.5 h-3.5" />
+                </button>
+
+                {isLanguageOpen && (
+                  <div className="absolute right-0 mt-2 w-40 bg-white rounded-xl shadow-xl border border-slate-200 py-1 animate-fadeIn z-50">
+                    <button
+                      onClick={() => handleLanguageChange('pt')}
+                      className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                        currentLang === 'pt' ? 'bg-cyan-50 text-cyan-700' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-lg">🇧🇷</span>
+                      <span className="font-medium">Português</span>
+                    </button>
+                    <button
+                      onClick={() => handleLanguageChange('en')}
+                      className={`w-full px-4 py-2.5 text-left text-sm flex items-center gap-3 transition-colors ${
+                        currentLang === 'en' ? 'bg-cyan-50 text-cyan-700' : 'text-slate-700 hover:bg-slate-50'
+                      }`}
+                    >
+                      <span className="text-lg">🇺🇸</span>
+                      <span className="font-medium">English</span>
+                    </button>
+                  </div>
+                )}
+              </div>
+
               <Link 
                 to="/login" 
                 className="hidden sm:block px-4 py-2 text-white/90 hover:text-white transition font-medium"
               >
-                Login
+                {t('nav.login')}
               </Link>
               <Link to="/login">
                 <Button variant="secondary" className="!bg-white !text-cyan-600 hover:!bg-cyan-50">
-                  Get Started
+                  {t('home.cta.getStarted')}
                 </Button>
               </Link>
             </div>
@@ -189,23 +237,22 @@ export default function HomePage() {
             <div className="text-center lg:text-left">
               <div className="inline-flex items-center gap-2 px-4 py-2 bg-white/10 backdrop-blur rounded-full text-white/90 text-sm mb-6">
                 <span className="w-2 h-2 bg-green-400 rounded-full animate-pulse" />
-                Now serving all of {config.country.name}
+                {t('home.hero.subtitle')}
               </div>
               
               <h1 className="text-4xl sm:text-5xl lg:text-6xl font-bold text-white leading-tight mb-6">
-                Quality Healthcare,<br />
-                <span className="text-cyan-200">Anytime, Anywhere</span>
+                {t('home.hero.title')}<br />
+                <span className="text-cyan-200">{t('home.hero.titleHighlight')}</span>
               </h1>
               
               <p className="text-xl text-cyan-100 mb-8 max-w-xl mx-auto lg:mx-0">
-                Connect with 500+ certified doctors across Africa for video consultations. 
-                Get prescriptions delivered to your phone.
+                {t('home.hero.subtitle')}
               </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center lg:justify-start mb-12">
                 <Link to="/find-doctors">
                   <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-cyan-600 font-semibold rounded-xl shadow-xl hover:bg-cyan-50 transition-colors">
-                    Book Consultation
+                    {t('nav.bookAppointment')}
                     <ArrowRight className="w-5 h-5" />
                   </button>
                 </Link>
@@ -213,7 +260,7 @@ export default function HomePage() {
                   <div className="w-10 h-10 bg-white/20 rounded-full flex items-center justify-center">
                     <Play className="w-4 h-4 fill-current" />
                   </div>
-                  Watch Demo
+                  {t('home.hero.howItWorks')}
                 </button>
               </div>
 
@@ -221,15 +268,15 @@ export default function HomePage() {
               <div className="flex flex-wrap items-center justify-center lg:justify-start gap-6">
                 <div className="flex items-center gap-2 text-white/80">
                   <Shield className="w-5 h-5" />
-                  <span className="text-sm">HIPAA Compliant</span>
+                  <span className="text-sm">{t('home.features.securePayments.title')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-white/80">
                   <Check className="w-5 h-5" />
-                  <span className="text-sm">Verified Doctors</span>
+                  <span className="text-sm">{t('home.features.qualified.title')}</span>
                 </div>
                 <div className="flex items-center gap-2 text-white/80">
                   <CreditCard className="w-5 h-5" />
-                  <span className="text-sm">M-Pesa Secure</span>
+                  <span className="text-sm">{t('payments.title')}</span>
                 </div>
               </div>
             </div>
@@ -357,15 +404,15 @@ export default function HomePage() {
                 <Stethoscope className="w-6 h-6" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg">Are you a healthcare professional?</h3>
-                <p className="text-emerald-100 text-sm">Join our network of 500+ verified doctors and reach thousands of patients</p>
+                <h3 className="font-semibold text-lg">{t('home.forDoctors.title')}</h3>
+                <p className="text-emerald-100 text-sm">{t('home.forDoctors.subtitle')}</p>
               </div>
             </div>
             <Link 
               to="/for-doctors"
               className="inline-flex items-center gap-2 px-6 py-3 bg-white text-emerald-600 font-semibold rounded-xl hover:bg-emerald-50 transition-all shadow-lg hover:shadow-xl"
             >
-              Become a Doctor
+              {t('home.forDoctors.joinNow')}
               <ArrowRight className="w-5 h-5" />
             </Link>
           </div>
@@ -377,10 +424,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Everything you need for<br />modern healthcare
+              {t('home.features.title')}
             </h2>
             <p className="text-lg text-slate-600">
-              Access quality healthcare from the comfort of your home with our comprehensive telemedicine platform.
+              {t('home.features.subtitle')}
             </p>
           </div>
 
@@ -406,10 +453,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              How it works
+              {t('home.howItWorks.title')}
             </h2>
             <p className="text-lg text-slate-600">
-              Get healthcare in four simple steps
+              {t('home.howItWorks.subtitle')}
             </p>
           </div>
 
@@ -437,10 +484,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Find specialists across Africa
+              {t('home.specializations.title')}
             </h2>
             <p className="text-lg text-slate-600">
-              Choose from {specializations.length}+ specializations and connect with the right doctor for your needs
+              {t('home.specializations.subtitle')}
             </p>
           </div>
 
@@ -468,14 +515,14 @@ export default function HomePage() {
                   </div>
                   <div className="flex-1">
                     <h3 className="font-semibold text-slate-900">{spec.name}</h3>
-                    <p className="text-sm text-slate-500">{spec.doctor_count || 0} Doctors</p>
+                    <p className="text-sm text-slate-500">{spec.doctor_count || 0} {t('specializations.doctors')}</p>
                   </div>
                   <ChevronRight className="w-5 h-5 text-slate-300 group-hover:text-cyan-500 group-hover:translate-x-1 transition-all" />
                 </Link>
               ))
             ) : (
               <div className="col-span-full text-center py-12 text-slate-500">
-                No specializations available yet
+                {t('common.noResults')}
               </div>
             )}
           </div>
@@ -483,7 +530,7 @@ export default function HomePage() {
           <div className="text-center mt-12">
             <Link to="/specializations">
               <Button variant="outline" size="lg">
-                View All Specializations
+                {t('home.specializations.viewAll')}
                 <ArrowRight className="w-4 h-4" />
               </Button>
             </Link>
@@ -496,10 +543,10 @@ export default function HomePage() {
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center max-w-3xl mx-auto mb-16">
             <h2 className="text-3xl sm:text-4xl font-bold text-slate-900 mb-4">
-              Loved by patients & doctors
+              {t('home.testimonials.title')}
             </h2>
             <p className="text-lg text-slate-600">
-              See what our users are saying about their experience
+              {t('home.testimonials.subtitle')}
             </p>
           </div>
 
@@ -540,21 +587,21 @@ export default function HomePage() {
         
         <div className="relative max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-3xl sm:text-4xl font-bold text-white mb-6">
-            Ready to take control of your health?
+            {t('home.cta.title')}
           </h2>
           <p className="text-xl text-cyan-100 mb-8">
-            Join thousands of patients and doctors already using NovareHealth
+            {t('home.cta.subtitle')}
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
             <Link to="/find-doctors">
               <button className="inline-flex items-center justify-center gap-2 px-8 py-4 bg-white text-cyan-600 font-semibold rounded-xl shadow-xl hover:bg-cyan-50 transition-colors">
-                Find a Doctor
+                {t('home.hero.findDoctor')}
                 <ArrowRight className="w-5 h-5" />
               </button>
             </Link>
             <Link to="/for-doctors">
               <button className="inline-flex items-center justify-center gap-2 px-8 py-4 border-2 border-white text-white font-semibold rounded-xl hover:bg-white/10 transition-colors">
-                Join as Doctor
+                {t('home.forDoctors.joinNow')}
               </button>
             </Link>
           </div>

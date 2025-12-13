@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { useTranslation } from 'react-i18next';
 import { useNavigate, Link, useLocation } from 'react-router-dom';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -62,6 +63,7 @@ type OTPFormData = z.infer<typeof otpSchema>;
  * @see /docs/LoginFlowDiagram.md
  */
 export default function LoginPage() {
+  const { t } = useTranslation();
   const navigate = useNavigate();
   const location = useLocation();
   const { setAuth } = useAuthStore();
@@ -304,10 +306,10 @@ export default function LoginPage() {
   };
 
   const features = [
-    { icon: <Video className="w-6 h-6" />, title: 'Video Consultations', description: 'Connect with doctors face-to-face from anywhere' },
-    { icon: <FileText className="w-6 h-6" />, title: 'Digital Prescriptions', description: 'Receive prescriptions directly on your phone' },
-    { icon: <Shield className="w-6 h-6" />, title: 'Secure & Private', description: 'Your health data is encrypted and protected' },
-    { icon: <Clock className="w-6 h-6" />, title: '24/7 Availability', description: 'Access healthcare whenever you need it' },
+    { icon: <Video className="w-6 h-6" />, title: t('auth.features.videoConsultations'), description: t('auth.features.videoConsultationsDesc') },
+    { icon: <FileText className="w-6 h-6" />, title: t('auth.features.digitalPrescriptions'), description: t('auth.features.digitalPrescriptionsDesc') },
+    { icon: <Shield className="w-6 h-6" />, title: t('auth.features.securePrivate'), description: t('auth.features.securePrivateDesc') },
+    { icon: <Clock className="w-6 h-6" />, title: t('auth.features.availability'), description: t('auth.features.availabilityDesc') },
   ];
 
   return (
@@ -331,10 +333,10 @@ export default function LoginPage() {
 
           {/* Hero Text */}
           <h1 className="text-4xl lg:text-5xl font-bold text-white mb-6 leading-tight">
-            Healthcare at your<br />fingertips
+            {t('auth.heroTitle')}
           </h1>
           <p className="text-xl text-cyan-100 mb-12 max-w-md">
-            Connect with certified doctors across Africa for video consultations, prescriptions, and more.
+            {t('auth.heroSubtitle')}
           </p>
 
           {/* Features Grid */}
@@ -359,7 +361,7 @@ export default function LoginPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-white">500+</p>
-              <p className="text-cyan-200 text-sm">Verified Doctors</p>
+              <p className="text-cyan-200 text-sm">{t('auth.stats.verifiedDoctors')}</p>
             </div>
           </div>
           <div className="w-px bg-white/20" />
@@ -369,7 +371,7 @@ export default function LoginPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-white">50K+</p>
-              <p className="text-cyan-200 text-sm">Consultations</p>
+              <p className="text-cyan-200 text-sm">{t('auth.stats.consultations')}</p>
             </div>
           </div>
           <div className="w-px bg-white/20" />
@@ -379,7 +381,7 @@ export default function LoginPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-white">4.9</p>
-              <p className="text-cyan-200 text-sm">User Rating</p>
+              <p className="text-cyan-200 text-sm">{t('auth.stats.userRating')}</p>
             </div>
           </div>
         </div>
@@ -415,8 +417,8 @@ export default function LoginPage() {
                   <div className="w-16 h-16 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-cyan-500/20">
                     <Phone className="w-8 h-8 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold text-slate-900">Welcome back</h2>
-                  <p className="text-slate-500 mt-2">Enter your phone number to continue</p>
+                  <h2 className="text-2xl font-bold text-slate-900">{t('auth.welcomeBack')}</h2>
+                  <p className="text-slate-500 mt-2">{t('auth.enterPhone')}</p>
                 </div>
 
                 {/* Redirect Message */}
@@ -440,7 +442,7 @@ export default function LoginPage() {
                 <form onSubmit={phoneForm.handleSubmit(handleSendOTP)}>
                   <div className="mb-6">
                     <label className="block text-sm font-medium text-slate-700 mb-2">
-                      Phone Number
+                      {t('auth.phoneNumber')}
                     </label>
                     <div className="relative">
                       <div className="absolute left-4 top-1/2 -translate-y-1/2 flex items-center gap-2 text-slate-400">
@@ -487,7 +489,7 @@ export default function LoginPage() {
                     size="lg"
                     rightIcon={<ArrowRight className="w-5 h-5" />}
                   >
-                    Continue
+                    {t('common.next')}
                   </Button>
                 </form>
 
@@ -496,15 +498,15 @@ export default function LoginPage() {
                   <div className="flex items-center justify-center gap-6 text-sm text-slate-500">
                     <div className="flex items-center gap-1.5">
                       <Shield className="w-4 h-4 text-green-500" />
-                      Secure
+                      {t('auth.secure')}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <CheckCircle2 className="w-4 h-4 text-green-500" />
-                      Verified
+                      {t('auth.verified')}
                     </div>
                     <div className="flex items-center gap-1.5">
                       <Stethoscope className="w-4 h-4 text-green-500" />
-                      Licensed
+                      {t('auth.licensed')}
                     </div>
                   </div>
                 </div>
@@ -521,16 +523,16 @@ export default function LoginPage() {
                   className="flex items-center gap-2 text-slate-600 hover:text-slate-900 mb-6 transition-colors"
                 >
                   <ArrowLeft className="w-4 h-4" />
-                  Back
+                  {t('common.back')}
                 </button>
 
                 <div className="text-center mb-8">
                   <div className="w-16 h-16 bg-gradient-to-br from-green-500 to-emerald-500 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-green-500/20">
                     <Shield className="w-8 h-8 text-white" />
                   </div>
-                  <h2 className="text-2xl font-bold text-slate-900">Verify OTP</h2>
+                  <h2 className="text-2xl font-bold text-slate-900">{t('auth.verifyOTP')}</h2>
                   <p className="text-slate-500 mt-2">
-                    Enter the 6-digit code sent to<br />
+                    {t('auth.enterCode')}<br />
                     <span className="font-medium text-slate-700">+{phone}</span>
                   </p>
                 </div>
@@ -570,20 +572,19 @@ export default function LoginPage() {
                     fullWidth
                     size="lg"
                   >
-                    Verify & Login
+                    {t('auth.verifyLogin')}
                   </Button>
                 </form>
 
-                {/* Resend OTP */}
                 <div className="text-center mt-6">
                   <p className="text-slate-500 text-sm">
-                    Didn't receive the code?{' '}
+                    {t('auth.didntReceive')}{' '}
                     <button
                       type="button"
                       onClick={() => handleSendOTP({ phone })}
                       className="text-cyan-600 font-medium hover:underline"
                     >
-                      Resend OTP
+                      {t('auth.resendOTP')}
                     </button>
                   </p>
                 </div>
@@ -594,9 +595,9 @@ export default function LoginPage() {
           {/* Doctor Registration Link */}
           <div className="text-center mt-8">
             <p className="text-slate-600">
-              Are you a healthcare professional?{' '}
+              {t('auth.areYouHealthcare')}{' '}
               <Link to="/register/doctor" className="text-cyan-600 font-semibold hover:underline">
-                Join as Doctor
+                {t('auth.joinAsDoctor')}
               </Link>
             </p>
           </div>
