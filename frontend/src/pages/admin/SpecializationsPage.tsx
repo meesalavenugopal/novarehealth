@@ -295,7 +295,7 @@ export const SpecializationsPage: React.FC = () => {
         ) : (
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             {specializations.map((spec) => (
-              <Card key={spec.id} className="p-4">
+              <Card key={spec.id} className="p-4 h-full flex flex-col">
                 <div className="flex items-start justify-between">
                   <div className="flex items-center gap-3">
                     <div className="w-10 h-10 bg-gradient-to-br from-cyan-500 to-teal-500 rounded-lg flex items-center justify-center">
@@ -315,9 +315,9 @@ export const SpecializationsPage: React.FC = () => {
                   </span>
                 </div>
                 
-                {spec.description && (
-                  <p className="text-sm text-slate-600 mt-3 line-clamp-2">{spec.description}</p>
-                )}
+                <p className="text-sm text-slate-600 mt-3 line-clamp-2 flex-1">
+                  {spec.description || 'No description available'}
+                </p>
                 
                 <div className="flex gap-2 mt-4">
                   <Button
