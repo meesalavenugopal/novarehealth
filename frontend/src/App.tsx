@@ -25,6 +25,7 @@ import { AdminDashboard, PatientsPage as AdminPatientsPage, AppointmentsPage as 
 import { PrivacyPolicyPage, TermsOfServicePage, RefundPolicyPage } from './pages/legal';
 import ConsultationSummaryPage from './pages/common/consultation/ConsultationSummaryPage';
 import ProtectedRoute from './components/auth/ProtectedRoute';
+import FeatureRoute from './components/auth/FeatureRoute';
 import { useFeatureFlags } from './store/featureFlagsStore';
 
 const queryClient = new QueryClient({
@@ -68,9 +69,11 @@ function App() {
           <Route
             path="/settings"
             element={
-              <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'super_admin']}>
-                <SettingsPage />
-              </ProtectedRoute>
+              <FeatureRoute featureFlag="settings_enabled">
+                <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'super_admin']}>
+                  <SettingsPage />
+                </ProtectedRoute>
+              </FeatureRoute>
             }
           />
           <Route
