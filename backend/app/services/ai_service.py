@@ -396,6 +396,107 @@ Keep responses brief (2-3 sentences max) unless more detail is requested."""
         
         return response.choices[0].message.content.strip()
 
+    async def generate_review_suggestion(
+        self,
+        doctor_name: str,
+        rating: int,
+        specialization: Optional[str] = None
+    ) -> str:
+        """
+        Generate a suggested review comment based on rating and doctor info.
+        """
+        rating_context = {
+            5: "extremely positive and enthusiastic",
+            4: "positive and appreciative",
+            3: "balanced and fair",
+            2: "constructive but highlighting concerns",
+            1: "expressing disappointment while remaining respectful"
+        }
+        
+        tone = rating_context.get(rating, "balanced")
+        spec_context = f" who specializes in {specialization}" if specialization else ""
+        
+        prompt = f"""Generate a brief, authentic-sounding patient review for a telemedicine consultation with Dr. {doctor_name}{spec_context}.
+
+Rating given: {rating}/5 stars
+Tone: {tone}
+
+Requirements:
+- Write 2-3 sentences maximum
+- Sound natural and personal, not generic
+- Focus on consultation experience (communication, professionalism, helpfulness)
+- For telemedicine: can mention video quality, doctor's attention, clear explanations
+- Keep it genuine and specific
+- Do not use overly formal language
+
+Generate only the review text, no quotes or additional commentary."""
+
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are helping patients write authentic, natural-sounding reviews for their telemedicine consultations. Write as if you are the patient sharing their genuine experience."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            max_tokens=150,
+            temperature=0.8
+        )
+        
+        return response.choices[0].message.content.strip()
+
+    async def rephrase_review(
+        self,
+        review_text: str,
+        style: str = "professional"
+    ) -> str:
+        """
+        Rephrase a review in a different style while keeping the same sentiment.
+        """
+        style_descriptions = {
+            "professional": "more formal and polished",
+            "casual": "friendly and conversational",
+            "concise": "brief and to the point",
+            "detailed": "more descriptive and thorough"
+        }
+        
+        style_desc = style_descriptions.get(style, style_descriptions["professional"])
+        
+        prompt = f"""Rephrase the following patient review to make it {style_desc} while keeping the same overall sentiment and star rating implied:
+
+Original review:
+{review_text}
+
+Requirements:
+- Keep the same positive/negative sentiment
+- Maintain the key points mentioned
+- Make it sound natural and authentic
+- 2-4 sentences maximum
+
+Provide only the rephrased review text, no commentary."""
+
+        response = await self.client.chat.completions.create(
+            model=self.model,
+            messages=[
+                {
+                    "role": "system",
+                    "content": "You are a helpful writing assistant. Rephrase the review naturally while maintaining its authenticity."
+                },
+                {
+                    "role": "user",
+                    "content": prompt
+                }
+            ],
+            max_tokens=200,
+            temperature=0.7
+        )
+        
+        return response.choices[0].message.content.strip()
+
 
 # Singleton instance
 ai_service = AIService()

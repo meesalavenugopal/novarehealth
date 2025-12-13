@@ -63,6 +63,17 @@ class ChatRequest(BaseModel):
     conversation_history: Optional[List[Dict[str, str]]] = None
 
 
+class ReviewSuggestionRequest(BaseModel):
+    doctor_name: str
+    rating: int
+    specialization: Optional[str] = None
+
+
+class RephraseReviewRequest(BaseModel):
+    review_text: str
+    style: str = "professional"  # professional, casual, concise, detailed
+
+
 @router.post("/generate-bio", response_model=BioGenerationResponse)
 async def generate_doctor_bio(request: BioGenerationRequest):
     """
@@ -229,3 +240,46 @@ async def ai_health_check():
         "model": settings.OPENAI_MODEL,
         "status": "ready" if settings.OPENAI_API_KEY else "not_configured"
     }
+
+
+@router.post("/suggest-review")
+async def suggest_review(request: ReviewSuggestionRequest):
+    """
+    Generate an AI-suggested review comment based on rating and doctor info.
+    """
+    if not settings.OPENAI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="AI service is not configured. Please set OPENAI_API_KEY."
+        )
+    
+    try:
+        suggestion = await ai_service.generate_review_suggestion(
+            doctor_name=request.doctor_name,
+            rating=request.rating,
+            specialization=request.specialization
+        )
+        return {"success": True, "suggestion": suggestion}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to generate suggestion: {str(e)}")
+
+
+@router.post("/rephrase-review")
+async def rephrase_review(request: RephraseReviewRequest):
+    """
+    Rephrase a review in a different style (professional, casual, concise, detailed).
+    """
+    if not settings.OPENAI_API_KEY:
+        raise HTTPException(
+            status_code=503,
+            detail="AI service is not configured. Please set OPENAI_API_KEY."
+        )
+    
+    try:
+        rephrased = await ai_service.rephrase_review(
+            review_text=request.review_text,
+            style=request.style
+        )
+        return {"success": True, "rephrased": rephrased, "style": request.style}
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Failed to rephrase review: {str(e)}")

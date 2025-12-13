@@ -20,14 +20,17 @@ import {
   ExternalLink,
   Copy,
   Check,
-  Pill
+  Pill,
+  Star
 } from 'lucide-react';
 import { Link, useLocation } from 'react-router-dom';
 import Navbar from '../../components/layout/Navbar';
 import { useAuthStore } from '../../store/authStore';
 import { authFetch } from '../../services/api';
 import { getPrescriptionByAppointment, type PrescriptionDetail } from '../../services/prescription';
+import { getAppointmentReview } from '../../services/reviews';
 import PrescriptionEditor from '../../components/doctor/PrescriptionEditor';
+import { ReviewModal } from '../../components/reviews';
 
 interface Appointment {
   id: number;
@@ -86,6 +89,11 @@ export default function AppointmentsPage() {
   const [selectedAppointmentForPrescription, setSelectedAppointmentForPrescription] = useState<Appointment | null>(null);
   const [appointmentPrescriptions, setAppointmentPrescriptions] = useState<Record<number, PrescriptionDetail | null>>({});
 
+  // Review state
+  const [showReviewModal, setShowReviewModal] = useState(false);
+  const [selectedAppointmentForReview, setSelectedAppointmentForReview] = useState<Appointment | null>(null);
+  const [appointmentReviews, setAppointmentReviews] = useState<Record<number, boolean>>({});
+
   const hasActiveFilters = consultationType || dateFrom || dateTo;
 
   const clearFilters = () => {
@@ -142,6 +150,14 @@ export default function AppointmentsPage() {
             checkPrescriptionStatus(apt.id);
           }
         }
+        
+        // Check review status for completed appointments (for patients)
+        if (!isDoctor) {
+          const completedApts = transformedAppointments.filter((apt: Appointment) => apt.status === 'completed');
+          for (const apt of completedApts) {
+            checkReviewStatus(apt.id);
+          }
+        }
       }
     } catch (error) {
       console.error('Error fetching appointments:', error);
@@ -175,6 +191,35 @@ export default function AppointmentsPage() {
     }
     setSelectedAppointmentForPrescription(null);
     setSuccessMessage('Prescription created successfully');
+    setTimeout(() => setSuccessMessage(null), 5000);
+  };
+
+  // Review functions
+  const checkReviewStatus = async (appointmentId: number) => {
+    try {
+      const review = await getAppointmentReview(appointmentId);
+      setAppointmentReviews(prev => ({ ...prev, [appointmentId]: !!review }));
+    } catch {
+      setAppointmentReviews(prev => ({ ...prev, [appointmentId]: false }));
+    }
+  };
+
+  const handleWriteReview = (appointment: Appointment) => {
+    setSelectedAppointmentForReview(appointment);
+    setShowReviewModal(true);
+  };
+
+  const handleReviewSubmitted = () => {
+    setShowReviewModal(false);
+    if (selectedAppointmentForReview) {
+      // Mark this appointment as having a review
+      setAppointmentReviews(prev => ({ 
+        ...prev, 
+        [selectedAppointmentForReview.id]: true 
+      }));
+    }
+    setSelectedAppointmentForReview(null);
+    setSuccessMessage('Review submitted successfully! Thank you for your feedback.');
     setTimeout(() => setSuccessMessage(null), 5000);
   };
 
@@ -436,6 +481,8 @@ export default function AppointmentsPage() {
                 onCancel={handleCancelAppointment}
                 onWritePrescription={handleWritePrescription}
                 hasPrescription={!!appointmentPrescriptions[appointment.id]}
+                onWriteReview={handleWriteReview}
+                hasReview={!!appointmentReviews[appointment.id]}
               />
             ))}
           </div>
@@ -478,16 +525,32 @@ export default function AppointmentsPage() {
           </div>
         </div>
       )}
+
+      {/* Review Modal */}
+      {showReviewModal && selectedAppointmentForReview && (
+        <ReviewModal
+          isOpen={showReviewModal}
+          onClose={() => {
+            setShowReviewModal(false);
+            setSelectedAppointmentForReview(null);
+          }}
+          appointmentId={selectedAppointmentForReview.id}
+          doctorName={selectedAppointmentForReview.doctor_name}
+          onSuccess={handleReviewSubmitted}
+        />
+      )}
     </div>
   );
 }
 
-function AppointmentCard({ appointment, isDoctor, onCancel, onWritePrescription, hasPrescription }: { 
+function AppointmentCard({ appointment, isDoctor, onCancel, onWritePrescription, hasPrescription, onWriteReview, hasReview }: { 
   appointment: Appointment; 
   isDoctor: boolean; 
   onCancel?: (id: number) => void;
   onWritePrescription?: (appointment: Appointment) => void;
   hasPrescription?: boolean;
+  onWriteReview?: (appointment: Appointment) => void;
+  hasReview?: boolean;
 }) {
   const [expanded, setExpanded] = useState(false);
   const [copiedPassword, setCopiedPassword] = useState(false);
@@ -786,6 +849,24 @@ function AppointmentCard({ appointment, isDoctor, onCancel, onWritePrescription,
                           <FileText className="w-4 h-4" />
                           View Prescription
                         </Link>
+                      )}
+                      
+                      {/* Patient Review Button */}
+                      {!isDoctor && (
+                        hasReview ? (
+                          <div className="w-full px-4 py-3 bg-green-50 border border-green-200 text-green-700 rounded-xl font-medium flex items-center justify-center gap-2">
+                            <CheckCircle className="w-4 h-4" />
+                            Review Submitted
+                          </div>
+                        ) : (
+                          <button
+                            onClick={() => onWriteReview?.(appointment)}
+                            className="w-full px-4 py-3 bg-amber-500 text-white rounded-xl hover:bg-amber-600 transition-colors font-medium flex items-center justify-center gap-2"
+                          >
+                            <Star className="w-4 h-4" />
+                            Write Review
+                          </button>
+                        )
                       )}
                       
                       {!isDoctor && (

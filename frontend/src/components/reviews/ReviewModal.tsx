@@ -4,15 +4,16 @@
  */
 
 import React, { useState } from 'react';
-import { Star, X, Send, Loader2 } from 'lucide-react';
+import { Star, X, Send, Loader2, Sparkles, RefreshCw, ChevronDown } from 'lucide-react';
 import { Button } from '../ui';
-import { submitReview } from '../../services/reviews';
+import { submitReview, getAIReviewSuggestion, rephraseReview } from '../../services/reviews';
 
 interface ReviewModalProps {
   isOpen: boolean;
   onClose: () => void;
   appointmentId: number;
   doctorName: string;
+  specialization?: string;
   onSuccess?: () => void;
 }
 
@@ -21,6 +22,7 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   onClose,
   appointmentId,
   doctorName,
+  specialization,
   onSuccess,
 }) => {
   const [rating, setRating] = useState(0);
@@ -29,8 +31,52 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState(false);
+  
+  // AI states
+  const [aiLoading, setAiLoading] = useState(false);
+  const [rephraseLoading, setRephraseLoading] = useState(false);
+  const [showRephraseOptions, setShowRephraseOptions] = useState(false);
 
   if (!isOpen) return null;
+
+  const handleAISuggestion = async () => {
+    if (rating === 0) {
+      setError('Please select a rating first');
+      return;
+    }
+    
+    setAiLoading(true);
+    setError('');
+    
+    try {
+      const suggestion = await getAIReviewSuggestion(doctorName, rating, specialization);
+      setComment(suggestion);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to get AI suggestion');
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
+  const handleRephrase = async (style: 'professional' | 'casual' | 'concise' | 'detailed') => {
+    if (!comment.trim()) {
+      setError('Please write something to rephrase');
+      return;
+    }
+    
+    setRephraseLoading(true);
+    setError('');
+    setShowRephraseOptions(false);
+    
+    try {
+      const rephrased = await rephraseReview(comment, style);
+      setComment(rephrased);
+    } catch (err) {
+      setError(err instanceof Error ? err.message : 'Failed to rephrase');
+    } finally {
+      setRephraseLoading(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -159,9 +205,71 @@ export const ReviewModal: React.FC<ReviewModalProps> = ({
                   maxLength={1000}
                   className="w-full px-4 py-3 border border-slate-200 rounded-xl focus:ring-2 focus:ring-cyan-500 focus:border-transparent resize-none"
                 />
-                <p className="text-xs text-slate-400 mt-1 text-right">
-                  {comment.length}/1000
-                </p>
+                <div className="flex items-center justify-between mt-2">
+                  {/* AI Buttons */}
+                  <div className="flex items-center gap-1.5">
+                    {/* AI Suggest Button */}
+                    <button
+                      type="button"
+                      onClick={handleAISuggestion}
+                      disabled={aiLoading || rating === 0}
+                      className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-purple-600 bg-purple-50 hover:bg-purple-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                      title={rating === 0 ? 'Select a rating first' : 'Get AI suggestion'}
+                    >
+                      {aiLoading ? (
+                        <Loader2 className="w-3 h-3 animate-spin" />
+                      ) : (
+                        <Sparkles className="w-3 h-3" />
+                      )}
+                      AI Suggest
+                    </button>
+                    
+                    {/* Rephrase Button */}
+                    <div className="relative">
+                      <button
+                        type="button"
+                        onClick={() => setShowRephraseOptions(!showRephraseOptions)}
+                        disabled={rephraseLoading || !comment.trim()}
+                        className="flex items-center gap-1 px-2.5 py-1 text-xs font-medium text-cyan-600 bg-cyan-50 hover:bg-cyan-100 rounded-lg transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                        title={!comment.trim() ? 'Write something to rephrase' : 'Rephrase your review'}
+                      >
+                        {rephraseLoading ? (
+                          <Loader2 className="w-3 h-3 animate-spin" />
+                        ) : (
+                          <RefreshCw className="w-3 h-3" />
+                        )}
+                        Rephrase
+                        <ChevronDown className="w-3 h-3" />
+                      </button>
+                      
+                      {/* Rephrase Dropdown - opens upward */}
+                      {showRephraseOptions && (
+                        <div className="absolute left-0 bottom-full mb-1 w-36 bg-white rounded-lg shadow-lg border border-slate-200 py-1 z-10">
+                          {[
+                            { style: 'professional', label: 'Professional' },
+                            { style: 'casual', label: 'Casual' },
+                            { style: 'concise', label: 'Concise' },
+                            { style: 'detailed', label: 'Detailed' },
+                          ].map((option) => (
+                            <button
+                              key={option.style}
+                              type="button"
+                              onClick={() => handleRephrase(option.style as 'professional' | 'casual' | 'concise' | 'detailed')}
+                              className="w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50 transition-colors"
+                            >
+                              {option.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                  
+                  {/* Character count */}
+                  <p className="text-xs text-slate-400">
+                    {comment.length}/1000
+                  </p>
+                </div>
               </div>
 
               {error && (

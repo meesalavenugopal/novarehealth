@@ -115,3 +115,55 @@ export async function getAppointmentReview(
   const data = await response.json();
   return data || null;
 }
+
+/**
+ * Get AI-suggested review based on rating and doctor info
+ */
+export async function getAIReviewSuggestion(
+  doctorName: string,
+  rating: number,
+  specialization?: string
+): Promise<string> {
+  const response = await authFetch(`${API_BASE}/api/v1/ai/suggest-review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      doctor_name: doctorName,
+      rating,
+      specialization,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Failed to get AI suggestion');
+  }
+
+  const data = await response.json();
+  return data.suggestion;
+}
+
+/**
+ * Rephrase a review in a different style
+ */
+export async function rephraseReview(
+  reviewText: string,
+  style: 'professional' | 'casual' | 'concise' | 'detailed' = 'professional'
+): Promise<string> {
+  const response = await authFetch(`${API_BASE}/api/v1/ai/rephrase-review`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      review_text: reviewText,
+      style,
+    }),
+  });
+
+  if (!response.ok) {
+    const error = await response.json().catch(() => ({}));
+    throw new Error(error.detail || 'Failed to rephrase review');
+  }
+
+  const data = await response.json();
+  return data.rephrased;
+}
