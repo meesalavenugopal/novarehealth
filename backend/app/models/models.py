@@ -43,6 +43,21 @@ class PaymentStatus(str, enum.Enum):
     REFUNDED = "refunded"
 
 
+class NotificationType(str, enum.Enum):
+    APPOINTMENT_BOOKED = "appointment_booked"
+    APPOINTMENT_CONFIRMED = "appointment_confirmed"
+    APPOINTMENT_CANCELLED = "appointment_cancelled"
+    APPOINTMENT_REMINDER = "appointment_reminder"
+    APPOINTMENT_COMPLETED = "appointment_completed"
+    PRESCRIPTION_READY = "prescription_ready"
+    PRESCRIPTION_UPDATED = "prescription_updated"
+    PAYMENT_CONFIRMED = "payment_confirmed"
+    PAYMENT_FAILED = "payment_failed"
+    REVIEW_RECEIVED = "review_received"
+    MESSAGE_RECEIVED = "message_received"
+    SYSTEM = "system"
+
+
 class User(Base):
     __tablename__ = "users"
     
@@ -412,3 +427,23 @@ class Medicine(Base):
     contraindications = Column(Text, nullable=True)
     is_active = Column(Boolean, default=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+
+
+class Notification(Base):
+    """In-app notifications for users"""
+    __tablename__ = "notifications"
+    
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id", ondelete="CASCADE"), nullable=False, index=True)
+    type = Column(Enum(NotificationType, values_callable=lambda x: [e.value for e in x]), nullable=False)
+    title = Column(String(255), nullable=False)
+    message = Column(Text, nullable=False)
+    is_read = Column(Boolean, default=False, index=True)
+    related_id = Column(Integer, nullable=True)  # ID of related entity (appointment, prescription, etc.)
+    related_type = Column(String(50), nullable=True)  # Type of related entity
+    extra_data = Column(JSON, nullable=True)  # Additional data as JSON
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+    read_at = Column(DateTime, nullable=True)
+    
+    # Relationship
+    user = relationship("User", backref="notifications")

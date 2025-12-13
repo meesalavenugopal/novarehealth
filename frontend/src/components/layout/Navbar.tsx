@@ -8,11 +8,14 @@ import {
   LogOut,
   Settings,
   HelpCircle,
-  LayoutDashboard
+  LayoutDashboard,
+  Loader2
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useAuthStore } from '../../store/authStore';
 import { useFeatureFlags } from '../../store/featureFlagsStore';
+import { getNotifications, getUnreadCount, markAsRead } from '../../services/notifications';
+import type { Notification } from '../../services/notifications';
 
 // Define navigation items for each role
 const getNavItems = (role: string | undefined, isAuthenticated: boolean) => {
@@ -71,9 +74,66 @@ export default function Navbar() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false);
   const [isProfileOpen, setIsProfileOpen] = useState(false);
   const [isNotificationOpen, setIsNotificationOpen] = useState(false);
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notificationsLoading, setNotificationsLoading] = useState(false);
   const profileRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const location = useLocation();
+
+  // Fetch notifications
+  const fetchNotifications = useCallback(async () => {
+    if (!user) return;
+    try {
+      setNotificationsLoading(true);
+      const [notifResponse, unreadCountValue] = await Promise.all([
+        getNotifications(1, 5),
+        getUnreadCount()
+      ]);
+      setNotifications(notifResponse.notifications);
+      setUnreadCount(unreadCountValue);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    } finally {
+      setNotificationsLoading(false);
+    }
+  }, [user]);
+
+  // Fetch notifications on mount and when user changes
+  useEffect(() => {
+    fetchNotifications();
+  }, [fetchNotifications]);
+
+  // Handle notification click - mark as read
+  const handleNotificationClick = async (notification: Notification) => {
+    if (!notification.is_read) {
+      try {
+        await markAsRead(notification.id);
+        setNotifications(prev => 
+          prev.map(n => n.id === notification.id ? { ...n, is_read: true } : n)
+        );
+        setUnreadCount(prev => Math.max(0, prev - 1));
+      } catch (error) {
+        console.error('Failed to mark notification as read:', error);
+      }
+    }
+  };
+
+  // Format time ago
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+    
+    if (diffMins < 1) return 'Just now';
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    return date.toLocaleDateString();
+  };
 
   // Close dropdowns when clicking outside
   useEffect(() => {
@@ -97,14 +157,6 @@ export default function Navbar() {
   const isAuthenticated = !!user;
   const navItems = getNavItems(user?.role, isAuthenticated);
   const dashboardLink = getDashboardLink(user?.role);
-
-  const notifications = [
-    { id: 1, title: 'Appointment Reminder', message: 'Your appointment with Dr. Sarah is in 1 hour', time: '1h ago', unread: true },
-    { id: 2, title: 'Prescription Ready', message: 'Your prescription has been uploaded', time: '3h ago', unread: true },
-    { id: 3, title: 'Payment Confirmed', message: 'Payment of MZN 500 confirmed', time: '1d ago', unread: false },
-  ];
-
-  const unreadCount = notifications.filter(n => n.unread).length;
 
   return (
     <nav className="bg-white/80 backdrop-blur-lg border-b border-slate-200 sticky top-0 z-50">
@@ -151,23 +203,34 @@ export default function Navbar() {
                         <h3 className="font-semibold text-slate-900">Notifications</h3>
                       </div>
                       <div className="max-h-80 overflow-y-auto">
-                        {notifications.map((notification) => (
-                          <button
-                            key={notification.id}
-                            className="w-full px-4 py-3 hover:bg-slate-50 text-left transition-colors"
-                          >
-                            <div className="flex gap-3">
-                              {notification.unread && (
-                                <span className="w-2 h-2 bg-cyan-500 rounded-full mt-2 flex-shrink-0" />
-                              )}
-                              <div className={notification.unread ? '' : 'ml-5'}>
-                                <p className="font-medium text-slate-900 text-sm">{notification.title}</p>
-                                <p className="text-slate-500 text-sm mt-0.5">{notification.message}</p>
-                                <p className="text-slate-400 text-xs mt-1">{notification.time}</p>
+                        {notificationsLoading ? (
+                          <div className="flex items-center justify-center py-8">
+                            <Loader2 className="w-6 h-6 text-cyan-500 animate-spin" />
+                          </div>
+                        ) : notifications.length === 0 ? (
+                          <div className="px-4 py-8 text-center text-slate-500 text-sm">
+                            No notifications yet
+                          </div>
+                        ) : (
+                          notifications.map((notification) => (
+                            <button
+                              key={notification.id}
+                              onClick={() => handleNotificationClick(notification)}
+                              className="w-full px-4 py-3 hover:bg-slate-50 text-left transition-colors"
+                            >
+                              <div className="flex gap-3">
+                                {!notification.is_read && (
+                                  <span className="w-2 h-2 bg-cyan-500 rounded-full mt-2 flex-shrink-0" />
+                                )}
+                                <div className={!notification.is_read ? '' : 'ml-5'}>
+                                  <p className="font-medium text-slate-900 text-sm">{notification.title}</p>
+                                  <p className="text-slate-500 text-sm mt-0.5 line-clamp-2">{notification.message}</p>
+                                  <p className="text-slate-400 text-xs mt-1">{formatTimeAgo(notification.created_at)}</p>
+                                </div>
                               </div>
-                            </div>
-                          </button>
-                        ))}
+                            </button>
+                          ))
+                        )}
                       </div>
                       <div className="px-4 py-2 border-t border-slate-100">
                         <Link to="/notifications" className="text-cyan-600 text-sm font-medium hover:underline">

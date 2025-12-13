@@ -27,7 +27,7 @@ export interface Notification {
   is_read: boolean;
   related_id?: number;
   related_type?: string;
-  metadata?: Record<string, unknown>;
+  extra_data?: Record<string, unknown>;
   created_at: string;
   read_at?: string;
 }
