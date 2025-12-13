@@ -12,6 +12,7 @@ from app.models.models import User, UserRole, Appointment, AppointmentStatus, Do
 from app.services.doctor_service import DoctorService, SpecializationService
 from app.services.notification_service import notification_service
 from app.services.email_service import get_email_service
+from app.services.in_app_notification_service import get_in_app_notification_service
 from app.schemas.schemas import (
     DoctorResponse, SpecializationCreate, SpecializationResponse
 )
@@ -188,6 +189,24 @@ async def verify_doctor(
                     rejection_reason
                 )
         
+        # Send in-app notification in background
+        if doctor.user:
+            doctor_user_id = doctor.user.id
+            async def send_verification_notification():
+                try:
+                    from app.db.database import AsyncSessionLocal
+                    async with AsyncSessionLocal() as notif_db:
+                        in_app_service = get_in_app_notification_service(notif_db)
+                        if approved:
+                            await in_app_service.notify_doctor_approved(doctor_user_id)
+                        else:
+                            await in_app_service.notify_doctor_rejected(doctor_user_id, rejection_reason)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Failed to send in-app notification for doctor verification: {e}")
+            
+            background_tasks.add_task(send_verification_notification)
+        
         return {
             "message": "Doctor verified successfully" if approved else "Doctor registration rejected",
             "doctor_id": doctor.id,
@@ -212,7 +231,7 @@ async def suspend_doctor(
     try:
         doctor = await DoctorService.suspend_doctor(db, doctor_id, reason)
         
-        # Send notification to doctor
+        # Send SMS notification to doctor
         if doctor.user and doctor.user.phone:
             doctor_name = f"Dr. {doctor.user.first_name}" if doctor.user.first_name else None
             background_tasks.add_task(
@@ -221,6 +240,21 @@ async def suspend_doctor(
                 reason,
                 doctor_name
             )
+        
+        # Send in-app notification in background
+        if doctor.user:
+            doctor_user_id = doctor.user.id
+            async def send_suspend_notification():
+                try:
+                    from app.db.database import AsyncSessionLocal
+                    async with AsyncSessionLocal() as notif_db:
+                        in_app_service = get_in_app_notification_service(notif_db)
+                        await in_app_service.notify_doctor_suspended(doctor_user_id, reason)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Failed to send in-app notification for doctor suspension: {e}")
+            
+            background_tasks.add_task(send_suspend_notification)
         
         return {
             "message": "Doctor suspended successfully",
@@ -245,7 +279,7 @@ async def unsuspend_doctor(
     try:
         doctor = await DoctorService.unsuspend_doctor(db, doctor_id)
         
-        # Send notification to doctor
+        # Send SMS notification to doctor
         if doctor.user and doctor.user.phone:
             doctor_name = f"Dr. {doctor.user.first_name}" if doctor.user.first_name else None
             background_tasks.add_task(
@@ -253,6 +287,21 @@ async def unsuspend_doctor(
                 doctor.user.phone,
                 doctor_name
             )
+        
+        # Send in-app notification in background
+        if doctor.user:
+            doctor_user_id = doctor.user.id
+            async def send_reinstate_notification():
+                try:
+                    from app.db.database import AsyncSessionLocal
+                    async with AsyncSessionLocal() as notif_db:
+                        in_app_service = get_in_app_notification_service(notif_db)
+                        await in_app_service.notify_doctor_reinstated(doctor_user_id)
+                except Exception as e:
+                    import logging
+                    logging.error(f"Failed to send in-app notification for doctor reinstatement: {e}")
+            
+            background_tasks.add_task(send_reinstate_notification)
         
         return {
             "message": "Doctor reinstated successfully",

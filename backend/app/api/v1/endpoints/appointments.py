@@ -20,6 +20,7 @@ from app.api.deps import get_current_user
 from app.models import User, Doctor, Appointment, AppointmentStatus, AppointmentType, UserRole
 from app.services.zoom_service import get_zoom_service
 from app.services.email_service import get_email_service
+from app.services.in_app_notification_service import get_in_app_notification_service
 
 
 router = APIRouter(prefix="/appointments", tags=["Appointments"])
@@ -250,10 +251,8 @@ async def book_appointment(
             import logging
             logging.error(f"Failed to create Zoom meeting or send emails: {e}")
     
-    # For dev testing: confirmed = paid, otherwise pending
-    payment_status = "paid" if appointment.status == AppointmentStatus.CONFIRMED else "pending"
-    
-    return AppointmentResponse(
+    # Capture all values needed for response BEFORE any further async operations
+    response_data = AppointmentResponse(
         id=appointment.id,
         doctor_id=doctor.id,
         doctor_name=f"Dr. {doctor.user.first_name} {doctor.user.last_name}",
@@ -267,13 +266,49 @@ async def book_appointment(
         appointment_type=appointment.appointment_type.value,
         status=appointment.status.value,
         consultation_fee=float(doctor.consultation_fee),
-        payment_status=payment_status,
+        payment_status="paid" if appointment.status == AppointmentStatus.CONFIRMED else "pending",
         patient_notes=appointment.patient_notes,
         zoom_join_url=zoom_join_url,
         zoom_meeting_id=zoom_meeting_id,
         zoom_password=zoom_password,
         created_at=appointment.created_at.isoformat(),
     )
+    
+    # Send in-app notifications in background to avoid blocking
+    async def send_notifications():
+        try:
+            from app.db.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as notif_db:
+                notification_service = get_in_app_notification_service(notif_db)
+                doctor_name = f"{doctor.user.first_name} {doctor.user.last_name}"
+                patient_name = f"{current_user.first_name} {current_user.last_name}"
+                date_str = str(scheduled_date)
+                time_str = scheduled_time.strftime("%H:%M")
+                
+                # Notify patient
+                await notification_service.notify_appointment_booked(
+                    patient_id=current_user.id,
+                    doctor_name=doctor_name,
+                    appointment_date=date_str,
+                    appointment_time=time_str,
+                    appointment_id=appointment.id
+                )
+                
+                # Notify doctor
+                await notification_service.notify_new_appointment_to_doctor(
+                    doctor_id=doctor.user_id,
+                    patient_name=patient_name,
+                    appointment_date=date_str,
+                    appointment_time=time_str,
+                    appointment_id=appointment.id
+                )
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send in-app notifications: {e}")
+    
+    background_tasks.add_task(send_notifications)
+    
+    return response_data
 
 
 @router.get("/", response_model=AppointmentListResponse)
@@ -362,13 +397,19 @@ async def list_my_appointments(
 @router.post("/{appointment_id}/cancel")
 async def cancel_appointment(
     appointment_id: int,
+    background_tasks: BackgroundTasks,
     reason: Optional[str] = None,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
     """Cancel an appointment."""
     result = await db.execute(
-        select(Appointment).where(Appointment.id == appointment_id)
+        select(Appointment)
+        .options(
+            selectinload(Appointment.doctor).selectinload(Doctor.user),
+            selectinload(Appointment.patient)
+        )
+        .where(Appointment.id == appointment_id)
     )
     appointment = result.scalar_one_or_none()
     
@@ -419,6 +460,47 @@ async def cancel_appointment(
             import logging
             logging.error(f"Failed to delete Zoom meeting: {e}")
     
+    # Capture notification data before commit
+    doctor_user_id = appointment.doctor.user_id
+    doctor_name = f"{appointment.doctor.user.first_name} {appointment.doctor.user.last_name}"
+    patient_name = f"{appointment.patient.first_name} {appointment.patient.last_name}"
+    patient_id = appointment.patient_id
+    apt_id = appointment.id
+    date_str = str(appointment.scheduled_date)
+    time_str = appointment.scheduled_time.strftime("%H:%M")
+    
     await db.commit()
+    
+    # Send in-app notifications in background
+    async def send_cancel_notifications():
+        try:
+            from app.db.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as notif_db:
+                notification_service = get_in_app_notification_service(notif_db)
+                
+                if is_patient:
+                    # Patient cancelled - notify doctor
+                    await notification_service.notify_appointment_cancelled_to_doctor(
+                        doctor_id=doctor_user_id,
+                        patient_name=patient_name,
+                        appointment_date=date_str,
+                        appointment_time=time_str,
+                        appointment_id=apt_id
+                    )
+                else:
+                    # Doctor cancelled - notify patient
+                    await notification_service.notify_appointment_cancelled(
+                        patient_id=patient_id,
+                        doctor_name=doctor_name,
+                        appointment_date=date_str,
+                        appointment_time=time_str,
+                        appointment_id=apt_id,
+                        cancelled_by="doctor"
+                    )
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send cancellation notification: {e}")
+    
+    background_tasks.add_task(send_cancel_notifications)
     
     return {"message": "Appointment cancelled successfully", "appointment_id": appointment_id}

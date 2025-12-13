@@ -5,7 +5,7 @@ Reviews API Endpoints
 - Get patient's submitted reviews
 """
 
-from fastapi import APIRouter, Depends, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, BackgroundTasks
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select, func, and_
 from typing import Optional
@@ -15,6 +15,7 @@ from pydantic import BaseModel, Field
 from app.db.database import get_db
 from app.api.deps import get_current_user
 from app.models.models import User, Doctor, Appointment, Review, AppointmentStatus
+from app.services.in_app_notification_service import get_in_app_notification_service
 
 router = APIRouter(prefix="/reviews", tags=["reviews"])
 
@@ -61,6 +62,7 @@ class PatientReviewResponse(BaseModel):
 @router.post("", response_model=ReviewResponse)
 async def submit_review(
     review_data: ReviewCreate,
+    background_tasks: BackgroundTasks,
     db: AsyncSession = Depends(get_db),
     current_user: User = Depends(get_current_user)
 ):
@@ -92,6 +94,13 @@ async def submit_review(
     if existing_review.scalar_one_or_none():
         raise HTTPException(status_code=400, detail="You have already reviewed this appointment")
     
+    # Get doctor's user_id for notification before creating review
+    doctor_result = await db.execute(
+        select(Doctor).where(Doctor.id == appointment.doctor_id)
+    )
+    doctor = doctor_result.scalar_one_or_none()
+    doctor_user_id = doctor.user_id if doctor else None
+    
     # Create review
     review = Review(
         appointment_id=review_data.appointment_id,
@@ -109,6 +118,27 @@ async def submit_review(
     await db.refresh(review)
     
     patient_name = f"{current_user.first_name or ''} {current_user.last_name or ''}".strip() or "Anonymous"
+    review_id = review.id
+    rating = review_data.rating
+    
+    # Notify doctor about the new review in background
+    if doctor_user_id:
+        async def send_review_notification():
+            try:
+                from app.db.database import AsyncSessionLocal
+                async with AsyncSessionLocal() as notif_db:
+                    notification_service = get_in_app_notification_service(notif_db)
+                    await notification_service.notify_review_received(
+                        doctor_id=doctor_user_id,
+                        patient_name=patient_name,
+                        rating=rating,
+                        review_id=review_id
+                    )
+            except Exception as e:
+                import logging
+                logging.error(f"Failed to send review notification: {e}")
+        
+        background_tasks.add_task(send_review_notification)
     
     return ReviewResponse(
         id=review.id,

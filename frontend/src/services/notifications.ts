@@ -11,12 +11,16 @@ export type NotificationType =
   | 'appointment_reminder'
   | 'appointment_cancelled'
   | 'appointment_completed'
+  | 'new_appointment'
   | 'prescription_ready'
+  | 'prescription_updated'
   | 'payment_confirmed'
   | 'payment_failed'
+  | 'payment_received'
   | 'review_received'
   | 'doctor_approved'
   | 'doctor_rejected'
+  | 'message_received'
   | 'system';
 
 export interface Notification {

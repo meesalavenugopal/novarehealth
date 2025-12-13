@@ -229,6 +229,122 @@ class InAppNotificationService:
             related_type="review"
         )
     
+    async def notify_appointment_completed(
+        self,
+        patient_id: int,
+        doctor_name: str,
+        appointment_date: str,
+        appointment_time: str,
+        appointment_id: int
+    ) -> Notification:
+        """Notify patient when their appointment is completed."""
+        return await self.create_notification(
+            user_id=patient_id,
+            notification_type=NotificationType.APPOINTMENT_COMPLETED,
+            title="Appointment Completed",
+            message=f"Your appointment with Dr. {doctor_name} on {appointment_date} at {appointment_time} has been completed.",
+            related_id=appointment_id,
+            related_type="appointment"
+        )
+    
+    async def notify_appointment_cancelled_to_doctor(
+        self,
+        doctor_id: int,
+        patient_name: str,
+        appointment_date: str,
+        appointment_time: str,
+        appointment_id: int
+    ) -> Notification:
+        """Notify doctor when a patient cancels their appointment."""
+        return await self.create_notification(
+            user_id=doctor_id,
+            notification_type=NotificationType.APPOINTMENT_CANCELLED,
+            title="Appointment Cancelled",
+            message=f"{patient_name} has cancelled their appointment on {appointment_date} at {appointment_time}.",
+            related_id=appointment_id,
+            related_type="appointment"
+        )
+    
+    # ============== Doctor Status Notifications ==============
+    
+    async def notify_doctor_approved(
+        self,
+        doctor_user_id: int
+    ) -> Notification:
+        """Notify doctor when their application is approved."""
+        return await self.create_notification(
+            user_id=doctor_user_id,
+            notification_type=NotificationType.DOCTOR_APPROVED,
+            title="Application Approved! 🎉",
+            message="Congratulations! Your doctor application has been approved. You can now start accepting appointments.",
+            related_type="doctor_status"
+        )
+    
+    async def notify_doctor_rejected(
+        self,
+        doctor_user_id: int,
+        reason: Optional[str] = None
+    ) -> Notification:
+        """Notify doctor when their application is rejected."""
+        message = "Your doctor application has been rejected."
+        if reason:
+            message += f" Reason: {reason}"
+        return await self.create_notification(
+            user_id=doctor_user_id,
+            notification_type=NotificationType.DOCTOR_REJECTED,
+            title="Application Rejected",
+            message=message,
+            related_type="doctor_status"
+        )
+    
+    async def notify_doctor_suspended(
+        self,
+        doctor_user_id: int,
+        reason: Optional[str] = None
+    ) -> Notification:
+        """Notify doctor when their account is suspended."""
+        message = "Your account has been suspended."
+        if reason:
+            message += f" Reason: {reason}"
+        return await self.create_notification(
+            user_id=doctor_user_id,
+            notification_type=NotificationType.SYSTEM,
+            title="Account Suspended",
+            message=message,
+            related_type="doctor_status"
+        )
+    
+    async def notify_doctor_reinstated(
+        self,
+        doctor_user_id: int
+    ) -> Notification:
+        """Notify doctor when their account is reinstated."""
+        return await self.create_notification(
+            user_id=doctor_user_id,
+            notification_type=NotificationType.SYSTEM,
+            title="Account Reinstated",
+            message="Your account has been reinstated. You can now accept appointments again.",
+            related_type="doctor_status"
+        )
+    
+    # ============== Payment Notifications ==============
+    
+    async def notify_payment_failed(
+        self,
+        patient_id: int,
+        amount: float,
+        appointment_id: Optional[int] = None
+    ) -> Notification:
+        """Notify patient when their payment fails."""
+        return await self.create_notification(
+            user_id=patient_id,
+            notification_type=NotificationType.PAYMENT_FAILED,
+            title="Payment Failed",
+            message=f"Your payment of ${amount:.2f} could not be processed. Please try again.",
+            related_id=appointment_id,
+            related_type="appointment" if appointment_id else None
+        )
+    
     # ============== System Notifications ==============
     
     async def notify_system_message(

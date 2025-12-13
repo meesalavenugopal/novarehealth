@@ -49,11 +49,15 @@ class NotificationType(str, enum.Enum):
     APPOINTMENT_CANCELLED = "appointment_cancelled"
     APPOINTMENT_REMINDER = "appointment_reminder"
     APPOINTMENT_COMPLETED = "appointment_completed"
+    NEW_APPOINTMENT = "new_appointment"  # For doctors when patient books
     PRESCRIPTION_READY = "prescription_ready"
     PRESCRIPTION_UPDATED = "prescription_updated"
     PAYMENT_CONFIRMED = "payment_confirmed"
     PAYMENT_FAILED = "payment_failed"
+    PAYMENT_RECEIVED = "payment_received"  # For doctors
     REVIEW_RECEIVED = "review_received"
+    DOCTOR_APPROVED = "doctor_approved"
+    DOCTOR_REJECTED = "doctor_rejected"
     MESSAGE_RECEIVED = "message_received"
     SYSTEM = "system"
 

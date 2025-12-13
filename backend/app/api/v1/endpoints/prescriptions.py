@@ -27,6 +27,7 @@ from app.schemas.schemas import (
     MedicineSearchResponse,
 )
 from app.services.pdf_service import generate_prescription_pdf
+from app.services.in_app_notification_service import get_in_app_notification_service
 
 # Edit window in hours (48 hours)
 PRESCRIPTION_EDIT_WINDOW_HOURS = 48
@@ -201,11 +202,33 @@ async def create_prescription(
     await db.commit()
     await db.refresh(prescription)
     
+    # Capture data for notifications
+    prescription_id = prescription.id
+    patient_id = appointment.patient_id
+    doctor_name = f"{current_user.first_name} {current_user.last_name}"
+    
     # Generate PDF in background
     background_tasks.add_task(
         generate_prescription_pdf,
-        prescription_id=prescription.id
+        prescription_id=prescription_id
     )
+    
+    # Send notification to patient in background
+    async def send_prescription_notification():
+        try:
+            from app.db.database import AsyncSessionLocal
+            async with AsyncSessionLocal() as notif_db:
+                notification_service = get_in_app_notification_service(notif_db)
+                await notification_service.notify_prescription_ready(
+                    patient_id=patient_id,
+                    doctor_name=doctor_name,
+                    prescription_id=prescription_id
+                )
+        except Exception as e:
+            import logging
+            logging.error(f"Failed to send prescription notification: {e}")
+    
+    background_tasks.add_task(send_prescription_notification)
     
     return PrescriptionResponse.model_validate(prescription)
 
@@ -442,14 +465,38 @@ async def update_prescription(
         prescription.edit_count = (prescription.edit_count or 0) + 1
         prescription.last_edited_at = datetime.utcnow()
     
+    # Capture data before commit
+    prescription_id_val = prescription.id
+    patient_id = prescription.patient_id
+    doctor_name = f"{current_user.first_name} {current_user.last_name}"
+    has_changes = bool(changes)
+    
     await db.commit()
     await db.refresh(prescription)
     
     # Regenerate PDF
     background_tasks.add_task(
         generate_prescription_pdf,
-        prescription_id=prescription.id
+        prescription_id=prescription_id_val
     )
+    
+    # Notify patient of prescription update in background
+    if has_changes:
+        async def send_update_notification():
+            try:
+                from app.db.database import AsyncSessionLocal
+                async with AsyncSessionLocal() as notif_db:
+                    notification_service = get_in_app_notification_service(notif_db)
+                    await notification_service.notify_prescription_updated(
+                        patient_id=patient_id,
+                        doctor_name=doctor_name,
+                        prescription_id=prescription_id_val
+                    )
+            except Exception as e:
+                import logging
+                logging.error(f"Failed to send prescription update notification: {e}")
+        
+        background_tasks.add_task(send_update_notification)
     
     return PrescriptionResponse.model_validate(prescription)
 
