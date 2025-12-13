@@ -10,6 +10,7 @@ import HelpPage from './pages/common/HelpPage';
 import AppointmentsPage from './pages/common/AppointmentsPage';
 import PrescriptionsPage from './pages/common/PrescriptionsPage';
 import HealthRecordsPage from './pages/common/HealthRecordsPage';
+import NotificationsPage from './pages/common/NotificationsPage';
 import PatientDashboard from './pages/patient/Dashboard';
 import FindDoctorsPage from './pages/patient/FindDoctorsPage';
 import DoctorProfilePage from './pages/patient/DoctorProfilePage';
@@ -106,6 +107,14 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['patient']}>
                 <HealthRecordsPage />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/notifications"
+            element={
+              <ProtectedRoute allowedRoles={['patient', 'doctor', 'admin', 'super_admin']}>
+                <NotificationsPage />
               </ProtectedRoute>
             }
           />
