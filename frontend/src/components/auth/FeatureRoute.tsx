@@ -1,5 +1,6 @@
 import { Navigate } from 'react-router-dom';
-import { useFeatureFlags, FeatureFlags } from '../../store/featureFlagsStore';
+import { useFeatureFlags } from '../../store/featureFlagsStore';
+import type { FeatureFlags } from '../../store/featureFlagsStore';
 
 interface FeatureRouteProps {
   children: React.ReactNode;
