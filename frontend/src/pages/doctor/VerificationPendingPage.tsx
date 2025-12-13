@@ -33,7 +33,7 @@ import {
   File,
   Edit,
   Sparkles,
-  Eye,
+  Languages,
 } from 'lucide-react';
 
 interface Specialization {
@@ -778,7 +778,7 @@ export const VerificationPendingPage: React.FC = () => {
                 {/* Languages Section */}
                 <div>
                   <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
-                    <Users className="w-5 h-5 text-cyan-600" />
+                    <Languages className="w-5 h-5 text-cyan-600" />
                     Languages
                   </h3>
 

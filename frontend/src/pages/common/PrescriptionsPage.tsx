@@ -10,16 +10,35 @@ import {
   AlertCircle,
   ChevronDown,
   ChevronUp,
-  ExternalLink
+  ExternalLink,
+  Plus,
+  User,
+  Clock,
+  X,
+  CheckCircle
 } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
 import { useAuthStore } from '../../store/authStore';
+import { authFetch } from '../../services/api';
 import { 
   getMyPrescriptions, 
   getDoctorPrescriptions,
   getPrescriptionPdfUrl,
-  type PrescriptionDetail
+  getPrescriptionByAppointment,
+  type PrescriptionDetail,
+  type Prescription
 } from '../../services/prescription';
+import PrescriptionEditor from '../../components/doctor/PrescriptionEditor';
+
+interface AppointmentForPrescription {
+  id: number;
+  patient_name: string;
+  patient_id: number;
+  scheduled_date: string;
+  scheduled_time: string;
+  status: string;
+  hasPrescription?: boolean;
+}
 
 export default function PrescriptionsPage() {
   const { user } = useAuthStore();
@@ -28,11 +47,19 @@ export default function PrescriptionsPage() {
   const [error, setError] = useState<string | null>(null);
   const [searchQuery, setSearchQuery] = useState('');
   const [expandedId, setExpandedId] = useState<number | null>(null);
+  
+  // Create prescription modal state
+  const [showCreateModal, setShowCreateModal] = useState(false);
+  const [completedAppointments, setCompletedAppointments] = useState<AppointmentForPrescription[]>([]);
+  const [loadingAppointments, setLoadingAppointments] = useState(false);
+  const [selectedAppointment, setSelectedAppointment] = useState<AppointmentForPrescription | null>(null);
+  const [showPrescriptionEditor, setShowPrescriptionEditor] = useState(false);
 
   const isDoctor = user?.role === 'doctor';
 
   useEffect(() => {
     fetchPrescriptions();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const fetchPrescriptions = async () => {
@@ -52,6 +79,59 @@ export default function PrescriptionsPage() {
     } finally {
       setLoading(false);
     }
+  };
+
+  // Fetch completed appointments without prescriptions
+  const fetchCompletedAppointments = async () => {
+    setLoadingAppointments(true);
+    try {
+      const response = await authFetch('/api/v1/appointments/');
+      if (response.ok) {
+        const data = await response.json();
+        // Filter only completed appointments
+        const completed = data.filter((apt: any) => apt.status === 'completed');
+        
+        // Check which ones already have prescriptions
+        const appointmentsWithPrescriptionStatus = await Promise.all(
+          completed.map(async (apt: any) => {
+            try {
+              const prescription = await getPrescriptionByAppointment(apt.id);
+              return { ...apt, hasPrescription: !!prescription };
+            } catch {
+              return { ...apt, hasPrescription: false };
+            }
+          })
+        );
+        
+        // Only show appointments without prescriptions
+        const withoutPrescriptions = appointmentsWithPrescriptionStatus.filter(
+          apt => !apt.hasPrescription
+        );
+        
+        setCompletedAppointments(withoutPrescriptions);
+      }
+    } catch (err) {
+      console.error('Failed to fetch appointments:', err);
+    } finally {
+      setLoadingAppointments(false);
+    }
+  };
+
+  const handleOpenCreateModal = () => {
+    setShowCreateModal(true);
+    fetchCompletedAppointments();
+  };
+
+  const handleSelectAppointment = (appointment: AppointmentForPrescription) => {
+    setSelectedAppointment(appointment);
+    setShowCreateModal(false);
+    setShowPrescriptionEditor(true);
+  };
+
+  const handlePrescriptionSaved = (_prescription: Prescription) => {
+    setShowPrescriptionEditor(false);
+    setSelectedAppointment(null);
+    fetchPrescriptions(); // Refresh the list
   };
 
   const handleDownloadPdf = (prescription: PrescriptionDetail) => {
@@ -99,20 +179,33 @@ export default function PrescriptionsPage() {
       
       <div className="max-w-5xl mx-auto px-4 py-8">
         {/* Header */}
-        <div className="mb-8">
-          <div className="flex items-center gap-3 mb-2">
-            <div className="p-2 bg-cyan-100 rounded-xl">
-              <FileText className="w-6 h-6 text-cyan-600" />
+        <div className="mb-8 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+          <div>
+            <div className="flex items-center gap-3 mb-2">
+              <div className="p-2 bg-cyan-100 rounded-xl">
+                <FileText className="w-6 h-6 text-cyan-600" />
+              </div>
+              <h1 className="text-2xl font-bold text-slate-900">
+                {isDoctor ? 'Issued Prescriptions' : 'My Prescriptions'}
+              </h1>
             </div>
-            <h1 className="text-2xl font-bold text-slate-900">
-              {isDoctor ? 'Issued Prescriptions' : 'My Prescriptions'}
-            </h1>
+            <p className="text-slate-500">
+              {isDoctor 
+                ? 'View prescriptions you have issued to patients'
+                : 'View and download your medical prescriptions'}
+            </p>
           </div>
-          <p className="text-slate-500">
-            {isDoctor 
-              ? 'View prescriptions you have issued to patients'
-              : 'View and download your medical prescriptions'}
-          </p>
+          
+          {/* Create Prescription Button - Only for doctors */}
+          {isDoctor && (
+            <button
+              onClick={handleOpenCreateModal}
+              className="flex items-center gap-2 px-4 py-2.5 bg-cyan-600 text-white rounded-xl hover:bg-cyan-700 transition-colors font-medium shadow-sm"
+            >
+              <Plus className="w-5 h-5" />
+              Create Prescription
+            </button>
+          )}
         </div>
 
         {/* Search */}
@@ -309,6 +402,113 @@ export default function PrescriptionsPage() {
           </div>
         )}
       </div>
+
+      {/* Select Appointment Modal */}
+      {showCreateModal && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4">
+          <div className="bg-white rounded-2xl shadow-xl max-w-lg w-full max-h-[80vh] overflow-hidden">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Select Appointment</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  Choose a completed appointment to create a prescription
+                </p>
+              </div>
+              <button
+                onClick={() => setShowCreateModal(false)}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto max-h-[60vh]">
+              {loadingAppointments ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="w-8 h-8 animate-spin text-cyan-600" />
+                </div>
+              ) : completedAppointments.length === 0 ? (
+                <div className="text-center py-12">
+                  <CheckCircle className="w-12 h-12 text-green-500 mx-auto mb-4" />
+                  <h3 className="text-lg font-medium text-slate-900 mb-2">All caught up!</h3>
+                  <p className="text-slate-500">
+                    All completed appointments have prescriptions.
+                  </p>
+                </div>
+              ) : (
+                <div className="space-y-3">
+                  {completedAppointments.map((appointment) => (
+                    <button
+                      key={appointment.id}
+                      onClick={() => handleSelectAppointment(appointment)}
+                      className="w-full p-4 bg-slate-50 hover:bg-cyan-50 border border-slate-200 hover:border-cyan-300 rounded-xl text-left transition-colors group"
+                    >
+                      <div className="flex items-center gap-4">
+                        <div className="w-12 h-12 bg-cyan-100 rounded-xl flex items-center justify-center group-hover:bg-cyan-200 transition-colors">
+                          <User className="w-6 h-6 text-cyan-600" />
+                        </div>
+                        <div className="flex-1">
+                          <h4 className="font-semibold text-slate-900">
+                            {appointment.patient_name}
+                          </h4>
+                          <div className="flex items-center gap-3 text-sm text-slate-500 mt-1">
+                            <span className="flex items-center gap-1">
+                              <Calendar className="w-4 h-4" />
+                              {formatDate(appointment.scheduled_date)}
+                            </span>
+                            <span className="flex items-center gap-1">
+                              <Clock className="w-4 h-4" />
+                              {appointment.scheduled_time}
+                            </span>
+                          </div>
+                        </div>
+                        <ChevronDown className="w-5 h-5 text-slate-400 -rotate-90" />
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Prescription Editor Modal */}
+      {showPrescriptionEditor && selectedAppointment && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50 p-4 overflow-y-auto">
+          <div className="bg-white rounded-2xl shadow-xl max-w-4xl w-full my-8">
+            <div className="p-6 border-b border-slate-200 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-slate-900">Create Prescription</h2>
+                <p className="text-sm text-slate-500 mt-1">
+                  For {selectedAppointment.patient_name} • {formatDate(selectedAppointment.scheduled_date)}
+                </p>
+              </div>
+              <button
+                onClick={() => {
+                  setShowPrescriptionEditor(false);
+                  setSelectedAppointment(null);
+                }}
+                className="p-2 hover:bg-slate-100 rounded-lg transition-colors"
+              >
+                <X className="w-5 h-5 text-slate-500" />
+              </button>
+            </div>
+            
+            <div className="p-6">
+              <PrescriptionEditor
+                appointmentId={selectedAppointment.id}
+                patientName={selectedAppointment.patient_name}
+                onClose={() => {
+                  setShowPrescriptionEditor(false);
+                  setSelectedAppointment(null);
+                }}
+                onSuccess={handlePrescriptionSaved}
+              />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
