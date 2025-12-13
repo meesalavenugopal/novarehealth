@@ -1,6 +1,50 @@
-import { useState, useRef, useEffect } from 'react';
-import { Bot, X, Sparkles, Send, MessageCircle } from 'lucide-react';
+import { useState, useRef, useEffect, Component } from 'react';
+import type { ErrorInfo, ReactNode } from 'react';
+import { useLocation } from 'react-router-dom';
+import { Bot, X, Sparkles, Send, MessageCircle, RotateCcw, AlertTriangle } from 'lucide-react';
 import { config as appConfig } from '../../config';
+import { useAuthStore } from '../../store/authStore';
+
+// Error Boundary Component
+interface ErrorBoundaryState {
+  hasError: boolean;
+  error?: Error;
+}
+
+interface ErrorBoundaryProps {
+  children: ReactNode;
+}
+
+class ChatErrorBoundary extends Component<ErrorBoundaryProps, ErrorBoundaryState> {
+  constructor(props: ErrorBoundaryProps) {
+    super(props);
+    this.state = { hasError: false };
+  }
+
+  static getDerivedStateFromError(error: Error): ErrorBoundaryState {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    console.error('AI Chat Widget Error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="fixed bottom-6 right-6 z-50">
+          <div className="w-16 h-16 bg-red-100 rounded-2xl flex items-center justify-center shadow-lg">
+            <AlertTriangle className="w-7 h-7 text-red-500" />
+          </div>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+// Types
+type ContextType = 'general' | 'patient' | 'doctor' | 'home';
 
 interface ChatMessage {
   role: 'user' | 'assistant';
@@ -8,13 +52,83 @@ interface ChatMessage {
 }
 
 interface AIChatWidgetProps {
-  context: 'general' | 'patient' | 'doctor' | 'home';
+  context?: ContextType;
   title?: string;
   subtitle?: string;
   quickActions?: string[];
   placeholder?: string;
 }
 
+// Pages where the chat widget should be hidden
+const HIDDEN_PATHS = [
+  '/login',
+  '/signup',
+  '/register',
+  '/forgot-password',
+  '/reset-password',
+  '/verify-email',
+  '/verify-otp',
+];
+
+// Page-specific overrides for quick actions
+interface PageOverride {
+  context: ContextType;
+  quickActions?: string[];
+}
+
+const PAGE_OVERRIDES: Record<string, PageOverride> = {
+  '/dashboard': {
+    context: 'patient',
+    quickActions: ['View my appointments', 'Find a doctor', 'Check my prescriptions'],
+  },
+  '/doctor/dashboard': {
+    context: 'doctor',
+    quickActions: ['View today\'s schedule', 'Patient management tips', 'Prescription guidelines'],
+  },
+  '/appointments': {
+    context: 'patient',
+    quickActions: ['Book new appointment', 'Reschedule appointment', 'Cancel appointment'],
+  },
+  '/doctors': {
+    context: 'patient',
+    quickActions: ['Find specialist', 'Doctor availability', 'Compare doctors'],
+  },
+  '/health-records': {
+    context: 'patient',
+    quickActions: ['Upload health record', 'Share with doctor', 'Download records'],
+  },
+  '/prescriptions': {
+    context: 'patient',
+    quickActions: ['View active prescriptions', 'Refill medication', 'Drug interactions'],
+  },
+  // Admin pages
+  '/admin': {
+    context: 'general',
+    quickActions: ['Platform statistics', 'Pending verifications', 'User management'],
+  },
+  '/admin/dashboard': {
+    context: 'general',
+    quickActions: ['Platform overview', 'Today\'s appointments', 'Revenue summary'],
+  },
+  '/admin/doctors': {
+    context: 'general',
+    quickActions: ['Pending verifications', 'Doctor statistics', 'Manage specializations'],
+  },
+  '/admin/patients': {
+    context: 'general',
+    quickActions: ['Patient statistics', 'User activity', 'Support requests'],
+  },
+  '/admin/appointments': {
+    context: 'general',
+    quickActions: ['Today\'s appointments', 'Appointment trends', 'Cancellation reasons'],
+  },
+  '/admin/specializations': {
+    context: 'general',
+    quickActions: ['Add specialization', 'Popular specializations', 'Doctor distribution'],
+  },
+};
+
+// Context configurations
 const contextConfig = {
   general: {
     title: 'AI Assistant',
@@ -44,27 +158,87 @@ const contextConfig = {
   }
 };
 
+// Helper function to get page override
+function getPageOverride(pathname: string): PageOverride | null {
+  if (PAGE_OVERRIDES[pathname]) {
+    return PAGE_OVERRIDES[pathname];
+  }
+  
+  for (const [path, override] of Object.entries(PAGE_OVERRIDES)) {
+    if (pathname.startsWith(path + '/')) {
+      return override;
+    }
+  }
+  
+  return null;
+}
+
+// Helper function to get default context based on user role
+function getDefaultContext(role: string | undefined): ContextType {
+  if (!role) return 'home';
+  
+  switch (role) {
+    case 'patient':
+      return 'patient';
+    case 'doctor':
+      return 'doctor';
+    case 'admin':
+      return 'general';
+    default:
+      return 'home';
+  }
+}
+
 export default function AIChatWidget({ 
-  context, 
+  context: propContext, 
   title, 
   subtitle, 
   quickActions, 
   placeholder = 'Type your message...' 
 }: AIChatWidgetProps) {
+  const location = useLocation();
+  const user = useAuthStore((state) => state.user);
+  
+  // Check if widget should be hidden on this page
+  const shouldHide = HIDDEN_PATHS.some(path => 
+    location.pathname === path || location.pathname.startsWith(path + '/')
+  );
+  
+  // Determine effective context
+  let effectiveContext: ContextType;
+  let overrideQuickActions: string[] | undefined;
+  
+  if (propContext) {
+    effectiveContext = propContext;
+  } else {
+    const pageOverride = getPageOverride(location.pathname);
+    if (pageOverride) {
+      effectiveContext = pageOverride.context;
+      overrideQuickActions = pageOverride.quickActions;
+    } else {
+      effectiveContext = getDefaultContext(user?.role);
+    }
+  }
+
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
   const inputRef = useRef<HTMLInputElement>(null);
 
-  const config = contextConfig[context];
+  const config = contextConfig[effectiveContext];
   const displayTitle = title || config.title;
   const displaySubtitle = subtitle || config.subtitle;
-  const displayQuickActions = quickActions || config.quickActions;
+  const displayQuickActions = quickActions || overrideQuickActions || config.quickActions;
 
   useEffect(() => {
     chatEndRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
+
+  // Hide widget on certain pages
+  if (shouldHide) {
+    return null;
+  }
 
   const sendMessage = async (customMessage?: string) => {
     const messageText = customMessage || inputRef.current?.value?.trim();
@@ -78,13 +252,20 @@ export default function AIChatWidget({
     setIsLoading(true);
 
     try {
+      // Build headers with auth token if user is logged in
+      const headers: Record<string, string> = { 'Content-Type': 'application/json' };
+      const token = localStorage.getItem('access_token');
+      if (token) {
+        headers['Authorization'] = `Bearer ${token}`;
+      }
+
       const response = await fetch(`${appConfig.apiUrl}/ai/chat`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers,
         body: JSON.stringify({
           message: messageText,
           context: config.systemPrompt,
-          conversation_history: messages.slice(-10) // Send last 10 messages for context
+          conversation_history: messages.slice(-10)
         }),
       });
 
@@ -107,8 +288,14 @@ export default function AIChatWidget({
     }
   };
 
+  // Clear chat function
+  const clearChat = () => {
+    setMessages([]);
+  };
+
   return (
-    <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${isOpen ? 'w-96' : ''}`}>
+    <ChatErrorBoundary>
+    <div className={`fixed bottom-6 right-6 z-50 transition-all duration-300 ${isOpen ? 'w-full sm:w-96 max-w-[calc(100vw-3rem)]' : ''}`}>
       {isOpen ? (
         <div className="relative overflow-hidden rounded-3xl bg-gradient-to-br from-cyan-500 via-teal-500 to-emerald-600 p-[1px] shadow-2xl shadow-cyan-500/30">
           <div className="relative bg-white dark:bg-slate-900 rounded-3xl overflow-hidden">
@@ -128,12 +315,23 @@ export default function AIChatWidget({
                     <p className="text-xs text-white/70">{displaySubtitle}</p>
                   </div>
                 </div>
-                <button 
-                  onClick={() => setIsOpen(false)}
-                  className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-all"
-                >
-                  <X className="w-4 h-4" />
-                </button>
+                <div className="flex items-center gap-2">
+                  {messages.length > 0 && (
+                    <button 
+                      onClick={clearChat}
+                      className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-all"
+                      title="Clear chat"
+                    >
+                      <RotateCcw className="w-4 h-4" />
+                    </button>
+                  )}
+                  <button 
+                    onClick={() => setIsOpen(false)}
+                    className="w-8 h-8 flex items-center justify-center rounded-lg bg-white/10 text-white/80 hover:bg-white/20 hover:text-white transition-all"
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
               </div>
             </div>
             
@@ -171,10 +369,27 @@ export default function AIChatWidget({
                     )}
                     <div className={`rounded-2xl px-4 py-2.5 text-sm leading-relaxed ${
                       msg.role === 'user' 
-                        ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-br-md shadow-lg shadow-cyan-500/20' 
+                        ? 'bg-gradient-to-r from-cyan-500 to-teal-500 text-white rounded-br-md shadow-lg shadow-cyan-500/20'
                         : 'bg-white border border-slate-200 text-slate-700 rounded-bl-md shadow-sm'
                     }`}>
-                      {msg.content}
+                      {msg.role === 'assistant' ? (
+                        <div className="space-y-2">
+                          {msg.content.split('\n').map((line, i) => (
+                            <p key={i} className={line.trim() === '' ? 'h-2' : ''}>
+                              {line.startsWith('- ') || line.match(/^\d+\./) ? (
+                                <span className="flex gap-2">
+                                  <span className="text-cyan-500 font-medium">{line.match(/^-|\d+\./)?.[0]}</span>
+                                  <span>{line.replace(/^-\s*|\d+\.\s*/, '')}</span>
+                                </span>
+                              ) : (
+                                line
+                              )}
+                            </p>
+                          ))}
+                        </div>
+                      ) : (
+                        msg.content
+                      )}
                     </div>
                   </div>
                 </div>
@@ -252,5 +467,6 @@ export default function AIChatWidget({
         </button>
       )}
     </div>
+    </ChatErrorBoundary>
   );
 }

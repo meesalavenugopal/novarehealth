@@ -3,7 +3,6 @@ import { Link, useNavigate } from 'react-router-dom';
 import { useAuthStore } from '../../store/authStore';
 import { Button, Card, CardHeader } from '../../components/ui';
 import { Navbar } from '../../components/layout';
-import { AIChatWidget } from '../../components/chat';
 import { Loader2, CheckCircle } from 'lucide-react';
 import { authFetch } from '../../services/api';
 import { config } from '../../config';
@@ -484,12 +483,6 @@ export const DoctorDashboard: React.FC = () => {
           </div>
         </div>
       </main>
-
-      {/* AI Chat Widget */}
-      <AIChatWidget 
-        context="doctor" 
-        quickActions={['Manage schedule', 'View earnings', 'Patient tips']}
-      />
     </div>
   );
 };

@@ -15,7 +15,6 @@ import {
   Loader2
 } from 'lucide-react';
 import { Navbar, Footer } from '../../components/layout';
-import { AIChatWidget } from '../../components/chat';
 import { Card, CardHeader, Button } from '../../components/ui';
 import { authFetch } from '../../services/api';
 import { config } from '../../config';
@@ -401,12 +400,6 @@ export default function PatientDashboard() {
       </main>
 
       <Footer />
-
-      {/* AI Chat Widget */}
-      <AIChatWidget 
-        context="patient" 
-        quickActions={['Find a doctor', 'Understand my symptoms', 'View appointments']}
-      />
     </div>
   );
 }

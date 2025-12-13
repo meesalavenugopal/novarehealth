@@ -5,10 +5,14 @@ from fastapi import APIRouter, HTTPException, Depends
 from pydantic import BaseModel
 from typing import List, Optional, Dict, Any
 from sqlalchemy.ext.asyncio import AsyncSession
+from sqlalchemy import select, and_
+from datetime import date, datetime, timedelta
 
 from app.db.database import get_db
 from app.services.ai_service import ai_service
 from app.core.config import settings
+from app.api.deps import get_optional_current_user
+from app.models import User, UserRole, Appointment, Prescription, Doctor, AppointmentStatus
 
 
 router = APIRouter(prefix="/ai", tags=["AI"])
@@ -209,9 +213,17 @@ async def get_registration_tips(request: RegistrationTipsRequest):
 
 
 @router.post("/chat")
-async def chat_assistant(request: ChatRequest):
+async def chat_assistant(
+    request: ChatRequest,
+    db: AsyncSession = Depends(get_db),
+    current_user: Optional[User] = Depends(get_optional_current_user)
+):
     """
-    General chat assistant for doctor registration help.
+    AI chat assistant with personalized context based on user role.
+    - Guests: General platform assistance
+    - Patients: Access to their appointments, prescriptions, health info
+    - Doctors: Access to their schedule, patients, earnings
+    - Admins: Platform statistics and management help
     """
     if not settings.OPENAI_API_KEY:
         raise HTTPException(
@@ -219,10 +231,144 @@ async def chat_assistant(request: ChatRequest):
             detail="AI service is not configured. Please set OPENAI_API_KEY."
         )
     
+    # Build user-specific context
+    user_context = ""
+    
+    if current_user:
+        user_context = f"\n\n--- USER CONTEXT ---\nUser: {current_user.first_name} {current_user.last_name}\nEmail: {current_user.email}\nRole: {current_user.role.value}\n"
+        
+        if current_user.role == UserRole.PATIENT:
+            # Get patient's upcoming appointments
+            upcoming_appointments = await db.execute(
+                select(Appointment)
+                .where(
+                    and_(
+                        Appointment.patient_id == current_user.id,
+                        Appointment.scheduled_date >= date.today(),
+                        Appointment.status.in_([AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING])
+                    )
+                )
+                .order_by(Appointment.scheduled_date, Appointment.scheduled_time)
+                .limit(5)
+            )
+            appointments = upcoming_appointments.scalars().all()
+            
+            if appointments:
+                user_context += "\nUpcoming Appointments:\n"
+                for apt in appointments:
+                    # Get doctor info
+                    doctor_result = await db.execute(
+                        select(Doctor).where(Doctor.id == apt.doctor_id)
+                    )
+                    doctor = doctor_result.scalar_one_or_none()
+                    if doctor:
+                        doctor_user_result = await db.execute(
+                            select(User).where(User.id == doctor.user_id)
+                        )
+                        doctor_user = doctor_user_result.scalar_one_or_none()
+                        doctor_name = f"Dr. {doctor_user.first_name} {doctor_user.last_name}" if doctor_user else "Doctor"
+                    else:
+                        doctor_name = "Doctor"
+                    
+                    user_context += f"- {apt.scheduled_date.strftime('%b %d, %Y')} at {apt.scheduled_time.strftime('%I:%M %p')} with {doctor_name} ({apt.status.value})\n"
+            else:
+                user_context += "\nNo upcoming appointments.\n"
+            
+            # Get recent prescriptions
+            recent_prescriptions = await db.execute(
+                select(Prescription)
+                .where(Prescription.patient_id == current_user.id)
+                .order_by(Prescription.created_at.desc())
+                .limit(3)
+            )
+            prescriptions = recent_prescriptions.scalars().all()
+            
+            if prescriptions:
+                user_context += "\nRecent Prescriptions:\n"
+                for rx in prescriptions:
+                    meds = rx.medications if isinstance(rx.medications, list) else []
+                    med_names = [m.get('name', 'Unknown') for m in meds[:3]]
+                    user_context += f"- {rx.created_at.strftime('%b %d, %Y')}: {', '.join(med_names)}\n"
+        
+        elif current_user.role == UserRole.DOCTOR:
+            # Get doctor record
+            doctor_result = await db.execute(
+                select(Doctor).where(Doctor.user_id == current_user.id)
+            )
+            doctor = doctor_result.scalar_one_or_none()
+            
+            if doctor:
+                user_context += f"Specialization: {doctor.specialization.name if doctor.specialization else 'Not set'}\n"
+                user_context += f"Verification Status: {doctor.verification_status.value}\n"
+                
+                # Get today's appointments
+                today_appointments = await db.execute(
+                    select(Appointment)
+                    .where(
+                        and_(
+                            Appointment.doctor_id == doctor.id,
+                            Appointment.scheduled_date == date.today(),
+                            Appointment.status.in_([AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING])
+                        )
+                    )
+                    .order_by(Appointment.scheduled_time)
+                )
+                todays = today_appointments.scalars().all()
+                
+                user_context += f"\nToday's Schedule: {len(todays)} appointment(s)\n"
+                for apt in todays:
+                    # Get patient name
+                    patient_result = await db.execute(
+                        select(User).where(User.id == apt.patient_id)
+                    )
+                    patient = patient_result.scalar_one_or_none()
+                    patient_name = f"{patient.first_name} {patient.last_name}" if patient else "Patient"
+                    user_context += f"- {apt.scheduled_time.strftime('%I:%M %p')}: {patient_name} ({apt.status.value})\n"
+                
+                # Get upcoming appointments count
+                upcoming_count = await db.execute(
+                    select(Appointment)
+                    .where(
+                        and_(
+                            Appointment.doctor_id == doctor.id,
+                            Appointment.scheduled_date > date.today(),
+                            Appointment.status.in_([AppointmentStatus.CONFIRMED, AppointmentStatus.PENDING])
+                        )
+                    )
+                )
+                upcoming = upcoming_count.scalars().all()
+                user_context += f"\nUpcoming appointments (next 7 days): {len([a for a in upcoming if a.scheduled_date <= date.today() + timedelta(days=7)])}\n"
+        
+        elif current_user.role in [UserRole.ADMIN, UserRole.SUPER_ADMIN]:
+            # Get platform stats for admin
+            from sqlalchemy import func
+            
+            total_users = await db.execute(select(func.count(User.id)))
+            total_doctors = await db.execute(
+                select(func.count(Doctor.id)).where(Doctor.verification_status == 'verified')
+            )
+            todays_appointments = await db.execute(
+                select(func.count(Appointment.id)).where(Appointment.scheduled_date == date.today())
+            )
+            pending_verifications = await db.execute(
+                select(func.count(Doctor.id)).where(Doctor.verification_status == 'pending')
+            )
+            
+            user_context += f"\nPlatform Statistics:\n"
+            user_context += f"- Total Users: {total_users.scalar()}\n"
+            user_context += f"- Verified Doctors: {total_doctors.scalar()}\n"
+            user_context += f"- Today's Appointments: {todays_appointments.scalar()}\n"
+            user_context += f"- Pending Doctor Verifications: {pending_verifications.scalar()}\n"
+        
+        user_context += "--- END USER CONTEXT ---\n"
+    
+    # Combine system prompt with user context
+    full_context = str(request.context or "") + user_context
+    
     try:
         response = await ai_service.chat_assistant(
             message=request.message,
-            context=request.context,
+            context=full_context,
             conversation_history=request.conversation_history
         )
         return {"success": True, "response": response}
