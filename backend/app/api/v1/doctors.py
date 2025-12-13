@@ -513,6 +513,7 @@ async def get_my_earnings(
     """
     Get earnings statistics for the current doctor.
     Calculates earnings from completed appointments using actual payment amounts.
+    Also includes projected earnings from confirmed appointments.
     """
     from sqlalchemy.orm import selectinload
     
@@ -531,15 +532,15 @@ async def get_my_earnings(
     start_of_month = today.replace(day=1)
     start_of_week = today - timedelta(days=today.weekday())
     
-    # Helper function to get earnings for a date filter
-    async def get_earnings_for_period(date_filter=None):
+    # Helper function to get earnings for a date filter and status
+    async def get_earnings_for_period(appointment_status: AppointmentStatus, date_filter=None):
         query = (
             select(Appointment)
             .options(selectinload(Appointment.payment))
             .where(
                 and_(
                     Appointment.doctor_id == doctor.id,
-                    Appointment.status == AppointmentStatus.COMPLETED
+                    Appointment.status == appointment_status
                 )
             )
         )
@@ -563,16 +564,22 @@ async def get_my_earnings(
         return {"earnings": total, "count": count}
     
     # Get all completed appointments (all time)
-    total_data = await get_earnings_for_period()
+    total_data = await get_earnings_for_period(AppointmentStatus.COMPLETED)
     
     # Today's completed appointments
-    today_data = await get_earnings_for_period(Appointment.scheduled_date == today)
+    today_data = await get_earnings_for_period(AppointmentStatus.COMPLETED, Appointment.scheduled_date == today)
     
     # This week's completed appointments
-    week_data = await get_earnings_for_period(Appointment.scheduled_date >= start_of_week)
+    week_data = await get_earnings_for_period(AppointmentStatus.COMPLETED, Appointment.scheduled_date >= start_of_week)
     
     # This month's completed appointments
-    month_data = await get_earnings_for_period(Appointment.scheduled_date >= start_of_month)
+    month_data = await get_earnings_for_period(AppointmentStatus.COMPLETED, Appointment.scheduled_date >= start_of_month)
+    
+    # Projected earnings from confirmed appointments
+    projected_total = await get_earnings_for_period(AppointmentStatus.CONFIRMED)
+    projected_today = await get_earnings_for_period(AppointmentStatus.CONFIRMED, Appointment.scheduled_date == today)
+    projected_week = await get_earnings_for_period(AppointmentStatus.CONFIRMED, Appointment.scheduled_date >= start_of_week)
+    projected_month = await get_earnings_for_period(AppointmentStatus.CONFIRMED, Appointment.scheduled_date >= start_of_month)
     
     return {
         "consultation_fee": consultation_fee,
@@ -584,5 +591,14 @@ async def get_my_earnings(
         "today_completed_appointments": today_data["count"],
         "week_completed_appointments": week_data["count"],
         "month_completed_appointments": month_data["count"],
+        # Projected earnings from confirmed appointments
+        "projected_total": projected_total["earnings"],
+        "projected_today": projected_today["earnings"],
+        "projected_week": projected_week["earnings"],
+        "projected_month": projected_month["earnings"],
+        "projected_total_appointments": projected_total["count"],
+        "projected_today_appointments": projected_today["count"],
+        "projected_week_appointments": projected_week["count"],
+        "projected_month_appointments": projected_month["count"],
         "currency": "MZN"
     }
