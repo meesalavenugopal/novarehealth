@@ -94,7 +94,7 @@ export async function markAsRead(notificationId: number): Promise<Notification> 
   const response = await authFetch(
     `${API_BASE}/api/v1/notifications/${notificationId}/read`,
     {
-      method: 'PATCH',
+      method: 'PUT',
     }
   );
 
@@ -110,8 +110,8 @@ export async function markAsRead(notificationId: number): Promise<Notification> 
  * Mark all notifications as read
  */
 export async function markAllAsRead(): Promise<void> {
-  const response = await authFetch(`${API_BASE}/api/v1/notifications/mark-all-read`, {
-    method: 'PATCH',
+  const response = await authFetch(`${API_BASE}/api/v1/notifications/read-all`, {
+    method: 'PUT',
   });
 
   if (!response.ok) {
