@@ -11,6 +11,62 @@
 import { authFetch } from './api';
 
 // ============================================================================
+// Payment Status Constants (aligned with backend PaymentStatusEnum)
+// ============================================================================
+
+/** All possible payment statuses from backend */
+export const PAYMENT_STATUS = {
+  PENDING: 'pending',
+  PROCESSING: 'processing',
+  COMPLETED: 'completed',
+  FAILED: 'failed',
+  CANCELLED: 'cancelled',
+  EXPIRED: 'expired',
+} as const;
+
+/** Payment status type derived from constants */
+export type PaymentStatus = typeof PAYMENT_STATUS[keyof typeof PAYMENT_STATUS];
+
+/** Terminal statuses - payment is in final state, no more changes expected */
+export const TERMINAL_STATUSES: readonly PaymentStatus[] = [
+  PAYMENT_STATUS.COMPLETED,
+  PAYMENT_STATUS.FAILED,
+  PAYMENT_STATUS.CANCELLED,
+  PAYMENT_STATUS.EXPIRED,
+] as const;
+
+/** Successful terminal status */
+export const SUCCESS_STATUSES: readonly PaymentStatus[] = [
+  PAYMENT_STATUS.COMPLETED,
+] as const;
+
+/** Failed terminal statuses */
+export const FAILURE_STATUSES: readonly PaymentStatus[] = [
+  PAYMENT_STATUS.FAILED,
+  PAYMENT_STATUS.CANCELLED,
+  PAYMENT_STATUS.EXPIRED,
+] as const;
+
+/** Non-terminal statuses - payment still in progress */
+export const PENDING_STATUSES: readonly PaymentStatus[] = [
+  PAYMENT_STATUS.PENDING,
+  PAYMENT_STATUS.PROCESSING,
+] as const;
+
+/** Type guards for status checking */
+export const isTerminalStatus = (status: PaymentStatus): boolean => 
+  TERMINAL_STATUSES.includes(status);
+
+export const isSuccessStatus = (status: PaymentStatus): boolean => 
+  SUCCESS_STATUSES.includes(status);
+
+export const isFailureStatus = (status: PaymentStatus): boolean => 
+  FAILURE_STATUSES.includes(status);
+
+export const isPendingStatus = (status: PaymentStatus): boolean => 
+  PENDING_STATUSES.includes(status);
+
+// ============================================================================
 // Types & Interfaces
 // ============================================================================
 
@@ -32,7 +88,7 @@ export interface PaymentInitiateResponse {
   provider_transaction_id?: string;          // M-Pesa Transaction ID
   conversation_id?: string;                  // M-Pesa Conversation ID
   third_party_reference?: string;            // Third party reference
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'expired';
+  status: PaymentStatus;
   message: string;
   phone_number: string;
   amount: number;
@@ -48,7 +104,7 @@ export interface PaymentStatusResponse {
   transaction_id: string;
   conversation_id?: string;
   provider_transaction_id?: string;          // M-Pesa Receipt Number
-  status: 'pending' | 'processing' | 'completed' | 'failed' | 'cancelled' | 'expired';
+  status: PaymentStatus;
   status_description: string;
   amount: number;
   currency: string;
@@ -180,8 +236,8 @@ class PaymentService {
         onStatusChange(status);
       }
 
-      // Check if payment is in a terminal state
-      if (['completed', 'failed', 'cancelled', 'expired'].includes(status.status)) {
+      // Check if payment is in a terminal state (use centralized constant)
+      if (isTerminalStatus(status.status)) {
         return status;
       }
 

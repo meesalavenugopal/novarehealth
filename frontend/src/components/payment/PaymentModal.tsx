@@ -21,7 +21,7 @@ import {
   ArrowRight,
   RefreshCw
 } from 'lucide-react';
-import { paymentService } from '../../services/payment';
+import { paymentService, isSuccessStatus, isFailureStatus, isPendingStatus } from '../../services/payment';
 import type { PaymentInitiateResponse, PaymentStatusResponse } from '../../services/payment';
 
 // ============================================================================
@@ -157,7 +157,7 @@ export default function PaymentModal({
       setPaymentResponse(response);
       setTransactionId(response.transaction_id);
 
-      if (response.success && response.status === 'completed') {
+      if (response.success && isSuccessStatus(response.status)) {
         // Payment completed immediately (rare for C2B)
         setPaymentState('success');
         onSuccess(response.transaction_id);
@@ -191,10 +191,10 @@ export default function PaymentModal({
         onStatusChange: (status: PaymentStatusResponse) => {
           setPollCount(prev => prev + 1);
           
-          if (status.status === 'completed') {
+          if (isSuccessStatus(status.status)) {
             setPaymentState('success');
             onSuccess(txnId);
-          } else if (status.status === 'failed' || status.status === 'cancelled' || status.status === 'expired') {
+          } else if (isFailureStatus(status.status)) {
             setPaymentState('failed');
             setErrorMessage(status.status_description || 'Payment failed');
             onFailure?.(status.status_description || 'Payment failed');
@@ -203,7 +203,7 @@ export default function PaymentModal({
       });
 
       // Handle final status after polling completes
-      if (status.status === 'pending' || status.status === 'processing') {
+      if (isPendingStatus(status.status)) {
         setPaymentState('timeout');
         setErrorMessage('Payment is still processing. Please check your M-Pesa for confirmation.');
       }
