@@ -28,6 +28,8 @@ import {
 } from 'lucide-react';
 import Navbar from '../../components/layout/Navbar';
 import LoginPromptModal from '../../components/auth/LoginPromptModal';
+import { PaymentModal } from '../../components/payment';
+import type { PaymentDetails } from '../../components/payment';
 import { ReviewsList } from '../../components/reviews';
 import { guestFetch, authFetch, getBookingContext, clearBookingContext } from '../../services/api';
 import type { BookingContext } from '../../services/api';
@@ -106,6 +108,12 @@ export default function DoctorProfilePage() {
   const [bookingContext, setBookingContext] = useState<BookingContext | null>(null); // Preserved booking intent
   const [bookingInProgress, setBookingInProgress] = useState(false);       // Prevent double-click
   const bookingContextRestoredRef = useRef(false); // Track if we've already restored booking context
+
+  // ─────────────────────────────────────────────────────────────────
+  // STATE: Payment Flow
+  // ─────────────────────────────────────────────────────────────────
+  const [showPaymentModal, setShowPaymentModal] = useState(false);         // Payment modal visibility
+  const [paymentDetails, setPaymentDetails] = useState<PaymentDetails | null>(null); // Payment info
 
   /** Check if user is authenticated via access token */
   const isLoggedIn = !!localStorage.getItem('access_token');
@@ -397,7 +405,7 @@ export default function DoctorProfilePage() {
    * 
    * Flow:
    * 1. Guest user → Save booking context → Show login modal
-   * 2. Logged-in user → Create appointment → Navigate to appointments
+   * 2. Logged-in user → Show payment modal → After payment → Create appointment
    * 
    * @endpoint POST /api/v1/appointments/ (requires auth)
    */
@@ -421,71 +429,86 @@ export default function DoctorProfilePage() {
     // ─────────────────────────────────────────────────────────────
     // GUEST FLOW: Save context and show login modal
     // ─────────────────────────────────────────────────────────────
-    // Guest users cannot book directly. Instead, we:
-    // 1. Save their booking intent to localStorage (via setBookingContext)
-    // 2. Show the login modal (LoginPromptModal component)
-    // 3. After login, they're redirected back here
-    // 4. fetchAvailability restores their selection from localStorage
-    // 5. They can then click "Confirm Booking" as an authenticated user
     if (!isLoggedIn) {
       setBookingContext(context); // Save to state (for modal display)
       setShowLoginPrompt(true);   // Show login/register modal
-      return; // Exit early - don't proceed to booking API
+      return; // Exit early - don't proceed to payment
     }
 
     // ─────────────────────────────────────────────────────────────
-    // AUTHENTICATED FLOW: Create appointment via API
+    // AUTHENTICATED FLOW: Show Payment Modal First
     // ─────────────────────────────────────────────────────────────
-    // User is logged in, so we can create the appointment directly.
-    // The booking button is disabled while this is in progress to
-    // prevent double-clicking (race condition protection).
+    // User is logged in, so we show the payment modal.
+    // After successful payment, we create the appointment.
+    const paymentInfo: PaymentDetails = {
+      amount: doctor.consultation_fee,
+      description: `Consultation with Dr. ${doctor.first_name} ${doctor.last_name}`,
+      entityType: 'appointment',
+      entityId: `${doctor.id}-${selectedDate}-${selectedSlot.start_time}`,
+      customerName: undefined, // Will be filled from user profile if available
+      customerEmail: undefined, // Will be filled from user profile if available
+      doctorName: `Dr. ${doctor.first_name} ${doctor.last_name}`,
+      scheduledDate: selectedDate,
+      scheduledTime: selectedSlot.start_time,
+    };
+    
+    setPaymentDetails(paymentInfo);
+    setShowPaymentModal(true);
+  };
+
+  /**
+   * Handle successful payment - create the appointment
+   */
+  const handlePaymentSuccess = async (transactionId: string) => {
+    if (!doctor || !selectedSlot || !selectedDate) return;
+
     setBookingInProgress(true);
+    setShowPaymentModal(false);
+    
     try {
       // Get user's timezone for proper scheduling
-      // This ensures the appointment is stored in UTC but displayed
-      // correctly in the user's local timezone
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       
       // POST request to create the appointment
-      // authFetch automatically includes the JWT token in headers
       const response = await authFetch('/api/v1/appointments/', {
         method: 'POST',
         body: JSON.stringify({
-          doctor_id: doctor.id,              // Which doctor to book
-          scheduled_date: selectedDate,       // Date in YYYY-MM-DD format
-          scheduled_time: selectedSlot.start_time, // Time in HH:MM format
-          consultation_type: 'video',         // Always video for now (Zoom integration)
-          notes: '',                          // Optional patient notes (empty for now)
-          timezone: userTimezone,             // For proper time conversion
+          doctor_id: doctor.id,
+          scheduled_date: selectedDate,
+          scheduled_time: selectedSlot.start_time,
+          consultation_type: 'video',
+          notes: '',
+          timezone: userTimezone,
+          payment_transaction_id: transactionId, // Link payment to appointment
         }),
       });
 
       if (response.ok) {
-        // Success! Appointment was created
         const appointment = await response.json();
-        // Navigate to appointments page with success toast/message
-        // The appointments page reads this state and shows a success notification
         navigate('/appointments', {
           state: { 
             success: true, 
-            message: `Appointment booked successfully with ${appointment.doctor_name} on ${appointment.scheduled_date} at ${appointment.scheduled_time}` 
+            message: `Appointment booked successfully with ${appointment.doctor_name} on ${appointment.scheduled_date} at ${appointment.scheduled_time}. Payment received.` 
           }
         });
       } else {
-        // API returned an error (e.g., slot no longer available, validation error)
         const error = await response.json();
-        alert(error.detail || 'Failed to book appointment');
-        // Note: We could refresh slots here to show updated availability
+        alert(error.detail || 'Failed to book appointment. Your payment has been received - please contact support.');
       }
     } catch (err) {
-      // Network error or other exception
       console.error('Error booking appointment:', err);
-      alert('Failed to book appointment. Please try again.');
+      alert('Failed to book appointment. Your payment has been received - please contact support with transaction ID: ' + transactionId);
     } finally {
-      // Always reset loading state, whether success or failure
-      // This re-enables the booking button
       setBookingInProgress(false);
     }
+  };
+
+  /**
+   * Handle payment failure
+   */
+  const handlePaymentFailure = (error: string) => {
+    console.error('Payment failed:', error);
+    // Payment modal handles the error display, just log here
   };
 
   // ─────────────────────────────────────────────────────────────
@@ -860,10 +883,10 @@ export default function DoctorProfilePage() {
                         <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4" fill="none" />
                         <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z" />
                       </svg>
-                      Booking...
+                      Processing...
                     </span>
                   ) : selectedSlot ? (
-                    isLoggedIn ? 'Confirm Booking' : 'Login to Book'
+                    isLoggedIn ? 'Pay & Book' : 'Login to Book'
                   ) : (
                     'Select a Time Slot'
                   )}
@@ -893,6 +916,20 @@ export default function DoctorProfilePage() {
         title="Login to Book"
         message="Create an account or login to complete your appointment booking."
       />
+
+      {/* 
+        Payment Modal - Shown when logged-in user clicks "Confirm Booking"
+        Handles M-Pesa payment flow before creating appointment
+      */}
+      {paymentDetails && (
+        <PaymentModal
+          isOpen={showPaymentModal}
+          onClose={() => setShowPaymentModal(false)}
+          onSuccess={handlePaymentSuccess}
+          onFailure={handlePaymentFailure}
+          paymentDetails={paymentDetails}
+        />
+      )}
     </div>
   );
 }
