@@ -31,7 +31,7 @@ import LoginPromptModal from '../../components/auth/LoginPromptModal';
 import { PaymentModal } from '../../components/payment';
 import type { PaymentDetails } from '../../components/payment';
 import { ReviewsList } from '../../components/reviews';
-import { guestFetch, authFetch, getBookingContext, clearBookingContext } from '../../services/api';
+import { guestFetch, authFetch, getBookingContext, clearBookingContext, ApiError } from '../../services/api';
 import type { BookingContext } from '../../services/api';
 
 /** Education entry - supports both string and structured formats from API */
@@ -458,6 +458,7 @@ export default function DoctorProfilePage() {
 
   /**
    * Handle successful payment - create the appointment
+   * Uses suppressAuthRedirect to handle 401 gracefully without losing payment context
    */
   const handlePaymentSuccess = async (transactionId: string) => {
     if (!doctor || !selectedSlot || !selectedDate) return;
@@ -470,8 +471,10 @@ export default function DoctorProfilePage() {
       const userTimezone = Intl.DateTimeFormat().resolvedOptions().timeZone;
       
       // POST request to create the appointment
+      // Use suppressAuthRedirect to prevent auto-logout on 401 - payment already succeeded
       const response = await authFetch('/api/v1/appointments/', {
         method: 'POST',
+        suppressAuthRedirect: true, // Don't redirect on 401, handle gracefully
         body: JSON.stringify({
           doctor_id: doctor.id,
           scheduled_date: selectedDate,
@@ -493,11 +496,44 @@ export default function DoctorProfilePage() {
         });
       } else {
         const error = await response.json();
-        alert(error.detail || 'Failed to book appointment. Your payment has been received - please contact support.');
+        // Navigate to appointments page with error message - payment succeeded but booking failed
+        navigate('/appointments', {
+          state: {
+            warning: true,
+            message: `Payment received (${transactionId}) but appointment creation failed: ${error.detail || 'Unknown error'}. Please contact support.`,
+            transactionId: transactionId,
+          }
+        });
       }
     } catch (err) {
       console.error('Error booking appointment:', err);
-      alert('Failed to book appointment. Your payment has been received - please contact support with transaction ID: ' + transactionId);
+      
+      // Check if it's an auth error
+      if (err instanceof ApiError && err.isAuthError) {
+        // Session expired after payment - navigate to login with recovery context
+        navigate('/login', {
+          state: {
+            returnUrl: `/doctor/${doctor.id}`,
+            message: `Your session expired but your payment was successful (Transaction: ${transactionId}). Please log in again - your appointment will be created automatically.`,
+            pendingPayment: {
+              transactionId,
+              doctorId: doctor.id,
+              doctorName: `Dr. ${doctor.first_name} ${doctor.last_name}`,
+              scheduledDate: selectedDate,
+              scheduledTime: selectedSlot.start_time,
+            }
+          }
+        });
+      } else {
+        // Other error - navigate to appointments with error message
+        navigate('/appointments', {
+          state: {
+            warning: true,
+            message: `Payment received (${transactionId}) but an error occurred while creating your appointment. Please contact support with your transaction ID.`,
+            transactionId: transactionId,
+          }
+        });
+      }
     } finally {
       setBookingInProgress(false);
     }

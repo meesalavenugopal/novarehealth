@@ -80,18 +80,44 @@ export const handleUnauthorized = (response: Response) => {
 };
 
 /**
- * Wrapper for fetch that automatically handles 401 errors
+ * Custom error class for API errors with status info
  */
-export const authFetch = async (url: string, options: RequestInit = {}): Promise<Response> => {
+export class ApiError extends Error {
+  status: number;
+  isAuthError: boolean;
+  
+  constructor(message: string, status: number) {
+    super(message);
+    this.name = 'ApiError';
+    this.status = status;
+    this.isAuthError = status === 401;
+  }
+}
+
+/**
+ * Options for authFetch
+ */
+export interface AuthFetchOptions extends RequestInit {
+  /** If true, don't force logout on 401 - throw ApiError instead */
+  suppressAuthRedirect?: boolean;
+}
+
+/**
+ * Wrapper for fetch that automatically handles 401 errors
+ * @param url - API endpoint
+ * @param options - Fetch options with optional suppressAuthRedirect
+ */
+export const authFetch = async (url: string, options: AuthFetchOptions = {}): Promise<Response> => {
+  const { suppressAuthRedirect, ...fetchOptions } = options;
   const token = localStorage.getItem('access_token');
   
   const headers = {
     'Content-Type': 'application/json',
-    ...options.headers,
+    ...fetchOptions.headers,
     ...(token ? { Authorization: `Bearer ${token}` } : {}),
   };
 
-  const response = await fetch(url, { ...options, headers });
+  const response = await fetch(url, { ...fetchOptions, headers });
   
   if (response.status === 401) {
     // Try to refresh token
@@ -114,11 +140,16 @@ export const authFetch = async (url: string, options: RequestInit = {}): Promise
             ...headers,
             Authorization: `Bearer ${access_token}`,
           };
-          return fetch(url, { ...options, headers: retryHeaders });
+          return fetch(url, { ...fetchOptions, headers: retryHeaders });
         }
       } catch {
         // Refresh failed
       }
+    }
+    
+    // If suppressAuthRedirect is true, throw error instead of redirecting
+    if (suppressAuthRedirect) {
+      throw new ApiError('Session expired. Please log in again.', 401);
     }
     
     // Force logout if refresh failed or no refresh token
