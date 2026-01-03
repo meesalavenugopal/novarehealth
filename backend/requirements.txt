@@ -26,7 +26,6 @@ httpx==0.26.0
 
 # Utils
 python-dotenv==1.0.0
-redis==5.0.1
 aiofiles==23.2.1
 jinja2==3.1.6
 
@@ -39,3 +38,4 @@ pytest==7.4.4
 pytest-asyncio==0.23.3
 httpx==0.26.0
 pycryptodome>=3.19.0  # M-Pesa API key encryption
+openai>=1.0.0

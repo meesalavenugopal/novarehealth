@@ -1,19 +1,30 @@
 import os
 import uuid
-from typing import Optional
+from typing import Optional, Tuple
 from datetime import datetime
 from fastapi import UploadFile, HTTPException, status
 import aiofiles
 from pathlib import Path
+import logging
 
 from app.core.config import settings
+from app.services.s3_service import s3_service
+
+logger = logging.getLogger(__name__)
 
 
 class FileUploadService:
     """Service for handling file uploads"""
     
     ALLOWED_IMAGE_TYPES = {"image/jpeg", "image/png", "image/jpg", "image/webp"}
-    ALLOWED_DOCUMENT_TYPES = {"application/pdf", "image/jpeg", "image/png", "image/jpg"}
+    ALLOWED_DOCUMENT_TYPES = {
+        "application/pdf",
+        "image/jpeg",
+        "image/png",
+        "image/jpg",
+        "application/msword",  # .doc
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document",  # .docx
+    }
     MAX_FILE_SIZE = 10 * 1024 * 1024  # 10 MB
     
     # Upload directories
@@ -96,7 +107,18 @@ class FileUploadService:
     
     @classmethod
     async def upload_avatar(cls, file: UploadFile, user_id: int) -> str:
-        """Upload user avatar"""
+        """Upload user avatar - uses S3 if configured, otherwise local storage"""
+        # Try S3 first
+        if s3_service.is_configured:
+            try:
+                s3_key = await s3_service.upload_avatar(file, user_id)
+                logger.info(f"Avatar uploaded to S3: {s3_key}")
+                return f"s3://{s3_key}"  # Prefix with s3:// to identify storage type
+            except Exception as e:
+                logger.warning(f"S3 upload failed, falling back to local: {str(e)}")
+                await file.seek(0)  # Reset file pointer for local upload
+        
+        # Fallback to local storage
         return await cls.upload_file(
             file,
             category=cls.AVATAR_DIR,
@@ -106,7 +128,18 @@ class FileUploadService:
     
     @classmethod
     async def upload_government_id(cls, file: UploadFile, user_id: int) -> str:
-        """Upload government ID for KYC"""
+        """Upload government ID for KYC - uses S3 if configured, otherwise local storage"""
+        # Try S3 first for KYC documents (recommended for security)
+        if s3_service.is_configured:
+            try:
+                s3_key = await s3_service.upload_government_id(file, user_id)
+                logger.info(f"Government ID uploaded to S3: {s3_key}")
+                return f"s3://{s3_key}"  # Prefix with s3:// to identify storage type
+            except Exception as e:
+                logger.warning(f"S3 upload failed, falling back to local: {str(e)}")
+                await file.seek(0)  # Reset file pointer for local upload
+        
+        # Fallback to local storage
         return await cls.upload_file(
             file,
             category=cls.GOVERNMENT_ID_DIR,
@@ -116,7 +149,18 @@ class FileUploadService:
     
     @classmethod
     async def upload_medical_certificate(cls, file: UploadFile, user_id: int) -> str:
-        """Upload medical certificate for doctor verification"""
+        """Upload medical certificate for doctor verification - uses S3 if configured"""
+        # Try S3 first for KYC documents (recommended for security)
+        if s3_service.is_configured:
+            try:
+                s3_key = await s3_service.upload_medical_certificate(file, user_id)
+                logger.info(f"Medical certificate uploaded to S3: {s3_key}")
+                return f"s3://{s3_key}"  # Prefix with s3:// to identify storage type
+            except Exception as e:
+                logger.warning(f"S3 upload failed, falling back to local: {str(e)}")
+                await file.seek(0)  # Reset file pointer for local upload
+        
+        # Fallback to local storage
         return await cls.upload_file(
             file,
             category=cls.MEDICAL_CERTIFICATE_DIR,
@@ -136,23 +180,58 @@ class FileUploadService:
     
     @staticmethod
     def delete_file(file_path: str) -> bool:
-        """Delete a file from storage"""
+        """
+        Delete a file from storage.
+        Handles both S3 (s3://key) and local storage paths.
+        """
+        if not file_path:
+            return False
+        
         try:
+            # Check if this is an S3 file
+            if file_path.startswith("s3://"):
+                s3_key = file_path[5:]  # Remove s3:// prefix
+                return s3_service.delete_file(s3_key)
+            
+            # Local file deletion
             base_dir = Path(settings.UPLOAD_DIR) if hasattr(settings, 'UPLOAD_DIR') else Path("uploads")
             full_path = base_dir / file_path
             if full_path.exists():
                 full_path.unlink()
                 return True
             return False
-        except Exception:
+        except Exception as e:
+            logger.error(f"Failed to delete file {file_path}: {str(e)}")
             return False
     
     @staticmethod
-    def get_file_url(file_path: str) -> str:
-        """Get the public URL for a file"""
+    def get_file_url(file_path: str, expires_in: int = 3600) -> str:
+        """
+        Get the public URL for a file.
+        Handles both S3 (s3://key) and local storage paths.
+        
+        Args:
+            file_path: File path (s3://key for S3, or relative path for local)
+            expires_in: Expiration time for presigned URLs (S3 only)
+        
+        Returns:
+            URL to access the file
+        """
         if not file_path:
             return None
         
+        # Check if this is an S3 file
+        if file_path.startswith("s3://"):
+            s3_key = file_path[5:]  # Remove s3:// prefix
+            if s3_service.is_configured:
+                # Generate presigned URL for secure access
+                url = s3_service.get_file_url(s3_key, expires_in)
+                if url:
+                    return url
+            # Fallback to public URL format if presigned fails
+            return s3_service.get_public_url(s3_key)
+        
+        # Local file URL
         base_url = settings.API_BASE_URL if hasattr(settings, 'API_BASE_URL') else "http://localhost:8000"
         return f"{base_url}/uploads/{file_path}"
 

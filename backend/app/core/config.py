@@ -48,7 +48,7 @@ class Settings(BaseSettings):
     # AWS S3
     AWS_ACCESS_KEY_ID: Optional[str] = None
     AWS_SECRET_ACCESS_KEY: Optional[str] = None
-    AWS_REGION: str = "af-south-1"
+    AWS_REGION: str = "ap-south-1"
     S3_BUCKET_NAME: str = "novarehealth-uploads"
     
     # M-Pesa
@@ -64,8 +64,7 @@ class Settings(BaseSettings):
     OPENAI_MAX_TOKENS: int = 4000
     OPENAI_TEMPERATURE: float = 0.7
     
-    # Redis
-    REDIS_URL: str = "redis://localhost:6379/0"
+
     
     # Country/Market Configuration
     DEFAULT_COUNTRY_CODE: str = "258"  # Country code (can be changed per market: 258=Mozambique, 254=Kenya, 27=South Africa)
