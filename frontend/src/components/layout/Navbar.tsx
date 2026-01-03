@@ -19,7 +19,7 @@ import type { Notification } from '../../services/notifications';
 import LanguageSwitcher from '../ui/LanguageSwitcher';
 
 // Define navigation items for each role
-const getNavItems = (role: string | undefined, isAuthenticated: boolean) => {
+const getNavItems = (role: string | undefined, isAuthenticated: boolean, doctorVerificationStatus?: string) => {
   // For unauthenticated users, show only public pages
   if (!isAuthenticated) {
     return [
@@ -38,11 +38,18 @@ const getNavItems = (role: string | undefined, isAuthenticated: boolean) => {
         { to: '/admin/specializations', label: 'Specializations' },
       ];
     case 'doctor':
+      // Only show full menu for verified doctors
+      if (doctorVerificationStatus === 'verified') {
+        return [
+          { to: '/doctor/dashboard', label: 'Dashboard' },
+          { to: '/doctor/appointments', label: 'Appointments' },
+          { to: '/doctor/availability', label: 'Availability' },
+          { to: '/prescriptions', label: 'Prescriptions' },
+        ];
+      }
+      // Pending/rejected doctors only see verification status
       return [
-        { to: '/doctor/dashboard', label: 'Dashboard' },
-        { to: '/doctor/appointments', label: 'Appointments' },
-        { to: '/doctor/availability', label: 'Availability' },
-        { to: '/prescriptions', label: 'Prescriptions' },
+        { to: '/doctor/verification-pending', label: 'Application Status' },
       ];
     case 'patient':
     default:
@@ -156,7 +163,7 @@ export default function Navbar() {
 
   // Get role-specific navigation items
   const isAuthenticated = !!user;
-  const navItems = getNavItems(user?.role, isAuthenticated);
+  const navItems = getNavItems(user?.role, isAuthenticated, user?.doctor_verification_status);
   const dashboardLink = getDashboardLink(user?.role);
 
   return (

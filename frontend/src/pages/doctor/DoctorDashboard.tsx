@@ -30,7 +30,7 @@ interface DoctorStats {
 
 export const DoctorDashboard: React.FC = () => {
   const navigate = useNavigate();
-  const { user } = useAuthStore();
+  const { user, updateUser } = useAuthStore();
   const [checkingVerification, setCheckingVerification] = useState(true);
   const [stats, setStats] = useState<DoctorStats>({
     total_consultations: 0,
@@ -53,6 +53,9 @@ export const DoctorDashboard: React.FC = () => {
 
         if (response.ok) {
           const doctorData = await response.json();
+          // Update verification status in auth store
+          updateUser({ doctor_verification_status: doctorData.verification_status });
+          
           if (doctorData.verification_status !== 'verified') {
             // Not verified, redirect to pending page
             navigate('/doctor/verification-pending');
@@ -88,7 +91,7 @@ export const DoctorDashboard: React.FC = () => {
     };
 
     checkVerificationStatus();
-  }, [navigate]);
+  }, [navigate, updateUser]);
 
   // Fetch real appointments from API
   useEffect(() => {

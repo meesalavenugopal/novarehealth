@@ -64,7 +64,7 @@ type OTPFormData = z.infer<typeof otpSchema>;
 export default function LoginPage() {
   const navigate = useNavigate();
   const location = useLocation();
-  const { setAuth } = useAuthStore();
+  const { setAuth, updateUser } = useAuthStore();
   
   // ============== STATE VARIABLES ==============
   // step: Controls which view is shown ('phone' entry or 'otp' verification)
@@ -272,6 +272,9 @@ export default function LoginPage() {
           
           if (doctorResponse.ok) {
             const doctorData = await doctorResponse.json();
+            // Store verification status in user object for navbar
+            updateUser({ doctor_verification_status: doctorData.verification_status });
+            
             if (doctorData.verification_status === 'verified') {
               navigate('/doctor/dashboard');
             } else {

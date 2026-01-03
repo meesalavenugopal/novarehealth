@@ -552,25 +552,31 @@ export const DoctorRegisterPage: React.FC = () => {
       if (governmentId) {
         const govIdFormData = new FormData();
         govIdFormData.append('file', governmentId);
-        await fetch(`${config.apiUrl}/uploads/kyc/government-id`, {
+        const govIdResponse = await fetch(`${config.apiUrl}/uploads/kyc/government-id`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}` },
           body: govIdFormData,
         });
+        if (!govIdResponse.ok) {
+          console.error('Failed to upload government ID:', await govIdResponse.text());
+        }
       }
 
       if (medicalCertificate) {
         const certFormData = new FormData();
         certFormData.append('file', medicalCertificate);
-        await fetch(`${config.apiUrl}/uploads/kyc/medical-certificate`, {
+        const certResponse = await fetch(`${config.apiUrl}/uploads/kyc/medical-certificate`, {
           method: 'POST',
           headers: { 'Authorization': `Bearer ${accessToken}` },
           body: certFormData,
         });
+        if (!certResponse.ok) {
+          console.error('Failed to upload medical certificate:', await certResponse.text());
+        }
       }
 
-      // Update user role in auth store to 'doctor' so ProtectedRoute allows access
-      updateUser({ role: 'doctor' });
+      // Update user role in auth store to 'doctor' and set pending verification status
+      updateUser({ role: 'doctor', doctor_verification_status: 'pending' });
 
       // Clear saved form data after successful registration
       clearDoctorRegistrationData();

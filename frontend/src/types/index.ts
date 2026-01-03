@@ -12,6 +12,8 @@ export interface User {
   is_active: boolean;
   is_verified: boolean;
   created_at: string;
+  // Doctor-specific: verification status (only set for doctors)
+  doctor_verification_status?: 'pending' | 'verified' | 'rejected';
 }
 
 // Auth types
